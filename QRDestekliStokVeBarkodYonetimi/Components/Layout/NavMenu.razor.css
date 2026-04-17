@@ -17,7 +17,7 @@
 
 .top-row {
     height: 3.5rem;
-    background-color: rgba(0,0,0,0.4);
+    background-color:#1a202c !important;
 }
 
 .navbar-brand {
@@ -71,8 +71,17 @@
         width: 100%;
     }
 
+.nav-item ::deep a
+{
+    color:#cbd5e0;
+}
+.na-item ::deep a:hover
+{
+    background-color:rgba(255, 255, 255, 0.1);
+    color:white;
+}
 .nav-item ::deep a.active {
-    background-color: rgba(255,255,255,0.37);
+    background-color: #4a5568;
     color: white;
 }
 
@@ -83,6 +92,74 @@
 
 .nav-scrollable {
     display: none;
+    background-color: #2d3748;
+}
+
+.user-box {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 1rem;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    color: #edf2f7;
+}
+
+.user-avatar {
+    width: 2.25rem;
+    height: 2.25rem;
+    border-radius: 50%;
+    background: #1b6ec2;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.9rem;
+    flex-shrink: 0;
+}
+
+.user-info {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.user-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: #fff;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+.user-mail {
+    font-size: 0.75rem;
+    color: #a0aec0;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+}
+
+.logout-btn {
+    cursor: pointer;
+    text-align: left;
+    padding: 0 1rem;
+    color: #d7d7d7 !important;
+    background: none;
+    border: none;
+    border-radius: 4px;
+    height: 3rem;
+    display: flex;
+    align-items: center;
+    line-height: 3rem;
+    width: 100%;
+    font-size: 0.9rem;
+}
+
+.logout-btn:hover {
+    background-color: rgba(255,255,255,0.1);
+    color: #fff !important;
 }
 
 .navbar-toggler:checked ~ .nav-scrollable {

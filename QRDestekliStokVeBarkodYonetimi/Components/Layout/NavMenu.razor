@@ -1,16 +1,30 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
+﻿@inject AuthStateService AuthState
+@inject NavigationManager Nav
+
+<div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
-        <a class="navbar-brand" href="">QRDestekliStokVeBarkodYonetimi</a>
+        <a class="navbar-brand" href="">Yönetim Paneli</a>
     </div>
 </div>
 
 <input type="checkbox" title="Navigation menu" class="navbar-toggler" />
 
 <div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+    @if (AuthState.CurrentUser is not null)
+    {
+        <div class="user-box">
+            <div class="user-avatar">@Initials(AuthState.CurrentUser)</div>
+            <div class="user-info">
+                <div class="user-name">@AuthState.CurrentUser.Ad @AuthState.CurrentUser.Soyad</div>
+                <div class="user-mail">@AuthState.CurrentUser.Eposta</div>
+            </div>
+        </div>
+    }
+
     <nav class="flex-column">
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
+                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Ana Sayfa
             </NavLink>
         </div>
 
@@ -25,6 +39,26 @@
                 <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
             </NavLink>
         </div>
+
+        <div class="nav-item px-3 logout-item">
+            <button type="button" class="nav-link logout-btn" @onclick="LogoutAsync">
+                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Çıkış Yap
+            </button>
+        </div>
     </nav>
 </div>
 
+@code {
+    private async Task LogoutAsync()
+    {
+        await AuthState.LogoutAsync();
+        Nav.NavigateTo("/login", replace: true);
+    }
+
+    private static string Initials(ItemKullanicilar u)
+    {
+        var a = !string.IsNullOrWhiteSpace(u.Ad) ? char.ToUpperInvariant(u.Ad[0]).ToString() : "";
+        var s = !string.IsNullOrWhiteSpace(u.Soyad) ? char.ToUpperInvariant(u.Soyad[0]).ToString() : "";
+        return (a + s) is var init && init.Length > 0 ? init : "?";
+    }
+}

@@ -1,0 +1,119 @@
+@page "/register"
+@layout QRDestekliStokVeBarkodYonetimi.Components.Layout.AuthLayout
+
+@inject AuthStateService AuthState
+@inject NavigationManager Nav
+@inject NotificationService Notification
+
+<PageTitle>Kayıt Ol</PageTitle>
+
+<div class="auth-card">
+    <div class="auth-card__brand">
+        <RadzenIcon Icon="person_add" Style="font-size:2.4rem;color:#1b6ec2" />
+        <h1>Yeni Hesap Oluştur</h1>
+        <p>Stok yönetim paneline erişmek için kaydolun</p>
+    </div>
+
+    <RadzenTemplateForm TItem="RegisterModel" Data="@model" Submit="@((RegisterModel m) => OnSubmitAsync(m))">
+        <div class="auth-row">
+            <div class="auth-field">
+                <RadzenLabel Text="Ad" Component="Ad" />
+                <RadzenTextBox @bind-Value="model.Ad" Name="Ad" Style="width:100%" Disabled="@isBusy" />
+                <RadzenRequiredValidator Component="Ad" Text="Ad zorunludur." Style="display:block" />
+            </div>
+
+            <div class="auth-field">
+                <RadzenLabel Text="Soyad" Component="Soyad" />
+                <RadzenTextBox @bind-Value="model.Soyad" Name="Soyad" Style="width:100%" Disabled="@isBusy" />
+                <RadzenRequiredValidator Component="Soyad" Text="Soyad zorunludur." Style="display:block" />
+            </div>
+        </div>
+
+        <div class="auth-field">
+            <RadzenLabel Text="E-posta" Component="Eposta" />
+            <RadzenTextBox @bind-Value="model.Eposta" Name="Eposta" Placeholder="ornek@mail.com"
+                           Style="width:100%" Disabled="@isBusy" />
+            <RadzenRequiredValidator Component="Eposta" Text="E-posta zorunludur." Style="display:block" />
+            <RadzenEmailValidator Component="Eposta" Text="Geçerli bir e-posta girin." Style="display:block" />
+        </div>
+
+        <div class="auth-field">
+            <RadzenLabel Text="Şifre" Component="Sifre" />
+            <RadzenPassword @bind-Value="model.Sifre" Name="Sifre" Placeholder="En az 6 karakter"
+                            Style="width:100%" Disabled="@isBusy" />
+            <RadzenRequiredValidator Component="Sifre" Text="Şifre zorunludur." Style="display:block" />
+            <RadzenLengthValidator Component="Sifre" Min="6" Text="Şifre en az 6 karakter olmalıdır." Style="display:block" />
+        </div>
+
+        <div class="auth-field">
+            <RadzenLabel Text="Şifre (Tekrar)" Component="SifreTekrar" />
+            <RadzenPassword @bind-Value="model.SifreTekrar" Name="SifreTekrar"
+                            Style="width:100%" Disabled="@isBusy" />
+            <RadzenRequiredValidator Component="SifreTekrar" Text="Şifre tekrarı zorunludur." Style="display:block" />
+            <RadzenCompareValidator Component="SifreTekrar" Value="@model.Sifre"
+                                    Text="Şifreler eşleşmiyor." Style="display:block" />
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Danger" ShowIcon="true" Variant="Variant.Flat"
+                         AllowClose="false" Style="margin-bottom:0.75rem">@errorMessage</RadzenAlert>
+        }
+
+        <RadzenButton ButtonType="ButtonType.Submit" Text="Kayıt Ol"
+                      Icon="how_to_reg" IsBusy="@isBusy" BusyText="Kaydediliyor..."
+                      Style="width:100%; margin-top:0.25rem" />
+    </RadzenTemplateForm>
+
+    <div class="auth-card__footer">
+        Zaten hesabınız var mı? <a href="/login">Giriş yapın</a>
+    </div>
+</div>
+
+@code {
+    private readonly RegisterModel model = new();
+    private bool isBusy;
+    private string? errorMessage;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await AuthState.InitializeAsync();
+            if (AuthState.IsAuthenticated)
+                Nav.NavigateTo("/", replace: true);
+        }
+    }
+
+    private async Task OnSubmitAsync(RegisterModel m)
+    {
+        errorMessage = null;
+        isBusy = true;
+        try
+        {
+            var (ok, err) = await AuthState.RegisterAsync(m.Ad, m.Soyad, m.Eposta, m.Sifre);
+            if (!ok)
+            {
+                errorMessage = err;
+                return;
+            }
+
+            Notification.Notify(NotificationSeverity.Success, "Kayıt başarılı",
+                "Giriş yapabilirsiniz.", 4000);
+            Nav.NavigateTo("/login", replace: true);
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    private class RegisterModel
+    {
+        public string Ad { get; set; } = string.Empty;
+        public string Soyad { get; set; } = string.Empty;
+        public string Eposta { get; set; } = string.Empty;
+        public string Sifre { get; set; } = string.Empty;
+        public string SifreTekrar { get; set; } = string.Empty;
+    }
+}
