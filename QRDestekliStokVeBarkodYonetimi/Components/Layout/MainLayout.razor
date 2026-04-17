@@ -1,23 +1,76 @@
 ﻿@inherits LayoutComponentBase
+@implements IDisposable
 
-<div class="page">
-    <div class="sidebar">
-        <NavMenu />
+@inject AuthStateService AuthState
+@inject NavigationManager Nav
+
+<RadzenComponents @rendermode="InteractiveServer"></RadzenComponents>
+
+@if (!initialized)
+{
+    <div class="page-loading">
+        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Large" />
     </div>
-
-    <main>
-        <div class="top-row px-4">
-            <a href="https://learn.microsoft.com/aspnet/core/" target="_blank">About</a>
+}
+else if (AuthState.IsAuthenticated)
+{
+    <div class="page">
+        <div class="sidebar">
+            <NavMenu />
         </div>
 
-        <article class="content px-4">
-            @Body
-        </article>
-    </main>
-</div>
+        <main>
+            <article class="content px-4">
+                @Body
+            </article>
+        </main>
+    </div>
+}
 
 <div id="blazor-error-ui">
     An unhandled error has occurred.
     <a href="" class="reload">Reload</a>
     <a class="dismiss">🗙</a>
 </div>
+
+@code {
+    private bool initialized;
+
+    protected override void OnInitialized()
+    {
+        AuthState.OnChange += OnAuthChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await AuthState.InitializeAsync();
+            initialized = true;
+
+            if (!AuthState.IsAuthenticated)
+            {
+                Nav.NavigateTo("/login", replace: true);
+            }
+            else
+            {
+                StateHasChanged();
+            }
+        }
+    }
+
+    private void OnAuthChanged()
+    {
+        InvokeAsync(() =>
+        {
+            if (initialized && !AuthState.IsAuthenticated)
+                Nav.NavigateTo("/login", replace: true);
+            StateHasChanged();
+        });
+    }
+
+    public void Dispose()
+    {
+        AuthState.OnChange -= OnAuthChanged;
+    }
+}

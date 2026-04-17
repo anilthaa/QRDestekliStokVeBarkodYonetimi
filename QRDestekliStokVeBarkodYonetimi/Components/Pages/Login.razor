@@ -1,0 +1,92 @@
+@page "/login"
+@layout QRDestekliStokVeBarkodYonetimi.Components.Layout.AuthLayout
+
+@inject AuthStateService AuthState
+@inject NavigationManager Nav
+@inject NotificationService Notification
+
+<PageTitle>Giriş Yap</PageTitle>
+
+<div class="auth-card">
+    <div class="auth-card__brand">
+        <RadzenIcon Icon="qr_code_2" Style="font-size:2.4rem;color:#1b6ec2" />
+        <h1>QR Destekli Stok Yönetimi</h1>
+        <p>Hesabınıza giriş yapın</p>
+    </div>
+
+    <RadzenTemplateForm TItem="LoginModel" Data="@model" Submit="@((LoginModel m) => OnSubmitAsync(m))">
+        <div class="auth-field">
+            <RadzenLabel Text="E-posta" Component="Eposta" />
+            <RadzenTextBox @bind-Value="model.Eposta" Name="Eposta" Placeholder="ornek@mail.com"
+                           Style="width:100%" Disabled="@isBusy" />
+            <RadzenRequiredValidator Component="Eposta" Text="E-posta zorunludur." Style="display:block" />
+            <RadzenEmailValidator Component="Eposta" Text="Geçerli bir e-posta girin." Style="display:block" />
+        </div>
+
+        <div class="auth-field">
+            <RadzenLabel Text="Şifre" Component="Sifre" />
+            <RadzenPassword @bind-Value="model.Sifre" Name="Sifre" Placeholder="••••••••"
+                            Style="width:100%" Disabled="@isBusy" />
+            <RadzenRequiredValidator Component="Sifre" Text="Şifre zorunludur." Style="display:block" />
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Danger" ShowIcon="true" Variant="Variant.Flat"
+                         AllowClose="false" Style="margin-bottom:0.75rem">@errorMessage</RadzenAlert>
+        }
+
+        <RadzenButton ButtonType="ButtonType.Submit" Text="Giriş Yap"
+                      Icon="login" IsBusy="@isBusy" BusyText="Giriş yapılıyor..."
+                      Style="width:100%; margin-top:0.25rem" />
+    </RadzenTemplateForm>
+
+    <div class="auth-card__footer">
+        Hesabınız yok mu? <a href="/register">Kayıt olun</a>
+    </div>
+</div>
+
+@code {
+    private readonly LoginModel model = new();
+    private bool isBusy;
+    private string? errorMessage;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await AuthState.InitializeAsync();
+            if (AuthState.IsAuthenticated)
+                Nav.NavigateTo("/", replace: true);
+        }
+    }
+
+    private async Task OnSubmitAsync(LoginModel m)
+    {
+        errorMessage = null;
+        isBusy = true;
+        try
+        {
+            var (ok, err) = await AuthState.LoginAsync(m.Eposta, m.Sifre);
+            if (!ok)
+            {
+                errorMessage = err;
+                return;
+            }
+
+            Notification.Notify(NotificationSeverity.Success, "Hoş geldiniz",
+                $"{AuthState.CurrentUser?.Ad} {AuthState.CurrentUser?.Soyad}", 3000);
+            Nav.NavigateTo("/", replace: true);
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    private class LoginModel
+    {
+        public string Eposta { get; set; } = string.Empty;
+        public string Sifre { get; set; } = string.Empty;
+    }
+}
