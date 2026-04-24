@@ -1,0 +1,161 @@
+@page "/kullanici-tipler"
+@layout QRDestekliStokVeBarkodYonetimi.Components.Layout.MainLayout
+@rendermode InteractiveServer
+
+@inject DataService DataSvc
+@inject AuthStateService AuthState
+@inject DialogService DialogSvc
+@inject NotificationService NotificationSvc
+
+<PageTitle>Kullanıcı Tipleri</PageTitle>
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+    <h3 style="margin:0;">Kullanıcı Tipi Listesi</h3>
+    <RadzenButton Text="Yeni Kullanıcı Tipi" Icon="add" ButtonStyle="ButtonStyle.Primary"
+                  Click="@OnYeniClick" />
+</div>
+
+@if (isLoading)
+{
+    <div style="display:flex; justify-content:center; padding:2rem;">
+        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate"
+                                   Size="ProgressBarCircularSize.Large" />
+    </div>
+}
+else
+{
+    <RadzenDataGrid Data="@tipler" TItem="ItemKullaniciTip" AllowSorting="true"
+                    AllowFiltering="true" FilterMode="FilterMode.SimpleWithMenu"
+                    AllowPaging="true" PageSize="15"
+                    EmptyText="Kayıt bulunamadı."
+                    ColumnWidth="200px">
+        <Columns>
+
+            <RadzenDataGridColumn TItem="ItemKullaniciTip" Property="ID" Title="ID"
+                                  Width="70px" Frozen="true" />
+
+            <RadzenDataGridColumn TItem="ItemKullaniciTip" Property="Ad" Title="Kullanıcı Tipi Adı"
+                                  MinWidth="200px" />
+
+            <RadzenDataGridColumn TItem="ItemKullaniciTip" Property="Aktif" Title="Aktif"
+                                  Width="90px" TextAlign="TextAlign.Center">
+                <Template Context="row">
+                    <RadzenIcon Icon="@(row.Aktif == true ? "check_circle" : "cancel")"
+                                Style="@(row.Aktif == true ? "color:#2e7d32" : "color:#c62828")" />
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="ItemKullaniciTip" Title="İşlemler"
+                                  Width="120px" TextAlign="TextAlign.Center"
+                                  Sortable="false" Filterable="false">
+                <Template Context="row">
+                    <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Info" Size="ButtonSize.Small"
+                                  Variant="Variant.Flat"
+                                  Click="@(() => OnDuzenleClick(row))"
+                                  title="Düzenle" style="margin-right:4px;" />
+                    <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                                  Variant="Variant.Flat"
+                                  Click="@(() => OnSilClick(row))"
+                                  title="Sil" />
+                </Template>
+            </RadzenDataGridColumn>
+
+        </Columns>
+    </RadzenDataGrid>
+}
+
+@code {
+    private ItemKullaniciTip[] tipler = [];
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        try
+        {
+            tipler = await DataSvc.GetKullaniciTip();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task OnYeniClick()
+    {
+        var result = await DialogSvc.OpenAsync<KullaniciTipTnm>(
+            "Yeni Kullanıcı Tipi",
+            new Dictionary<string, object?> { { "Item", new ItemKullaniciTip { Aktif = true } } },
+            new DialogOptions
+            {
+                Width = "480px",
+                Resizable = false,
+                Draggable = true,
+                CloseDialogOnOverlayClick = false
+            });
+
+        if (result is true)
+            await LoadAsync();
+    }
+
+    private async Task OnDuzenleClick(ItemKullaniciTip item)
+    {
+        var result = await DialogSvc.OpenAsync<KullaniciTipTnm>(
+            "Kullanıcı Tipi Düzenle",
+            new Dictionary<string, object?> { { "Item", item } },
+            new DialogOptions
+            {
+                Width = "480px",
+                Resizable = false,
+                Draggable = true,
+                CloseDialogOnOverlayClick = false
+            });
+
+        if (result is true)
+            await LoadAsync();
+    }
+
+    private async Task OnSilClick(ItemKullaniciTip item)
+    {
+        var onay = await DialogSvc.Confirm(
+            $"<b>{item.Ad}</b> kullanıcı tipini silmek istediğinizden emin misiniz?",
+            "Kullanıcı Tipi Sil",
+            new ConfirmOptions
+            {
+                OkButtonText = "Evet, Sil",
+                CancelButtonText = "İptal"
+            });
+
+        if (onay != true) return;
+
+        int userId = AuthState.CurrentUser?.ID ?? 0;
+
+        var silItem = new ItemKullaniciTip
+        {
+            ID      = item.ID,
+            Ad      = item.Ad,
+            Aktif   = item.Aktif,
+            CreUser = item.CreUser,
+            DelUser = userId
+        };
+
+        var result = await DataSvc.SetKullaniciTip(silItem);
+
+        if (result.SonucKodu < 0)
+        {
+            NotificationSvc.Notify(NotificationSeverity.Error, "Hata",
+                result.SonucAciklama ?? "Silme işlemi başarısız.", 4000);
+        }
+        else
+        {
+            NotificationSvc.Notify(NotificationSeverity.Success, "Başarılı",
+                $"{item.Ad} silindi.", 3000);
+            await LoadAsync();
+        }
+    }
+}

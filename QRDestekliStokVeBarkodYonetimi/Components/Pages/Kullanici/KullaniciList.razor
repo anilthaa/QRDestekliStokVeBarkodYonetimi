@@ -1,0 +1,185 @@
+@page "/kullanicilar"
+@layout QRDestekliStokVeBarkodYonetimi.Components.Layout.MainLayout
+@rendermode InteractiveServer
+
+@inject DataService DataSvc
+@inject AuthStateService AuthState
+@inject DialogService DialogSvc
+@inject NotificationService NotificationSvc
+
+<PageTitle>Kullanıcılar</PageTitle>
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+    <h3 style="margin:0;">Kullanıcı Listesi</h3>
+    <RadzenButton Text="Yeni Kullanıcı" Icon="person_add" ButtonStyle="ButtonStyle.Primary"
+                  Click="@OnYeniClick" />
+</div>
+
+@if (isLoading)
+{
+    <div style="display:flex; justify-content:center; padding:2rem;">
+        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate"
+                                   Size="ProgressBarCircularSize.Large" />
+    </div>
+}
+else
+{
+    <RadzenDataGrid Data="@kullanicilar" TItem="ItemKullanicilar" AllowSorting="true"
+                    AllowFiltering="true" FilterMode="FilterMode.SimpleWithMenu"
+                    AllowPaging="true" PageSize="15"
+                    EmptyText="Kayıt bulunamadı."
+                    ColumnWidth="200px">
+        <Columns>
+
+            <RadzenDataGridColumn TItem="ItemKullanicilar" Property="ID" Title="ID"
+                                  Width="70px" Frozen="true" />
+
+            <RadzenDataGridColumn TItem="ItemKullanicilar" Property="Ad" Title="Ad"
+                                  MinWidth="130px" />
+
+            <RadzenDataGridColumn TItem="ItemKullanicilar" Property="Soyad" Title="Soyad"
+                                  MinWidth="130px" />
+
+            <RadzenDataGridColumn TItem="ItemKullanicilar" Property="Eposta" Title="E-posta"
+                                  MinWidth="200px" />
+
+            <RadzenDataGridColumn TItem="ItemKullanicilar" Property="KullaniciTip_ID" Title="Kullanıcı Tipi"
+                                  MinWidth="150px">
+                <Template Context="row">
+                    @(kullaniciTipler.FirstOrDefault(k => k.ID == row.KullaniciTip_ID)?.Ad ?? "-")
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="ItemKullanicilar" Property="Aktif" Title="Aktif"
+                                  Width="90px" TextAlign="TextAlign.Center">
+                <Template Context="row">
+                    <RadzenIcon Icon="@(row.Aktif == true ? "check_circle" : "cancel")"
+                                Style="@(row.Aktif == true ? "color:#2e7d32" : "color:#c62828")" />
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="ItemKullanicilar" Title="İşlemler"
+                                  Width="120px" TextAlign="TextAlign.Center"
+                                  Sortable="false" Filterable="false">
+                <Template Context="row">
+                    <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Info" Size="ButtonSize.Small"
+                                  Variant="Variant.Flat"
+                                  Click="@(() => OnDuzenleClick(row))"
+                                  title="Düzenle" style="margin-right:4px;" />
+                    <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                                  Variant="Variant.Flat"
+                                  Click="@(() => OnSilClick(row))"
+                                  title="Sil" />
+                </Template>
+            </RadzenDataGridColumn>
+
+        </Columns>
+    </RadzenDataGrid>
+}
+
+@code {
+    private ItemKullanicilar[] kullanicilar = [];
+    private ItemKullaniciTip[] kullaniciTipler = [];
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        try
+        {
+            var kullaniciTask = DataSvc.GetKullanici();
+            var tipTask       = DataSvc.GetKullaniciTip();
+
+            await Task.WhenAll(kullaniciTask, tipTask);
+
+            kullanicilar   = kullaniciTask.Result;
+            kullaniciTipler = tipTask.Result;
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task OnYeniClick()
+    {
+        var result = await DialogSvc.OpenAsync<KullaniciTnm>(
+            "Yeni Kullanıcı",
+            new Dictionary<string, object?> { { "Item", new ItemKullanicilar { Aktif = true } } },
+            new DialogOptions
+            {
+                Width = "560px",
+                Resizable = false,
+                Draggable = true,
+                CloseDialogOnOverlayClick = false
+            });
+
+        if (result is true)
+            await LoadAsync();
+    }
+
+    private async Task OnDuzenleClick(ItemKullanicilar item)
+    {
+        var result = await DialogSvc.OpenAsync<KullaniciTnm>(
+            "Kullanıcı Düzenle",
+            new Dictionary<string, object?> { { "Item", item } },
+            new DialogOptions
+            {
+                Width = "560px",
+                Resizable = false,
+                Draggable = true,
+                CloseDialogOnOverlayClick = false
+            });
+
+        if (result is true)
+            await LoadAsync();
+    }
+
+    private async Task OnSilClick(ItemKullanicilar item)
+    {
+        var onay = await DialogSvc.Confirm(
+            $"<b>{item.Ad} {item.Soyad}</b> kullanıcısını silmek istediğinizden emin misiniz?",
+            "Kullanıcı Sil",
+            new ConfirmOptions
+            {
+                OkButtonText = "Evet, Sil",
+                CancelButtonText = "İptal"
+            });
+
+        if (onay != true) return;
+
+        int userId = AuthState.CurrentUser?.ID ?? 0;
+
+        var silItem = new ItemKullanicilar
+        {
+            ID              = item.ID,
+            KullaniciTip_ID = item.KullaniciTip_ID,
+            Ad              = item.Ad,
+            Soyad           = item.Soyad,
+            Eposta          = item.Eposta,
+            Sifre           = item.Sifre,
+            Aktif           = item.Aktif,
+            CreUser         = item.CreUser,
+            DelUser         = userId
+        };
+
+        var result = await DataSvc.SetKullanici(silItem);
+
+        if (result.SonucKodu < 0)
+        {
+            NotificationSvc.Notify(NotificationSeverity.Error, "Hata",
+                result.SonucAciklama ?? "Silme işlemi başarısız.", 4000);
+        }
+        else
+        {
+            NotificationSvc.Notify(NotificationSeverity.Success, "Başarılı",
+                $"{item.Ad} {item.Soyad} silindi.", 3000);
+            await LoadAsync();
+        }
+    }
+}

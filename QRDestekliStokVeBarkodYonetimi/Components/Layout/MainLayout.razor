@@ -1,31 +1,22 @@
 ﻿@inherits LayoutComponentBase
-@implements IDisposable
+@*@implements IDisposable
 
 @inject AuthStateService AuthState
-@inject NavigationManager Nav
+@inject NavigationManager Nav*@
 
 <RadzenComponents @rendermode="InteractiveServer"></RadzenComponents>
 
-@if (!initialized)
-{
-    <div class="page-loading">
-        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Large" />
+<div class="page">
+    <div class="sidebar">
+        <NavMenu />
     </div>
-}
-else if (AuthState.IsAuthenticated)
-{
-    <div class="page">
-        <div class="sidebar">
-            <NavMenu />
-        </div>
 
-        <main>
-            <article class="content px-4">
-                @Body
-            </article>
-        </main>
-    </div>
-}
+    <main>
+        <article class="content px-4">
+            @Body
+        </article>
+    </main>
+</div>
 
 <div id="blazor-error-ui">
     An unhandled error has occurred.
@@ -33,6 +24,7 @@ else if (AuthState.IsAuthenticated)
     <a class="dismiss">🗙</a>
 </div>
 
+@*
 @code {
     private bool initialized;
 
@@ -74,3 +66,4 @@ else if (AuthState.IsAuthenticated)
         AuthState.OnChange -= OnAuthChanged;
     }
 }
+*@

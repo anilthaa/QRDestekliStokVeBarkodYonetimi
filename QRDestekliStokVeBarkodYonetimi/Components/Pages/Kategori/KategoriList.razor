@@ -1,0 +1,167 @@
+@page "/kategoriler"
+@layout QRDestekliStokVeBarkodYonetimi.Components.Layout.MainLayout
+@rendermode InteractiveServer
+
+@inject DataService DataSvc
+@inject AuthStateService AuthState
+@inject DialogService DialogSvc
+@inject NotificationService NotificationSvc
+
+<PageTitle>Kategoriler</PageTitle>
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+    <h3 style="margin:0;">Kategori Listesi</h3>
+    <RadzenButton Text="Yeni Kategori" Icon="add" ButtonStyle="ButtonStyle.Primary"
+                  Click="@OnYeniClick" />
+</div>
+
+@if (isLoading)
+{
+    <div style="display:flex; justify-content:center; padding:2rem;">
+        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate"
+                                   Size="ProgressBarCircularSize.Large" />
+    </div>
+}
+else
+{
+    <RadzenDataGrid Data="@kategoriler" TItem="ItemKategori" AllowSorting="true"
+                    AllowFiltering="true" FilterMode="FilterMode.SimpleWithMenu"
+                    AllowPaging="true" PageSize="15"
+                    EmptyText="Kayıt bulunamadı."
+                    ColumnWidth="200px">
+        <Columns>
+
+            <RadzenDataGridColumn TItem="ItemKategori" Property="ID" Title="ID"
+                                  Width="70px" Frozen="true" />
+
+            <RadzenDataGridColumn TItem="ItemKategori" Property="Ad" Title="Kategori Adı"
+                                  MinWidth="160px" />
+
+            <RadzenDataGridColumn TItem="ItemKategori" Property="Aciklama" Title="Açıklama"
+                                  MinWidth="200px" />
+
+            <RadzenDataGridColumn TItem="ItemKategori" Property="ResimYolu" Title="Resim Yolu"
+                                  MinWidth="160px" />
+
+            <RadzenDataGridColumn TItem="ItemKategori" Property="Aktif" Title="Aktif"
+                                  Width="90px" TextAlign="TextAlign.Center">
+                <Template Context="row">
+                    <RadzenIcon Icon="@(row.Aktif ? "check_circle" : "cancel")"
+                                Style="@(row.Aktif ? "color:#2e7d32" : "color:#c62828")" />
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="ItemKategori" Title="İşlemler"
+                                  Width="120px" TextAlign="TextAlign.Center"
+                                  Sortable="false" Filterable="false">
+                <Template Context="row">
+                    <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Info" Size="ButtonSize.Small"
+                                  Variant="Variant.Flat"
+                                  Click="@(() => OnDuzenleClick(row))"
+                                  title="Düzenle" style="margin-right:4px;" />
+                    <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                                  Variant="Variant.Flat"
+                                  Click="@(() => OnSilClick(row))"
+                                  title="Sil" />
+                </Template>
+            </RadzenDataGridColumn>
+
+        </Columns>
+    </RadzenDataGrid>
+}
+
+@code {
+    private ItemKategori[] kategoriler = [];
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        try
+        {
+            kategoriler = await DataSvc.GetKategori();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task OnYeniClick()
+    {
+        var result = await DialogSvc.OpenAsync<KategoriTnm>(
+            "Yeni Kategori",
+            new Dictionary<string, object?> { { "Item", new ItemKategori { Aktif = true } } },
+            new DialogOptions
+            {
+                Width = "500px",
+                Resizable = false,
+                Draggable = true,
+                CloseDialogOnOverlayClick = false
+            });
+
+        if (result is true)
+            await LoadAsync();
+    }
+
+    private async Task OnDuzenleClick(ItemKategori item)
+    {
+        var result = await DialogSvc.OpenAsync<KategoriTnm>(
+            "Kategori Düzenle",
+            new Dictionary<string, object?> { { "Item", item } },
+            new DialogOptions
+            {
+                Width = "500px",
+                Resizable = false,
+                Draggable = true,
+                CloseDialogOnOverlayClick = false
+            });
+
+        if (result is true)
+            await LoadAsync();
+    }
+
+    private async Task OnSilClick(ItemKategori item)
+    {
+        var onay = await DialogSvc.Confirm(
+            $"<b>{item.Ad}</b> kategorisini silmek istediğinizden emin misiniz?",
+            "Kategori Sil",
+            new ConfirmOptions
+            {
+                OkButtonText = "Evet, Sil",
+                CancelButtonText = "İptal"
+            });
+
+        if (onay != true) return;
+
+        int userId = AuthState.CurrentUser?.ID ?? 0;
+
+        var silItem = new ItemKategori
+        {
+            ID      = item.ID,
+            Ad      = item.Ad,
+            Aktif   = item.Aktif,
+            CreUser = item.CreUser,
+            DelUser = userId
+        };
+
+        var result = await DataSvc.SetKategori(silItem);
+
+        if (result.SonucKodu < 0)
+        {
+            NotificationSvc.Notify(NotificationSeverity.Error, "Hata",
+                result.SonucAciklama ?? "Silme işlemi başarısız.", 4000);
+        }
+        else
+        {
+            NotificationSvc.Notify(NotificationSeverity.Success, "Başarılı",
+                $"{item.Ad} silindi.", 3000);
+            await LoadAsync();
+        }
+    }
+}

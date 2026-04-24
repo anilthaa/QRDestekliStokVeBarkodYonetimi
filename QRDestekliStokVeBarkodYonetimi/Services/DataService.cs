@@ -49,11 +49,120 @@ namespace QRDestekliStokVeBarkodYonetimi.Services
 
         #endregion
 
+        #region Birim
+
+        public async Task<ItemBirim[]> GetBirim(int ID = 0)
+        {
+            return (await SQLQueryAsync<ItemBirim>($@"SELECT ""ID"", ""Ad"", ""Aktif"", ""CreUser"", ""CreDate"", ""UpdUser"", ""UpdDate"", ""DelUser"", ""DelDate""
+        FROM ""Birimler""
+        WHERE ""DelUser"" IS NULL
+        {(ID > 0 ? $@"AND ""ID"" = {ID}" : "")}
+        ORDER BY ""Ad"" ")).ToArray();
+        }
+
+        public async Task<DataResult<int>> SetBirim(ItemBirim item)
+        {
+            if (item.ID.Equals(0) && item.DelUser.Equals(0))
+            {
+                item.ID = await SQLExecuteScalar<int>(@"INSERT INTO ""Birimler"" (""Ad"", ""Aktif"", ""CreUser"", ""CreDate"")
+                 VALUES (@Ad, @Aktif, @CreUser, now())
+                 RETURNING ""ID""", item);
+            }
+            else if (!item.ID.Equals(0) && item.DelUser.Equals(0))
+            {
+                await SQLExecute(@"UPDATE ""Birimler""
+                     SET ""Ad"" = @Ad, ""Aktif"" = @Aktif, ""UpdUser"" = @UpdUser, ""UpdDate"" = now()
+                     WHERE ""ID"" = @ID", item);
+            }
+            else if (!item.ID.Equals(0) && !item.DelUser.Equals(0))
+            {
+                await SQLExecute(@"UPDATE ""Birimler""
+                     SET ""DelUser"" = @DelUser, ""DelDate"" = now()
+                     WHERE ""ID"" = @ID", item);
+            }
+            return new() { Data = item.ID };
+        }
+
+        #endregion
+
+        #region Urun
+
+        public async Task<ItemUrun[]> GetUrun(int ID = 0)
+        {
+            return (await SQLQueryAsync<ItemUrun>($@"SELECT ""ID"", ""UrunKodu"", ""Kategori_ID"", ""BarkodNo"", ""ResimYolu"", ""Ad"", ""Aciklama"", ""Birim_ID"", ""Stok"", ""KritikStokSeviyesi"", ""CreUser"", ""CreDate"", ""UpdUser"", ""UpdDate"", ""DelUser"", ""DelDate""
+        FROM ""Urunler""
+        WHERE ""DelUser"" IS NULL
+        {(ID > 0 ? $@"AND ""ID"" = {ID}" : "")}
+        ORDER BY ""ID"" ")).ToArray();
+        }
+
+        public async Task<DataResult<int>> SetUrun(ItemUrun item)
+        {
+            if (item.ID.Equals(0) && item.DelUser.Equals(0))
+            {
+                item.ID = await SQLExecuteScalar<int>(@"INSERT INTO ""Urunler"" (""UrunKodu"", ""Kategori_ID"", ""BarkodNo"", ""ResimYolu"", ""Ad"", ""Aciklama"", ""Birim_ID"", ""Stok"", ""KritikStokSeviyesi"", ""CreUser"", ""CreDate"")
+                 VALUES (@UrunKodu, @Kategori_ID, @BarkodNo, @ResimYolu, @Ad, @Aciklama, @Birim_ID, @Stok, @KritikStokSeviyesi, @CreUser, now())
+                 RETURNING ""ID""", item);
+            }
+            else if (!item.ID.Equals(0) && item.DelUser.Equals(0))
+            {
+                await SQLExecute(@"UPDATE ""Urunler""
+                     SET ""UrunKodu"" = @UrunKodu, ""Kategori_ID"" = @Kategori_ID, ""BarkodNo"" = @BarkodNo, ""ResimYolu"" = @ResimYolu,
+                         ""Ad"" = @Ad, ""Aciklama"" = @Aciklama, ""Birim_ID"" = @Birim_ID, ""Stok"" = @Stok,
+                         ""KritikStokSeviyesi"" = @KritikStokSeviyesi, ""UpdUser"" = @UpdUser, ""UpdDate"" = now()
+                     WHERE ""ID"" = @ID", item);
+            }
+            else if (!item.ID.Equals(0) && !item.DelUser.Equals(0))
+            {
+                await SQLExecute(@"UPDATE ""Urunler""
+                     SET ""DelUser"" = @DelUser, ""DelDate"" = now()
+                     WHERE ""ID"" = @ID", item);
+            }
+            return new() { Data = item.ID };
+        }
+
+        #endregion
+
+        #region KullaniciTip
+
+        public async Task<ItemKullaniciTip[]> GetKullaniciTip(int ID = 0)
+        {
+            return (await SQLQueryAsync<ItemKullaniciTip>($@"SELECT ""ID"", ""Ad"", ""Aktif"", ""CreUser"", ""CreDate"", ""UpdUser"", ""UpdDate"", ""DelUser"", ""DelDate""
+        FROM ""KullaniciTipler""
+        WHERE ""DelUser"" IS NULL
+        {(ID > 0 ? $@"AND ""ID"" = {ID}" : "")}
+        ORDER BY ""Ad"" ")).ToArray();
+        }
+
+        public async Task<DataResult<int>> SetKullaniciTip(ItemKullaniciTip item)
+        {
+            if (item.ID.Equals(0) && item.DelUser.Equals(0))
+            {
+                item.ID = await SQLExecuteScalar<int>(@"INSERT INTO ""KullaniciTipler"" (""Ad"", ""Aktif"", ""CreUser"", ""CreDate"")
+                 VALUES (@Ad, @Aktif, @CreUser, now())
+                 RETURNING ""ID""", item);
+            }
+            else if (!item.ID.Equals(0) && item.DelUser.Equals(0))
+            {
+                await SQLExecute(@"UPDATE ""KullaniciTipler""
+                     SET ""Ad"" = @Ad, ""Aktif"" = @Aktif, ""UpdUser"" = @UpdUser, ""UpdDate"" = now()
+                     WHERE ""ID"" = @ID", item);
+            }
+            else if (!item.ID.Equals(0) && !item.DelUser.Equals(0))
+            {
+                await SQLExecute(@"UPDATE ""KullaniciTipler""
+                     SET ""DelUser"" = @DelUser, ""DelDate"" = now()
+                     WHERE ""ID"" = @ID", item);
+            }
+            return new() { Data = item.ID };
+        }
+
+        #endregion
+
         #region Kullanici
 
         /// <summary>
         /// Aktif (silinmemiş) kullanıcıları döner. ID > 0 ise tek kullanıcıyı filtreler.
-        /// NOT: Şifre alanı istemciye gönderilmemesi için dışarıda maskelenebilir.
         /// </summary>
         public async Task<ItemKullanicilar[]> GetKullanici(int ID = 0)
         {
@@ -65,7 +174,7 @@ namespace QRDestekliStokVeBarkodYonetimi.Services
         }
 
         /// <summary>
-        /// E-posta adresine göre aktif (silinmemiş) kullanıcıyı döner. Login akışında kullanılır.
+        /// E-posta adresine göre aktif kullanıcıyı döner.
         /// </summary>
         public async Task<ItemKullanicilar?> GetKullaniciByEposta(string eposta)
         {
@@ -78,10 +187,7 @@ namespace QRDestekliStokVeBarkodYonetimi.Services
         }
 
         /// <summary>
-        /// Kullanıcı Insert / Update / Soft-Delete. Kategori ile aynı desen:
-        ///   - ID = 0 ve DelUser = 0  → INSERT (şifre PBKDF2 ile hash'lenir)
-        ///   - ID > 0 ve DelUser = 0  → UPDATE (şifre, dolu gelirse güncellenir)
-        ///   - ID > 0 ve DelUser > 0  → Soft-Delete
+        /// Kullanıcı Insert / Update / Soft-Delete.
         /// </summary>
         public async Task<DataResult<int>> SetKullanici(ItemKullanicilar item)
         {
@@ -109,7 +215,6 @@ namespace QRDestekliStokVeBarkodYonetimi.Services
             }
             else if (!item.ID.Equals(0) && item.DelUser.Equals(0))
             {
-                // Şifre alanı boş gönderilirse UPDATE sırasında mevcut şifre korunur.
                 if (!string.IsNullOrWhiteSpace(item.Sifre) && !IsHashed(item.Sifre))
                     item.Sifre = PasswordHasher.Hash(item.Sifre);
 
@@ -133,10 +238,6 @@ namespace QRDestekliStokVeBarkodYonetimi.Services
             return new() { Data = item.ID };
         }
 
-        /// <summary>
-        /// Login akışı. E-posta ile kullanıcıyı çeker, şifreyi PBKDF2 ile doğrular.
-        /// Başarılıysa Data = ItemKullanicilar, aksi halde SonucKodu &lt; 0.
-        /// </summary>
         public async Task<DataResult<ItemKullanicilar>> LoginKullanici(string eposta, string sifre)
         {
             if (string.IsNullOrWhiteSpace(eposta) || string.IsNullOrWhiteSpace(sifre))
@@ -155,10 +256,6 @@ namespace QRDestekliStokVeBarkodYonetimi.Services
             return new() { Data = user, SonucKodu = 0 };
         }
 
-        /// <summary>
-        /// Register akışı. Giriş validasyonlarını yapar ve <see cref="SetKullanici"/>'yı çağırır.
-        /// Başarılıysa Data = yeni ID.
-        /// </summary>
         public async Task<DataResult<int>> RegisterKullanici(string ad, string soyad, string eposta, string sifre, int kullaniciTipId = 0)
         {
             if (string.IsNullOrWhiteSpace(ad) || string.IsNullOrWhiteSpace(soyad))
@@ -184,9 +281,6 @@ namespace QRDestekliStokVeBarkodYonetimi.Services
             return await SetKullanici(item);
         }
 
-        /// <summary>
-        /// Mevcut şifrenin doğruluğunu kontrol eder ve yeni şifreyi hash'leyerek günceller.
-        /// </summary>
         public async Task<DataResult<int>> SifreDegistir(int kullaniciId, string eskiSifre, string yeniSifre)
         {
             if (kullaniciId <= 0)
@@ -211,10 +305,6 @@ namespace QRDestekliStokVeBarkodYonetimi.Services
             return new() { Data = kullaniciId };
         }
 
-        /// <summary>
-        /// PasswordHasher formatı: {iterations}.{base64Salt}.{base64Hash}.
-        /// UPDATE sırasında hash'in tekrar hash'lenmesini engellemek için kullanılır.
-        /// </summary>
         private static bool IsHashed(string value) =>
             !string.IsNullOrEmpty(value) &&
             value.Count(c => c == '.') == 2 &&
