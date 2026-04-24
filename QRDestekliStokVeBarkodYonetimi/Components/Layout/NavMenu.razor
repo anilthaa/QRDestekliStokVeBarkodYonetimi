@@ -29,16 +29,36 @@
         </div>
 
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
+            <NavLink class="nav-link" href="/kategoriler">
+             <i class="fa-solid fa-layer-group"></i> Kategori Listesi
             </NavLink>
         </div>
 
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="weather">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Weather
+            <NavLink class="nav-link" href="/kullanicilar">
+             <i class="fa-solid fa-users"></i> Kullanıcı Listesi
             </NavLink>
         </div>
+
+         <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/kullanici-tipler">
+             <i class="fa-solid fa-user-tag"></i> Kullanıcı Tip Listesi
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/urunler">
+             <i class="fa-solid fa-boxes-packing"></i> Ürün Listesi
+            </NavLink>
+        </div>
+
+        <div class="nav-item px-3">
+            <NavLink class="nav-link" href="/birimler">
+             <i class="fa-solid fa-ruler-combined"></i> Birim Listesi
+            </NavLink>
+        </div>
+
+       
 
         <div class="nav-item px-3 logout-item">
             <button type="button" class="nav-link logout-btn" @onclick="LogoutAsync">

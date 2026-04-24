@@ -1,0 +1,104 @@
+@inject DataService DataSvc
+@inject AuthStateService AuthState
+@inject DialogService DialogSvc
+@inject NotificationService NotificationSvc
+
+<RadzenTemplateForm TItem="ItemBirim" Data="@model" Submit="@OnSubmitAsync">
+
+    <div class="rz-p-4" style="min-width:420px; display:flex; flex-direction:column; gap:1rem;">
+
+        <div>
+            <RadzenLabel Text="Birim Adı *" Component="Ad" />
+            <RadzenTextBox @bind-Value="model.Ad" Name="Ad" Placeholder="Birim adı giriniz"
+                           Style="width:100%" Disabled="@isBusy" />
+            <RadzenRequiredValidator Component="Ad" Text="Birim adı zorunludur." Style="display:block" />
+        </div>
+
+        <div style="display:flex; align-items:center; gap:0.5rem;">
+            <RadzenCheckBox @bind-Value="model.Aktif" Name="Aktif" Disabled="@isBusy" />
+            <RadzenLabel Text="Aktif" Component="Aktif" />
+        </div>
+
+        @if (!string.IsNullOrEmpty(errorMessage))
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Danger" ShowIcon="true" Variant="Variant.Flat"
+                         AllowClose="false">@errorMessage</RadzenAlert>
+        }
+
+        <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:0.5rem;">
+            <RadzenButton ButtonStyle="ButtonStyle.Light" Text="İptal" Icon="cancel"
+                          Click="@OnCancel" Disabled="@isBusy" />
+            <RadzenButton ButtonType="ButtonType.Submit" Text="Kaydet" Icon="save"
+                          IsBusy="@isBusy" BusyText="Kaydediliyor..." />
+        </div>
+
+    </div>
+
+</RadzenTemplateForm>
+
+@code {
+    [Parameter] public ItemBirim? Item { get; set; }
+
+    private ItemBirim model = new() { Aktif = true };
+    private bool isBusy;
+    private string? errorMessage;
+
+    protected override void OnParametersSet()
+    {
+        if (Item is not null)
+        {
+            model = new ItemBirim
+            {
+                ID      = Item.ID,
+                Ad      = Item.Ad,
+                Aktif   = Item.Aktif,
+                CreUser = Item.CreUser,
+                CreDate = Item.CreDate,
+                UpdUser = Item.UpdUser,
+                UpdDate = Item.UpdDate,
+                DelUser = Item.DelUser,
+                DelDate = Item.DelDate
+            };
+        }
+    }
+
+    private async Task OnSubmitAsync()
+    {
+        errorMessage = null;
+        isBusy = true;
+        try
+        {
+            int userId = AuthState.CurrentUser?.ID ?? 0;
+
+            if (model.ID == 0)
+                model.CreUser = userId;
+            else
+                model.UpdUser = userId;
+
+            model.DelUser = 0;
+
+            var result = await DataSvc.SetBirim(model);
+
+            if (result.SonucKodu < 0)
+            {
+                errorMessage = result.SonucAciklama ?? "Bir hata oluştu.";
+                return;
+            }
+
+            NotificationSvc.Notify(NotificationSeverity.Success, "Başarılı",
+                model.ID == 0 ? "Birim eklendi." : "Birim güncellendi.", 3000);
+
+            DialogSvc.Close(true);
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Beklenmeyen hata: {ex.Message}";
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
+
+    private void OnCancel() => DialogSvc.Close(false);
+}

@@ -35,6 +35,9 @@ builder.Services.AddSingleton<JwtService>();
 // UI tarafı için oturum servisi
 builder.Services.AddScoped<AuthStateService>();
 
+// QR kod üretim servisi
+builder.Services.AddSingleton<QrService>();
+
 // Blazor AuthenticationStateProvider (DataService bunu talep ediyor) + cascading AuthenticationState
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<AuthenticationStateProvider, ServerAuthenticationStateProvider>();

@@ -1,0 +1,161 @@
+@page "/birimler"
+@layout QRDestekliStokVeBarkodYonetimi.Components.Layout.MainLayout
+@rendermode InteractiveServer
+
+@inject DataService DataSvc
+@inject AuthStateService AuthState
+@inject DialogService DialogSvc
+@inject NotificationService NotificationSvc
+
+<PageTitle>Birimler</PageTitle>
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+    <h3 style="margin:0;">Birim Listesi</h3>
+    <RadzenButton Text="Yeni Birim" Icon="add" ButtonStyle="ButtonStyle.Primary"
+                  Click="@OnYeniClick" />
+</div>
+
+@if (isLoading)
+{
+    <div style="display:flex; justify-content:center; padding:2rem;">
+        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate"
+                                   Size="ProgressBarCircularSize.Large" />
+    </div>
+}
+else
+{
+    <RadzenDataGrid Data="@birimler" TItem="ItemBirim" AllowSorting="true"
+                    AllowFiltering="true" FilterMode="FilterMode.SimpleWithMenu"
+                    AllowPaging="true" PageSize="15"
+                    EmptyText="Kayıt bulunamadı."
+                    ColumnWidth="200px">
+        <Columns>
+
+            <RadzenDataGridColumn TItem="ItemBirim" Property="ID" Title="ID"
+                                  Width="70px" Frozen="true" />
+
+            <RadzenDataGridColumn TItem="ItemBirim" Property="Ad" Title="Birim Adı"
+                                  MinWidth="200px" />
+
+            <RadzenDataGridColumn TItem="ItemBirim" Property="Aktif" Title="Aktif"
+                                  Width="90px" TextAlign="TextAlign.Center">
+                <Template Context="row">
+                    <RadzenIcon Icon="@(row.Aktif ? "check_circle" : "cancel")"
+                                Style="@(row.Aktif ? "color:#2e7d32" : "color:#c62828")" />
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="ItemBirim" Title="İşlemler"
+                                  Width="120px" TextAlign="TextAlign.Center"
+                                  Sortable="false" Filterable="false">
+                <Template Context="row">
+                    <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Info" Size="ButtonSize.Small"
+                                  Variant="Variant.Flat"
+                                  Click="@(() => OnDuzenleClick(row))"
+                                  title="Düzenle" style="margin-right:4px;" />
+                    <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                                  Variant="Variant.Flat"
+                                  Click="@(() => OnSilClick(row))"
+                                  title="Sil" />
+                </Template>
+            </RadzenDataGridColumn>
+
+        </Columns>
+    </RadzenDataGrid>
+}
+
+@code {
+    private ItemBirim[] birimler = [];
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        try
+        {
+            birimler = await DataSvc.GetBirim();
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task OnYeniClick()
+    {
+        var result = await DialogSvc.OpenAsync<BirimTnm>(
+            "Yeni Birim",
+            new Dictionary<string, object?> { { "Item", new ItemBirim { Aktif = true } } },
+            new DialogOptions
+            {
+                Width = "480px",
+                Resizable = false,
+                Draggable = true,
+                CloseDialogOnOverlayClick = false
+            });
+
+        if (result is true)
+            await LoadAsync();
+    }
+
+    private async Task OnDuzenleClick(ItemBirim item)
+    {
+        var result = await DialogSvc.OpenAsync<BirimTnm>(
+            "Birim Düzenle",
+            new Dictionary<string, object?> { { "Item", item } },
+            new DialogOptions
+            {
+                Width = "480px",
+                Resizable = false,
+                Draggable = true,
+                CloseDialogOnOverlayClick = false
+            });
+
+        if (result is true)
+            await LoadAsync();
+    }
+
+    private async Task OnSilClick(ItemBirim item)
+    {
+        var onay = await DialogSvc.Confirm(
+            $"<b>{item.Ad}</b> birimini silmek istediğinizden emin misiniz?",
+            "Birim Sil",
+            new ConfirmOptions
+            {
+                OkButtonText = "Evet, Sil",
+                CancelButtonText = "İptal"
+            });
+
+        if (onay != true) return;
+
+        int userId = AuthState.CurrentUser?.ID ?? 0;
+
+        var silItem = new ItemBirim
+        {
+            ID      = item.ID,
+            Ad      = item.Ad,
+            Aktif   = item.Aktif,
+            CreUser = item.CreUser,
+            DelUser = userId
+        };
+
+        var result = await DataSvc.SetBirim(silItem);
+
+        if (result.SonucKodu < 0)
+        {
+            NotificationSvc.Notify(NotificationSeverity.Error, "Hata",
+                result.SonucAciklama ?? "Silme işlemi başarısız.", 4000);
+        }
+        else
+        {
+            NotificationSvc.Notify(NotificationSeverity.Success, "Başarılı",
+                $"{item.Ad} silindi.", 3000);
+            await LoadAsync();
+        }
+    }
+}
