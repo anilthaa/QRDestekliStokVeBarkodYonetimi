@@ -1,0 +1,182 @@
+@page "/stok-hareketleri"
+@layout QRDestekliStokVeBarkodYonetimi.Components.Layout.MainLayout
+
+
+<PageTitle>Stok Hareketleri</PageTitle>
+
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+    <h3 style="margin:0;">Stok Hareketleri</h3>
+    <RadzenButton Text="Yenile" Icon="refresh" ButtonStyle="ButtonStyle.Secondary"
+                  Click="@LoadAsync" />
+</div>
+
+<div style="display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:1rem; align-items:flex-end;">
+    <div>
+        <RadzenLabel Text="Hareket Tipi" />
+        <RadzenSelectBar @bind-Value="@filtreHareketTipi" TValue="short?" Style="margin-top:4px;">
+            <Items>
+                <RadzenSelectBarItem Text="Tümü" Value="@((short?)null)" />
+                <RadzenSelectBarItem Text="Giriş" Value="@((short?)1)" />
+                <RadzenSelectBarItem Text="Çıkış" Value="@((short?)2)" />
+            </Items>
+        </RadzenSelectBar>
+    </div>
+    <div>
+        <RadzenLabel Text="Başlangıç Tarihi" />
+        <RadzenDatePicker @bind-Value="@filtreBasTarih" DateFormat="dd.MM.yyyy"
+                          Style="width:160px; display:block; margin-top:4px;" />
+    </div>
+    <div>
+        <RadzenLabel Text="Bitiş Tarihi" />
+        <RadzenDatePicker @bind-Value="@filtreBitTarih" DateFormat="dd.MM.yyyy"
+                          Style="width:160px; display:block; margin-top:4px;" />
+    </div>
+    <RadzenButton Text="Filtrele" Icon="filter_alt" ButtonStyle="ButtonStyle.Primary"
+                  Click="@ApplyFilter" Style="height:36px;" />
+    <RadzenButton Text="Temizle" Icon="filter_alt_off" ButtonStyle="ButtonStyle.Light"
+                  Click="@ClearFilter" Style="height:36px;" />
+</div>
+
+@if (isLoading)
+{
+    <div style="display:flex; justify-content:center; padding:2rem;">
+        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate"
+                                   Size="ProgressBarCircularSize.Large" />
+    </div>
+}
+else
+{
+    <div style="display:flex; gap:1.5rem; flex-wrap:wrap; margin-bottom:1rem;">
+        <RadzenCard Style="padding:1rem 1.5rem; min-width:160px; text-align:center;">
+            <div style="font-size:0.8rem; color:#666;">Toplam Kayıt</div>
+            <div style="font-size:1.6rem; font-weight:600;">@filtreliHareketler.Length</div>
+        </RadzenCard>
+        <RadzenCard Style="padding:1rem 1.5rem; min-width:160px; text-align:center; border-left:4px solid #2e7d32;">
+            <div style="font-size:0.8rem; color:#666;">Toplam Giriş</div>
+            <div style="font-size:1.6rem; font-weight:600; color:#2e7d32;">
+                @filtreliHareketler.Where(x => x.HareketTipi == 1).Sum(x => x.Miktar).ToString("N2")
+            </div>
+        </RadzenCard>
+        <RadzenCard Style="padding:1rem 1.5rem; min-width:160px; text-align:center; border-left:4px solid #c62828;">
+            <div style="font-size:0.8rem; color:#666;">Toplam Çıkış</div>
+            <div style="font-size:1.6rem; font-weight:600; color:#c62828;">
+                @filtreliHareketler.Where(x => x.HareketTipi == 2).Sum(x => x.Miktar).ToString("N2")
+            </div>
+        </RadzenCard>
+    </div>
+
+    <RadzenDataGrid Data="@filtreliHareketler" TItem="ItemStokHareketleri"
+                    AllowSorting="true"
+                    AllowFiltering="true" FilterMode="FilterMode.SimpleWithMenu"
+                    AllowPaging="true" PageSize="20"
+                    EmptyText="Kayıt bulunamadı."
+                    ColumnWidth="160px">
+        <Columns>
+
+            <RadzenDataGridColumn TItem="ItemStokHareketleri" Property="ID" Title="ID"
+                                  Width="70px" Frozen="true" />
+
+            <RadzenDataGridColumn TItem="ItemStokHareketleri" Property="UrunKodu" Title="Ürün Kodu"
+                                  Width="130px" />
+
+            <RadzenDataGridColumn TItem="ItemStokHareketleri" Property="UrunAd" Title="Ürün Adı"
+                                  MinWidth="180px" />
+
+            <RadzenDataGridColumn TItem="ItemStokHareketleri" Property="HareketTipi" Title="Hareket Tipi"
+                                  Width="130px" TextAlign="TextAlign.Center">
+                <Template Context="row">
+                    @if (row.HareketTipi == 1)
+                    {
+                        <RadzenBadge Text="Giriş" BadgeStyle="BadgeStyle.Success" />
+                    }
+                    else if (row.HareketTipi == 2)
+                    {
+                        <RadzenBadge Text="Çıkış" BadgeStyle="BadgeStyle.Danger" />
+                    }
+                    else
+                    {
+                        <RadzenBadge Text="Diğer" BadgeStyle="BadgeStyle.Info" />
+                    }
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="ItemStokHareketleri" Property="Miktar" Title="Miktar"
+                                  Width="110px" TextAlign="TextAlign.Right">
+                <Template Context="row">
+                    <span style="font-weight:600; color:@(row.HareketTipi == 1 ? "#2e7d32" : "#c62828")">
+                        @(row.HareketTipi == 2 ? "-" : "+")@row.Miktar.ToString("N2")
+                    </span>
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="ItemStokHareketleri" Property="Not" Title="Not"
+                                  MinWidth="200px">
+                <Template Context="row">
+                    @(string.IsNullOrWhiteSpace(row.Not) ? "-" : row.Not)
+                </Template>
+            </RadzenDataGridColumn>
+
+            <RadzenDataGridColumn TItem="ItemStokHareketleri" Property="CreDate" Title="Tarih"
+                                  Width="160px" FormatString="{0:dd.MM.yyyy HH:mm}" />
+
+        </Columns>
+    </RadzenDataGrid>
+}
+
+@code {
+    private ItemStokHareketleri[] tumHareketler = [];
+    private ItemStokHareketleri[] filtreliHareketler = [];
+    private bool isLoading = true;
+
+    private short? filtreHareketTipi = null;
+    private DateTime? filtreBasTarih = null;
+    private DateTime? filtreBitTarih = null;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAsync();
+    }
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        try
+        {
+            tumHareketler = await DataSvc.GetStokHareketleri();
+            ApplyFilter();
+        }
+        catch (Exception ex)
+        {
+            NotificationSvc.Notify(NotificationSeverity.Error, "Hata",
+                "Veriler yüklenirken bir sorun oluştu: " + ex.Message, 5000);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void ApplyFilter()
+    {
+        var sorgu = tumHareketler.AsEnumerable();
+
+        if (filtreHareketTipi.HasValue)
+            sorgu = sorgu.Where(x => x.HareketTipi == filtreHareketTipi.Value);
+
+        if (filtreBasTarih.HasValue)
+            sorgu = sorgu.Where(x => x.CreDate.Date >= filtreBasTarih.Value.Date);
+
+        if (filtreBitTarih.HasValue)
+            sorgu = sorgu.Where(x => x.CreDate.Date <= filtreBitTarih.Value.Date);
+
+        filtreliHareketler = sorgu.ToArray();
+    }
+
+    private void ClearFilter()
+    {
+        filtreHareketTipi = null;
+        filtreBasTarih = null;
+        filtreBitTarih = null;
+        filtreliHareketler = tumHareketler.ToArray();
+    }
+}

@@ -1,0 +1,168 @@
+@page "/kullanici-tip-yetki/{KullaniciTipId:int}"
+@layout QRDestekliStokVeBarkodYonetimi.Components.Layout.MainLayout
+@rendermode InteractiveServer
+
+@inject DataService DataSvc
+@inject AuthStateService AuthState
+@inject NavigationManager Nav
+@inject NotificationService NotifSvc
+
+<PageTitle>Kullanıcı Tipi Yetki Yönetimi</PageTitle>
+
+@if (!authChecked)
+{
+    <div style="display:flex; justify-content:center; align-items:center; height:60vh;">
+        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Large" />
+    </div>
+}
+else
+{
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:0.5rem;">
+        <h4 style="margin:0;">
+            <i class="fa-solid fa-shield-halved" style="color:#7b1fa2; margin-right:0.5rem;"></i>
+            @if (kullaniciTip is not null)
+            {
+                <span>@kullaniciTip.Ad — Yetki Yönetimi</span>
+            }
+            else
+            {
+                <span>Kullanıcı Tipi Yetki Yönetimi</span>
+            }
+        </h4>
+        <RadzenButton Text="Geri Dön" Icon="arrow_back" ButtonStyle="ButtonStyle.Light"
+                      Click="@(() => Nav.NavigateTo("/kullanici-tipler"))" />
+    </div>
+
+    @if (kullaniciTip is null)
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true">Kullanıcı tipi bulunamadı.</RadzenAlert>
+    }
+    else
+    {
+        <RadzenCard>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
+                <h6 style="margin:0;">Form Yetkileri</h6>
+                @if (yukleniyor)
+                {
+                    <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
+                }
+            </div>
+            <p style="font-size:0.82rem; color:#888; margin:0 0 1rem;">
+                Bu yetki kümesi, tipin atandığı tüm kullanıcılara uygulanır.
+                Kullanıcı bazlı yetki varsa o önceliğe sahiptir.
+            </p>
+
+            <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
+                <thead>
+                    <tr style="background:#f5f5f5; font-weight:600;">
+                        <th style="padding:0.5rem 0.75rem; text-align:left; border-bottom:2px solid #e0e0e0;">Form / Sayfa</th>
+                        <th style="padding:0.5rem; text-align:center; border-bottom:2px solid #e0e0e0; width:100px;">Gizli</th>
+                        <th style="padding:0.5rem; text-align:center; border-bottom:2px solid #e0e0e0; width:100px;">Okuma</th>
+                        <th style="padding:0.5rem; text-align:center; border-bottom:2px solid #e0e0e0; width:100px;">Yazma</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var f in tumFormlar)
+                    {
+                        var yetki = yetkiMap.TryGetValue(f.ID, out var y) ? y : 0;
+                        <tr style="border-bottom:1px solid #f0f0f0;">
+                            <td style="padding:0.45rem 0.75rem;">
+                                @if (!string.IsNullOrWhiteSpace(f.Icon))
+                                {
+                                    <i class="@f.Icon" style="margin-right:0.4rem; color:#666;"></i>
+                                }
+                                @f.Ad
+                                @if (f.UstMenu_ID.HasValue)
+                                {
+                                    <span style="font-size:0.75rem; color:#bbb; margin-left:0.4rem;">(alt)</span>
+                                }
+                            </td>
+                            <td style="text-align:center; padding:0.45rem;">
+                                <input type="radio" name="tipyetki_@f.ID" checked="@(yetki == 0)"
+                                       @onchange="@(() => YetkiDegistir(f.ID, 0))" />
+                            </td>
+                            <td style="text-align:center; padding:0.45rem;">
+                                <input type="radio" name="tipyetki_@f.ID" checked="@(yetki == 1)"
+                                       @onchange="@(() => YetkiDegistir(f.ID, 1))" />
+                            </td>
+                            <td style="text-align:center; padding:0.45rem;">
+                                <input type="radio" name="tipyetki_@f.ID" checked="@(yetki == 2)"
+                                       @onchange="@(() => YetkiDegistir(f.ID, 2))" />
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </RadzenCard>
+    }
+}
+
+@code {
+    [Parameter] public int KullaniciTipId { get; set; }
+
+    private bool authChecked = false;
+    private bool yukleniyor = false;
+
+    private ItemKullaniciTip? kullaniciTip;
+    private ItemForm[] tumFormlar = [];
+    private Dictionary<int, int> yetkiMap = new();
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await AuthState.InitializeAsync();
+            if (!AuthState.IsAuthenticated)
+            {
+                Nav.NavigateTo("/login", replace: true);
+                return;
+            }
+            authChecked = true;
+            await LoadAsync();
+            StateHasChanged();
+        }
+    }
+
+    private async Task LoadAsync()
+    {
+        yukleniyor = true;
+        tumFormlar = await DataSvc.GetTumFormlar();
+        kullaniciTip = (await DataSvc.GetKullaniciTip(KullaniciTipId)).FirstOrDefault();
+
+        if (kullaniciTip is not null)
+        {
+            var yetkiler = await DataSvc.GetKullaniciTipFormYetki(KullaniciTipId);
+            yetkiMap = yetkiler.ToDictionary(y => y.Form_ID, y => y.Yetki);
+        }
+        yukleniyor = false;
+    }
+
+    private async Task YetkiDegistir(int formId, int yeniYetki)
+    {
+        yetkiMap[formId] = yeniYetki;
+
+        try
+        {
+            await DataSvc.SetKullaniciTipFormYetki(
+                KullaniciTipId, formId, yeniYetki,
+                AuthState.CurrentUser?.ID ?? 1);
+
+            NotifSvc.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Success,
+                Summary = "Kaydedildi",
+                Duration = 1500
+            });
+        }
+        catch (Exception ex)
+        {
+            NotifSvc.Notify(new NotificationMessage
+            {
+                Severity = NotificationSeverity.Error,
+                Summary = "Hata",
+                Detail = ex.Message,
+                Duration = 3000
+            });
+        }
+    }
+}

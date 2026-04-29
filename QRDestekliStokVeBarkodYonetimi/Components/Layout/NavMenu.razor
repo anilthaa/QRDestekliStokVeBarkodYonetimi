@@ -1,5 +1,7 @@
-﻿@inject AuthStateService AuthState
-@inject NavigationManager Nav
+﻿@inject DataService DataSvc
+@inject AuthStateService AuthState
+@inject YetkiService YetkiSvc
+@inject NavigationManager NavigationManager
 
 <div class="top-row ps-3 navbar navbar-dark">
     <div class="container-fluid">
@@ -24,55 +26,222 @@
     <nav class="flex-column">
         <div class="nav-item px-3">
             <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Ana Sayfa
+                <i class="fa-solid fa-house"></i> Ana Sayfa
             </NavLink>
         </div>
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="/kategoriler">
-             <i class="fa-solid fa-layer-group"></i> Kategori Listesi
-            </NavLink>
-        </div>
+        @foreach (var form in GorunurMenuler().Where(f => f.UstMenu_ID == null).OrderBy(f => f.Sira))
+        {
+            var altMenuler = GorunurMenuler().Where(f => f.UstMenu_ID == form.ID).OrderBy(f => f.Sira).ToList();
+            var hasChildren = altMenuler.Count > 0;
+            var isOpen = expandedMenus.Contains(form.ID);
 
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="/kullanicilar">
-             <i class="fa-solid fa-users"></i> Kullanıcı Listesi
-            </NavLink>
-        </div>
+            @if (hasChildren)
+            {
+                <div class="nav-item px-3">
+                    <button class="nav-link nav-group-btn @(isOpen ? "open" : "")"
+                            @onclick="@(() => ToggleMenu(form.ID))"
+                            @onclick:stopPropagation="true">
+                        @if (!string.IsNullOrWhiteSpace(form.Icon))
+                        {
+                            <i class="@form.Icon"></i>
+                        }
+                        <span class="nav-group-label">@form.Ad</span>
+                        <i class="fa-solid fa-chevron-down nav-chevron @(isOpen ? "rotated" : "")"></i>
+                    </button>
 
-         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="/kullanici-tipler">
-             <i class="fa-solid fa-user-tag"></i> Kullanıcı Tip Listesi
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="/urunler">
-             <i class="fa-solid fa-boxes-packing"></i> Ürün Listesi
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="/birimler">
-             <i class="fa-solid fa-ruler-combined"></i> Birim Listesi
-            </NavLink>
-        </div>
-
-       
-
-        <div class="nav-item px-3 logout-item">
-            <button type="button" class="nav-link logout-btn" @onclick="LogoutAsync">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Çıkış Yap
-            </button>
-        </div>
+                    @if (isOpen)
+                    {
+                        <div class="nav-submenu">
+                            @foreach (var alt in altMenuler)
+                            {
+                                <NavLink class="nav-link nav-sublink" href="@alt.SayfaURL">
+                                    @if (!string.IsNullOrWhiteSpace(alt.Icon))
+                                    {
+                                        <i class="@alt.Icon"></i>
+                                    }
+                                    @alt.Ad
+                                </NavLink>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="nav-item px-3">
+                    <NavLink class="nav-link" href="@form.SayfaURL">
+                        @if (!string.IsNullOrWhiteSpace(form.Icon))
+                        {
+                            <i class="@form.Icon"></i>
+                        }
+                        @form.Ad
+                    </NavLink>
+                </div>
+            }
+        }
     </nav>
+
+    <div class="logout-footer">
+        <button type="button" class="logout-btn-fixed" @onclick="LogoutAsync">
+            <i class="fa-solid fa-right-from-bracket"></i> Çıkış Yap
+        </button>
+    </div>
 </div>
 
+<style>
+    .nav-scrollable {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+    }
+    .nav-scrollable nav {
+        flex: 1;
+        overflow-y: auto;
+    }
+    .nav-group-btn {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        width: 100%;
+        background: none;
+        border: none;
+        color: rgba(255,255,255,0.7);
+        padding: 0.375rem 0;
+        font-size: 0.95rem;
+        cursor: pointer;
+        text-align: left;
+        transition: color 0.15s;
+    }
+    .nav-group-btn:hover, .nav-group-btn.open {
+        color: #fff;
+    }
+    .nav-group-label {
+        flex: 1;
+    }
+    .nav-chevron {
+        font-size: 0.7rem;
+        transition: transform 0.2s ease;
+    }
+    .nav-chevron.rotated {
+        transform: rotate(180deg);
+    }
+    .nav-submenu {
+        padding-left: 1.2rem;
+        border-left: 2px solid rgba(255,255,255,0.15);
+        margin: 0.15rem 0 0.25rem 0.5rem;
+    }
+    .nav-sublink {
+        font-size: 0.88rem !important;
+        padding-top: 0.25rem !important;
+        padding-bottom: 0.25rem !important;
+    }
+    .logout-footer {
+        padding: 0.75rem 1rem;
+        border-top: 1px solid rgba(255,255,255,0.12);
+        margin-top: auto;
+    }
+    .logout-btn-fixed {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        width: 100%;
+        background: none;
+        border: none;
+        color: rgba(255,255,255,0.75);
+        padding: 0.5rem 0.75rem;
+        border-radius: 6px;
+        font-size: 0.95rem;
+        cursor: pointer;
+        transition: background 0.15s, color 0.15s;
+    }
+    .logout-btn-fixed:hover {
+        background: rgba(255,255,255,0.1);
+        color: #fff;
+    }
+</style>
+
 @code {
+    private ItemForm[] menuItems = [];
+    private HashSet<int> expandedMenus = new();
+
+    /// <summary>
+    /// Kullanıcının en az Okuma yetkisi olan formları döner.
+    /// Hiç yetki tanımı yoksa (boş map) tüm menü görünür.
+    /// </summary>
+    private IEnumerable<ItemForm> GorunurMenuler()
+    {
+        var erisebilir = YetkiSvc.ErisebilirFormIdler();
+        return erisebilir.Count == 0
+            ? menuItems
+            : menuItems.Where(f => erisebilir.Contains(f.ID));
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender && AuthState.IsAuthenticated)
+        {
+            try
+            {
+                menuItems = await DataSvc.GetFormlar();
+                if (AuthState.CurrentUser is not null)
+                    await YetkiSvc.LoadAsync(AuthState.CurrentUser.ID);
+                StateHasChanged();
+            }
+            catch { }
+        }
+    }
+
+    protected override void OnInitialized()
+    {
+        AuthState.OnChange += OnAuthChanged;
+        YetkiSvc.OnChange += OnYetkiChanged;
+    }
+
+    private async void OnAuthChanged()
+    {
+        if (AuthState.IsAuthenticated)
+        {
+            try
+            {
+                menuItems = await DataSvc.GetFormlar();
+                if (AuthState.CurrentUser is not null)
+                    await YetkiSvc.LoadAsync(AuthState.CurrentUser.ID);
+            }
+            catch { }
+        }
+        else
+        {
+            menuItems = [];
+            expandedMenus.Clear();
+            YetkiSvc.Clear();
+        }
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private async void OnYetkiChanged()
+    {
+        await InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        AuthState.OnChange -= OnAuthChanged;
+        YetkiSvc.OnChange -= OnYetkiChanged;
+    }
+
+    private void ToggleMenu(int id)
+    {
+        if (expandedMenus.Contains(id))
+            expandedMenus.Remove(id);
+        else
+            expandedMenus.Add(id);
+    }
+
     private async Task LogoutAsync()
     {
         await AuthState.LogoutAsync();
-        Nav.NavigateTo("/login", replace: true);
+        NavigationManager.NavigateTo("/login", replace: true);
     }
 
     private static string Initials(ItemKullanicilar u)

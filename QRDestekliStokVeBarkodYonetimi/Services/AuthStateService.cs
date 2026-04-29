@@ -1,6 +1,4 @@
 using System.IdentityModel.Tokens.Jwt;
-using System.Security.Claims;
-using Microsoft.AspNetCore.Components.Server.ProtectedBrowserStorage;
 using QRDestekliStokVeBarkodYonetimi.Models;
 
 namespace QRDestekliStokVeBarkodYonetimi.Services
@@ -9,15 +7,12 @@ namespace QRDestekliStokVeBarkodYonetimi.Services
     /// UI tarafında oturum durumunu tutan, Login / Register / Logout işlemlerini
     /// <see cref="DataService"/> üzerinden yürüten scoped servis.
     ///
-    /// JWT access token ProtectedLocalStorage'da (şifrelenmiş tarayıcı deposu) saklanır;
-    /// sayfa yenilense bile token imzası doğrulanarak oturum geri yüklenir.
+    /// Token yalnızca bellekte tutulur; uygulama yeniden açıldığında oturum sıfırlanır
+    /// ve kullanıcı tekrar giriş yapmak zorundadır.
     /// </summary>
     public class AuthStateService
     {
-        private const string TokenStorageKey = "qr_auth_token";
-
         private readonly DataService _data;
-        private readonly ProtectedLocalStorage _localStorage;
         private readonly JwtService _jwt;
 
         public ItemKullanicilar? CurrentUser { get; private set; }
@@ -28,58 +23,21 @@ namespace QRDestekliStokVeBarkodYonetimi.Services
 
         public event Action? OnChange;
 
-        public AuthStateService(DataService data, ProtectedLocalStorage localStorage, JwtService jwt)
+        public AuthStateService(DataService data, JwtService jwt)
         {
             _data = data;
-            _localStorage = localStorage;
             _jwt = jwt;
         }
 
         private void NotifyChanged() => OnChange?.Invoke();
 
         /// <summary>
-        /// Uygulama ilk render edildiğinde çağrılır. ProtectedLocalStorage'daki
-        /// JWT'yi doğrular ve geçerliyse kullanıcıyı DataService üzerinden yükler.
+        /// Oturum durumunu kontrol eder. Sadece bellek tabanlı; uygulama yeniden
+        /// açıldığında oturum sıfırlanmış olur ve kullanıcı login sayfasına yönlendirilir.
         /// </summary>
-        public async Task InitializeAsync()
+        public Task InitializeAsync()
         {
-            if (IsAuthenticated) return;
-
-            try
-            {
-                var stored = await _localStorage.GetAsync<string>(TokenStorageKey);
-                if (!stored.Success || string.IsNullOrWhiteSpace(stored.Value))
-                    return;
-
-                var principal = _jwt.ValidateToken(stored.Value);
-                if (principal is null)
-                {
-                    await _localStorage.DeleteAsync(TokenStorageKey);
-                    return;
-                }
-
-                var sub = principal.FindFirst(JwtRegisteredClaimNames.Sub)?.Value
-                          ?? principal.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-
-                if (!int.TryParse(sub, out var userId) || userId <= 0)
-                    return;
-
-                var user = (await _data.GetKullanici(userId)).FirstOrDefault();
-                if (user is null || user.Aktif == false)
-                {
-                    await _localStorage.DeleteAsync(TokenStorageKey);
-                    return;
-                }
-
-                CurrentUser = user;
-                AccessToken = stored.Value;
-                AccessTokenExpiresUtc = ReadExpiry(stored.Value);
-                NotifyChanged();
-            }
-            catch
-            {
-                // Prerender sırasında JS erişilemeyebilir; sessizce geç.
-            }
+            return Task.CompletedTask;
         }
 
         public async Task<(bool Success, string? Error)> LoginAsync(string eposta, string sifre)
@@ -94,7 +52,6 @@ namespace QRDestekliStokVeBarkodYonetimi.Services
             AccessToken = token.Token;
             AccessTokenExpiresUtc = token.ExpiresUtc;
 
-            await _localStorage.SetAsync(TokenStorageKey, token.Token);
             NotifyChanged();
             return (true, null);
         }
@@ -108,13 +65,13 @@ namespace QRDestekliStokVeBarkodYonetimi.Services
             return (true, null);
         }
 
-        public async Task LogoutAsync()
+        public Task LogoutAsync()
         {
             CurrentUser = null;
             AccessToken = null;
             AccessTokenExpiresUtc = null;
-            try { await _localStorage.DeleteAsync(TokenStorageKey); } catch { }
             NotifyChanged();
+            return Task.CompletedTask;
         }
 
         private static DateTime? ReadExpiry(string token)

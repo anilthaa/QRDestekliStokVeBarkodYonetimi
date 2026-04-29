@@ -1,8 +1,300 @@
 ﻿@page "/"
+@layout QRDestekliStokVeBarkodYonetimi.Components.Layout.MainLayout
+@rendermode InteractiveServer
+
+<style>
+    .stat-card {
+        cursor: pointer;
+        transition: transform 0.18s ease, box-shadow 0.18s ease;
+        border-radius: 8px;
+    }
+    .stat-card:hover {
+        transform: translateY(-4px) scale(1.025);
+        box-shadow: 0 8px 24px rgba(0,0,0,0.13);
+    }
+    .stat-card:active {
+        transform: translateY(-1px) scale(1.01);
+        box-shadow: 0 3px 10px rgba(0,0,0,0.10);
+    }
+</style>
+
+@inject DataService DataSvc
 @inject AuthStateService AuthState
+@inject NavigationManager Nav
 
-<PageTitle>Ana Sayfa</PageTitle>
+<PageTitle>Dashboard</PageTitle>
 
-<h1>Hoş geldiniz@(AuthState.CurrentUser is null ? "" : ", " + AuthState.CurrentUser.Ad)</h1>
+@if (!authChecked)
+{
+    <div style="display:flex; justify-content:center; align-items:center; height:60vh;">
+        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate"
+                                   Size="ProgressBarCircularSize.Large" />
+    </div>
+}
 
-<p>QR Destekli Stok ve Barkod Yönetimi paneline başarıyla giriş yaptınız.</p>
+@if (authChecked)
+{
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:0.5rem;">
+        <div>
+            <h3 style="margin:0;">Dashboard</h3>
+            <div style="font-size:0.85rem; color:#888;">@DateTime.Now.ToString("dd MMMM yyyy, dddd", new System.Globalization.CultureInfo("tr-TR"))</div>
+        </div>
+        <div style="font-size:0.9rem; color:#555;">
+            Hoş geldiniz, <strong>@(AuthState.CurrentUser?.Ad) @(AuthState.CurrentUser?.Soyad)</strong>
+        </div>
+    </div>
+
+    @if (isLoading)
+    {
+        <div style="display:flex; justify-content:center; padding:3rem;">
+            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate"
+                                       Size="ProgressBarCircularSize.Large" />
+        </div>
+    }
+    else
+    {
+        <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:1rem; margin-bottom:1.5rem;">
+
+            <div @onclick='@(() => Nav.NavigateTo("/urunler"))' class="stat-card">
+                <RadzenCard Style="padding:1.2rem; border-top:4px solid #1976d2;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div style="font-size:0.8rem; color:#888; margin-bottom:4px;">Toplam Ürün</div>
+                            <div style="font-size:2rem; font-weight:700; color:#1976d2;">@ozet.ToplamUrun</div>
+                        </div>
+                        <i class="fa-solid fa-boxes-packing" style="font-size:2rem; color:#1976d2; opacity:0.25;"></i>
+                    </div>
+                </RadzenCard>
+            </div>
+
+            <div @onclick='@(() => Nav.NavigateTo("/kategoriler"))' class="stat-card">
+                <RadzenCard Style="padding:1.2rem; border-top:4px solid #7b1fa2;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div style="font-size:0.8rem; color:#888; margin-bottom:4px;">Toplam Kategori</div>
+                            <div style="font-size:2rem; font-weight:700; color:#7b1fa2;">@ozet.ToplamKategori</div>
+                        </div>
+                        <i class="fa-solid fa-layer-group" style="font-size:2rem; color:#7b1fa2; opacity:0.25;"></i>
+                    </div>
+                </RadzenCard>
+            </div>
+
+            <div @onclick='@(() => Nav.NavigateTo("/kullanicilar"))' class="stat-card">
+                <RadzenCard Style="padding:1.2rem; border-top:4px solid #0288d1;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div style="font-size:0.8rem; color:#888; margin-bottom:4px;">Toplam Kullanıcı</div>
+                            <div style="font-size:2rem; font-weight:700; color:#0288d1;">@ozet.ToplamKullanici</div>
+                        </div>
+                        <i class="fa-solid fa-users" style="font-size:2rem; color:#0288d1; opacity:0.25;"></i>
+                    </div>
+                </RadzenCard>
+            </div>
+
+            <div @onclick='@(() => Nav.NavigateTo("/stok-hareketleri"))' class="stat-card">
+                <RadzenCard Style="padding:1.2rem; border-top:4px solid #455a64;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div style="font-size:0.8rem; color:#888; margin-bottom:4px;">Toplam Hareket</div>
+                            <div style="font-size:2rem; font-weight:700; color:#455a64;">@ozet.ToplamHareket</div>
+                        </div>
+                        <i class="fa-solid fa-arrow-right-arrow-left" style="font-size:2rem; color:#455a64; opacity:0.25;"></i>
+                    </div>
+                </RadzenCard>
+            </div>
+
+            <div @onclick='@(() => Nav.NavigateTo("/stok-giris"))' class="stat-card">
+                <RadzenCard Style="padding:1.2rem; border-top:4px solid #2e7d32;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div style="font-size:0.8rem; color:#888; margin-bottom:4px;">Bugün Giriş</div>
+                            <div style="font-size:2rem; font-weight:700; color:#2e7d32;">@ozet.BugunkuGiris.ToString("N0")</div>
+                        </div>
+                        <i class="fa-solid fa-download" style="font-size:2rem; color:#2e7d32; opacity:0.25;"></i>
+                    </div>
+                </RadzenCard>
+            </div>
+
+            <div @onclick='@(() => Nav.NavigateTo("/stok-cikis"))' class="stat-card">
+                <RadzenCard Style="padding:1.2rem; border-top:4px solid #c62828;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div style="font-size:0.8rem; color:#888; margin-bottom:4px;">Bugün Çıkış</div>
+                            <div style="font-size:2rem; font-weight:700; color:#c62828;">@ozet.BugunkuCikis.ToString("N0")</div>
+                        </div>
+                        <i class="fa-solid fa-upload" style="font-size:2rem; color:#c62828; opacity:0.25;"></i>
+                    </div>
+                </RadzenCard>
+            </div>
+
+            <div @onclick='@(() => Nav.NavigateTo("/urunler"))' class="stat-card">
+                <RadzenCard Style="padding:1.2rem; border-top:4px solid #e65100;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div style="font-size:0.8rem; color:#888; margin-bottom:4px;">Kritik Stok</div>
+                            <div style="font-size:2rem; font-weight:700; color:@(ozet.KritikStokSayisi > 0 ? "#e65100" : "#888");">@ozet.KritikStokSayisi</div>
+                        </div>
+                        <i class="fa-solid fa-triangle-exclamation" style="font-size:2rem; color:#e65100; opacity:0.25;"></i>
+                    </div>
+                </RadzenCard>
+            </div>
+
+            <div @onclick='@(() => Nav.NavigateTo("/stok-hareketleri"))' class="stat-card">
+                <RadzenCard Style="padding:1.2rem; border-top:4px solid #00838f;">
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div>
+                            <div style="font-size:0.8rem; color:#888; margin-bottom:4px;">Bugün Hareket</div>
+                            <div style="font-size:2rem; font-weight:700; color:#00838f;">@ozet.BugunkuHareket</div>
+                        </div>
+                        <i class="fa-solid fa-calendar-day" style="font-size:2rem; color:#00838f; opacity:0.25;"></i>
+                    </div>
+                </RadzenCard>
+            </div>
+
+        </div>
+
+        <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-bottom:2.5rem; margin-top:2.5rem;">
+            <RadzenButton Text="Stok Giriş" Icon="add_circle" ButtonStyle="ButtonStyle.Success"
+                          Click='@(() => Nav.NavigateTo("/stok-giris"))' />
+            <RadzenButton Text="Stok Çıkış" Icon="remove_circle" ButtonStyle="ButtonStyle.Danger"
+                          Click='@(() => Nav.NavigateTo("/stok-cikis"))' />
+            <RadzenButton Text="Ürün Listesi" Icon="inventory_2" ButtonStyle="ButtonStyle.Primary"
+                          Click='@(() => Nav.NavigateTo("/urunler"))' />
+            <RadzenButton Text="Tüm Hareketler" Icon="swap_horiz" ButtonStyle="ButtonStyle.Secondary"
+                          Click='@(() => Nav.NavigateTo("/stok-hareketleri"))' />
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
+
+            <div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                    <h5 style="margin:0;">
+                        <i class="fa-solid fa-triangle-exclamation" style="color:#e65100;"></i> Kritik Stok Ürünleri
+                    </h5>
+                    <a href="/urunler" style="font-size:0.8rem; color:#1976d2;">Tümünü gör</a>
+                </div>
+
+                @if (kritikStokUrunler.Length == 0)
+                {
+                    <div style="padding:2rem 1rem; text-align:center; background:rgba(0,0,0,0.03);
+                                border-radius:8px; color:#c0c0c0; font-size:0.9rem; border:1px dashed #e0e0e0;">
+                        <i class="fa-solid fa-circle-check" style="font-size:1.5rem; display:block; margin-bottom:0.4rem; opacity:0.3;"></i>
+                        Kritik stok seviyesinde ürün bulunmuyor.
+                    </div>
+                }
+                else
+                {
+                    <RadzenDataGrid Data="@kritikStokUrunler" TItem="ItemUrun"
+                                    AllowSorting="false" AllowFiltering="false" AllowPaging="false"
+                                    EmptyText="Kayıt yok." Style="font-size:0.85rem;">
+                        <Columns>
+                            <RadzenDataGridColumn TItem="ItemUrun" Property="UrunKodu" Title="Kod" Width="90px" />
+                            <RadzenDataGridColumn TItem="ItemUrun" Property="Ad" Title="Ürün Adı" />
+                            <RadzenDataGridColumn TItem="ItemUrun" Property="Stok" Title="Stok" Width="70px" TextAlign="TextAlign.Right">
+                                <Template Context="row">
+                                    <span style="font-weight:700; color:#e65100;">@row.Stok</span>
+                                </Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn TItem="ItemUrun" Property="KritikStokSeviyesi" Title="Kritik" Width="70px" TextAlign="TextAlign.Right" />
+                        </Columns>
+                    </RadzenDataGrid>
+                }
+            </div>
+
+            <div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
+                    <h5 style="margin:0;">
+                        <i class="fa-solid fa-clock-rotate-left" style="color:#455a64;"></i> Son Stok Hareketleri
+                    </h5>
+                    <a href="/stok-hareketleri" style="font-size:0.8rem; color:#1976d2;">Tümünü gör</a>
+                </div>
+
+                @if (sonHareketler.Length == 0)
+                {
+                    <div style="padding:2rem 1rem; text-align:center; background:rgba(0,0,0,0.03);
+                                border-radius:8px; color:#c0c0c0; font-size:0.9rem; border:1px dashed #e0e0e0;">
+                        <i class="fa-solid fa-inbox" style="font-size:1.5rem; display:block; margin-bottom:0.4rem; opacity:0.3;"></i>
+                        Henüz stok hareketi kaydedilmemiş.
+                    </div>
+                }
+                else
+                {
+                    <RadzenDataGrid Data="@sonHareketler" TItem="ItemStokHareketleri"
+                                    AllowSorting="false" AllowFiltering="false" AllowPaging="false"
+                                    EmptyText="Kayıt yok." Style="font-size:0.85rem;">
+                        <Columns>
+                            <RadzenDataGridColumn TItem="ItemStokHareketleri" Property="UrunAd" Title="Ürün" />
+                            <RadzenDataGridColumn TItem="ItemStokHareketleri" Property="HareketTipi" Title="Tip" Width="70px" TextAlign="TextAlign.Center">
+                                <Template Context="row">
+                                    @if (row.HareketTipi == 1)
+                                    {
+                                        <RadzenBadge Text="Giriş" BadgeStyle="BadgeStyle.Success" />
+                                    }
+                                    else
+                                    {
+                                        <RadzenBadge Text="Çıkış" BadgeStyle="BadgeStyle.Danger" />
+                                    }
+                                </Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn TItem="ItemStokHareketleri" Property="Miktar" Title="Miktar" Width="80px" TextAlign="TextAlign.Right">
+                                <Template Context="row">
+                                    <span style="font-weight:600; color:@(row.HareketTipi == 1 ? "#2e7d32" : "#c62828")">
+                                        @(row.HareketTipi == 2 ? "-" : "+")@row.Miktar.ToString("N0")
+                                    </span>
+                                </Template>
+                            </RadzenDataGridColumn>
+                            <RadzenDataGridColumn TItem="ItemStokHareketleri" Property="CreDate" Title="Tarih" Width="110px" FormatString="{0:dd.MM HH:mm}" />
+                        </Columns>
+                    </RadzenDataGrid>
+                }
+            </div>
+
+        </div>
+    }
+}
+
+@code {
+    private DashboardOzet ozet = new();
+    private ItemUrun[] kritikStokUrunler = [];
+    private ItemStokHareketleri[] sonHareketler = [];
+    private bool isLoading = true;
+    private bool authChecked = false;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await AuthState.InitializeAsync();
+            if (!AuthState.IsAuthenticated)
+            {
+                Nav.NavigateTo("/login", replace: true);
+                return;
+            }
+            authChecked = true;
+            await LoadAsync();
+            StateHasChanged();
+        }
+    }
+
+    protected override Task OnInitializedAsync() => Task.CompletedTask;
+
+    private async Task LoadAsync()
+    {
+        isLoading = true;
+        try
+        {
+            var t1 = DataSvc.GetDashboardOzet();
+            var t2 = DataSvc.GetKritikStokUrunler();
+            var t3 = DataSvc.GetSonHareketler(10);
+            await Task.WhenAll(t1, t2, t3);
+            ozet = t1.Result;
+            kritikStokUrunler = t2.Result;
+            sonHareketler = t3.Result;
+        }
+        catch { }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

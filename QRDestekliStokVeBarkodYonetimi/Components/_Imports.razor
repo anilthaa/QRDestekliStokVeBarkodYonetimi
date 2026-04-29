@@ -13,7 +13,12 @@
 @using Radzen
 @using Radzen.Blazor
 @inject NavigationManager NavigationManager
-@inject DialogService DialogService
-@inject TooltipService TooltipService
-@inject ContextMenuService ContextMenuService
-@inject NotificationService NotificationService
+@inject DialogService DialogSvc
+@inject TooltipService TooltipSvc
+@inject ContextMenuService ContextMenuSvc
+@inject NotificationService NotificationSvc
+@inject DataService DataSvc
+@inject AuthStateService AuthState
+@inject QrService QrSvc
+@inject IWebHostEnvironment Env
+@inject IJSRuntime JS

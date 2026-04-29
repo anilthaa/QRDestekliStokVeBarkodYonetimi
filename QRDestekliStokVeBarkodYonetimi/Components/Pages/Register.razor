@@ -1,4 +1,3 @@
-@* Register sayfası geçici olarak yorum satırına alındı.
 @page "/register"
 @layout QRDestekliStokVeBarkodYonetimi.Components.Layout.AuthLayout
 
@@ -32,7 +31,7 @@
 
         <div class="auth-field">
             <RadzenLabel Text="E-posta" Component="Eposta" />
-            <RadzenTextBox @bind-Value="model.Eposta" Name="Eposta" Placeholder="ornek@mail.com"
+            <RadzenTextBox @bind-Value="model.Eposta" Name="Eposta" Placeholder="@EpostaPh"
                            Style="width:100%" Disabled="@isBusy" />
             <RadzenRequiredValidator Component="Eposta" Text="E-posta zorunludur." Style="display:block" />
             <RadzenEmailValidator Component="Eposta" Text="Geçerli bir e-posta girin." Style="display:block" />
@@ -72,6 +71,8 @@
 </div>
 
 @code {
+    private const string EpostaPh = "ornek@mail.com";
+
     private readonly RegisterModel model = new();
     private bool isBusy;
     private string? errorMessage;
@@ -118,4 +119,3 @@
         public string SifreTekrar { get; set; } = string.Empty;
     }
 }
-*@
