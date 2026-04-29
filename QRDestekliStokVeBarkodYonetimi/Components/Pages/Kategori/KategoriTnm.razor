@@ -2,6 +2,7 @@
 @inject AuthStateService AuthState
 @inject DialogService DialogSvc
 @inject NotificationService NotificationSvc
+@inject IWebHostEnvironment Env
 
 <RadzenTemplateForm TItem="ItemKategori" Data="@model" Submit="@OnSubmitAsync">
 
@@ -20,10 +21,42 @@
                             Style="width:100%" Rows="3" Disabled="@isBusy" />
         </div>
 
+        @if (!string.IsNullOrWhiteSpace(onizlemeResim))
+        {
+            <div @onclick="@(() => onizlemeResim = null)"
+                 style="position:fixed; inset:0; background:rgba(0,0,0,0.82); z-index:9999;
+                        display:flex; align-items:center; justify-content:center; cursor:zoom-out;">
+                <img src="@onizlemeResim" alt="Tam görünüm"
+                     style="max-width:90vw; max-height:90vh; border-radius:10px; box-shadow:0 4px 32px #000;" />
+            </div>
+        }
+
         <div>
-            <RadzenLabel Text="Resim Yolu" Component="ResimYolu" />
-            <RadzenTextBox @bind-Value="model.ResimYolu" Name="ResimYolu" Placeholder="/images/kategori.png"
-                           Style="width:100%" Disabled="@isBusy" />
+            <RadzenLabel Text="Kategori Resmi" />
+            @if (!string.IsNullOrWhiteSpace(model.ResimYolu))
+            {
+                <div style="margin-bottom:0.5rem; position:relative; display:inline-block;">
+                    <img src="@model.ResimYolu" alt="Kategori resmi"
+                         style="max-height:120px; max-width:100%; border-radius:8px; border:1px solid #ddd; object-fit:cover; cursor:zoom-in;"
+                         @onclick="@(() => onizlemeResim = model.ResimYolu)" />
+                    <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                                  Variant="Variant.Flat"
+                                  Style="position:absolute; top:4px; right:4px; padding:2px 6px;"
+                                  Click="@ResimSil" title="Resmi kaldır" />
+                </div>
+            }
+            <InputFile OnChange="@OnResimSecildi" accept="image/*"
+                       style="display:block; margin-top:4px;" disabled="@isBusy" />
+            @if (resimYukleniyor)
+            {
+                <div style="font-size:0.8rem; color:#555; margin-top:4px;">
+                    <RadzenProgressBar Value="100" Mode="ProgressBarMode.Indeterminate" Style="height:6px;" />
+                </div>
+            }
+            @if (!string.IsNullOrWhiteSpace(resimHata))
+            {
+                <div style="font-size:0.8rem; color:#c62828; margin-top:4px;">@resimHata</div>
+            }
         </div>
 
         <div style="display:flex; align-items:center; gap:0.5rem;">
@@ -54,6 +87,12 @@
     private ItemKategori model = new() { Aktif = true };
     private bool isBusy;
     private string? errorMessage;
+    private bool resimYukleniyor;
+    private string? resimHata;
+    private string? onizlemeResim;
+
+    private static readonly string[] IzinliUzantilar = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
+    private const long MaxResimBoyutu = 5 * 1024 * 1024; // 5 MB
 
     protected override void OnParametersSet()
     {
@@ -74,6 +113,65 @@
                 DelDate   = Item.DelDate
             };
         }
+    }
+
+    private async Task OnResimSecildi(InputFileChangeEventArgs e)
+    {
+        resimHata = null;
+        var dosya = e.File;
+
+        var uzanti = Path.GetExtension(dosya.Name).ToLowerInvariant();
+        if (!IzinliUzantilar.Contains(uzanti))
+        {
+            resimHata = "Sadece .jpg, .jpeg, .png, .gif veya .webp dosyaları yüklenebilir.";
+            return;
+        }
+        if (dosya.Size > MaxResimBoyutu)
+        {
+            resimHata = "Dosya boyutu 5 MB'ı geçemez.";
+            return;
+        }
+
+        resimYukleniyor = true;
+        try
+        {
+            var klasor = Path.Combine(Env.WebRootPath, "uploads", "kategoriler");
+            Directory.CreateDirectory(klasor);
+
+            // Eski dosyayı sil
+            if (!string.IsNullOrWhiteSpace(model.ResimYolu))
+            {
+                var eskiDosya = Path.Combine(Env.WebRootPath, model.ResimYolu.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+                if (File.Exists(eskiDosya)) File.Delete(eskiDosya);
+            }
+
+            var dosyaAdi = $"{Guid.NewGuid()}{uzanti}";
+            var hedef = Path.Combine(klasor, dosyaAdi);
+
+            await using var stream = dosya.OpenReadStream(MaxResimBoyutu);
+            await using var fs = File.Create(hedef);
+            await stream.CopyToAsync(fs);
+
+            model.ResimYolu = $"/uploads/kategoriler/{dosyaAdi}";
+        }
+        catch (Exception ex)
+        {
+            resimHata = "Yükleme hatası: " + ex.Message;
+        }
+        finally
+        {
+            resimYukleniyor = false;
+        }
+    }
+
+    private void ResimSil()
+    {
+        if (!string.IsNullOrWhiteSpace(model.ResimYolu))
+        {
+            var eskiDosya = Path.Combine(Env.WebRootPath, model.ResimYolu.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+            if (File.Exists(eskiDosya)) File.Delete(eskiDosya);
+        }
+        model.ResimYolu = null;
     }
 
     private async Task OnSubmitAsync()

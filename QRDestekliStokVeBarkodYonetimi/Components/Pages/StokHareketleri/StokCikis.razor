@@ -1,0 +1,229 @@
+@page "/stok-cikis"
+@layout QRDestekliStokVeBarkodYonetimi.Components.Layout.MainLayout
+@rendermode InteractiveServer
+@implements IAsyncDisposable
+
+<PageTitle>Stok Çıkış</PageTitle>
+
+<h3 style="margin-bottom:1.5rem;">
+    <i class="fa-solid fa-arrow-up-from-bracket" style="color:#c62828;"></i> Stok Çıkış
+</h3>
+
+@if (isMobil)
+{
+    <RadzenCard Style="margin-bottom:1rem; padding:1rem;">
+        <div style="font-size:0.85rem; color:#555; margin-bottom:0.5rem;">
+            <i class="fa-solid fa-camera"></i> Ürün barkodunu kameraya gösterin
+        </div>
+
+        @if (!kameraAcik)
+        {
+            <RadzenButton Text="Kamerayı Aç" Icon="camera_alt" ButtonStyle="ButtonStyle.Danger"
+                          Click="@KameraAc" Style="width:100%;" />
+        }
+        else
+        {
+            <div id="barkod-reader-cikis" style="width:100%; border-radius:8px; overflow:hidden;"></div>
+            <RadzenButton Text="Kamerayı Kapat" Icon="camera_alt" ButtonStyle="ButtonStyle.Secondary"
+                          Click="@KameraKapat" Style="width:100%; margin-top:0.5rem;" />
+        }
+
+        @if (!string.IsNullOrWhiteSpace(kameraHata))
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Danger" Style="margin-top:0.5rem;">@kameraHata</RadzenAlert>
+        }
+    </RadzenCard>
+}
+else
+{
+    <RadzenCard Style="margin-bottom:1rem; padding:1rem;">
+        <div style="font-size:0.85rem; color:#555; margin-bottom:0.5rem;">
+            <i class="fa-solid fa-barcode"></i> Barkod numarasını girin veya barkod okuyucu ile okutun
+        </div>
+        <div style="display:flex; gap:0.5rem;">
+            <RadzenTextBox @bind-Value="manuelBarkod" Placeholder="Barkod numarası..."
+                           Style="flex:1;" @onkeydown="@ManuelBarkodKeyDown" />
+            <RadzenButton Text="Ara" Icon="search" ButtonStyle="ButtonStyle.Danger"
+                          Click="@(() => BarkodAra(manuelBarkod))" />
+        </div>
+    </RadzenCard>
+}
+
+@if (bulunanUrun != null)
+{
+    <RadzenCard Style="margin-bottom:1rem; border-left:4px solid #c62828; padding:1rem;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:0.5rem;">
+            <div>
+                <div style="font-size:1rem; font-weight:600;">@bulunanUrun.Ad</div>
+                <div style="font-size:0.82rem; color:#666;">Ürün Kodu: @bulunanUrun.UrunKodu</div>
+                <div style="font-size:0.82rem; color:#666;">Barkod: @bulunanUrun.BarkodNo</div>
+            </div>
+            <div style="text-align:right;">
+                <div style="font-size:0.82rem; color:#666;">Mevcut Stok</div>
+                <div style="font-size:1.4rem; font-weight:700; color:@(bulunanUrun.Stok <= bulunanUrun.KritikStokSeviyesi ? "#c62828" : "#2e7d32")">
+                    @bulunanUrun.Stok
+                </div>
+                @if (bulunanUrun.Stok <= bulunanUrun.KritikStokSeviyesi)
+                {
+                    <div style="font-size:0.75rem; color:#c62828;">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Kritik stok seviyesi!
+                    </div>
+                }
+            </div>
+        </div>
+
+        <hr style="margin:0.75rem 0;" />
+
+        <div style="display:flex; flex-direction:column; gap:0.75rem;">
+            <div>
+                <RadzenLabel Text="Çıkış Miktarı" />
+                <RadzenNumeric @bind-Value="cikisAdet" TValue="decimal" Min="1" Step="1"
+                               Style="width:100%; margin-top:4px;" />
+                @if (cikisAdet > bulunanUrun.Stok)
+                {
+                    <div style="font-size:0.8rem; color:#c62828; margin-top:4px;">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Girilen miktar mevcut stoktan fazla!
+                    </div>
+                }
+            </div>
+            <div>
+                <RadzenLabel Text="Not (isteğe bağlı)" />
+                <RadzenTextBox @bind-Value="not" Placeholder="Açıklama..."
+                               Style="width:100%; margin-top:4px;" />
+            </div>
+            <RadzenButton Text="Stok Çıkışı Yap" Icon="remove_circle" ButtonStyle="ButtonStyle.Danger"
+                          Click="@CikisYap" Disabled="@(islemDevam || cikisAdet > bulunanUrun.Stok)" Style="width:100%;" />
+        </div>
+    </RadzenCard>
+}
+else if (aramaTamamlandi)
+{
+    <RadzenAlert AlertStyle="AlertStyle.Warning">
+        <i class="fa-solid fa-triangle-exclamation"></i> Barkoda ait ürün bulunamadı.
+    </RadzenAlert>
+}
+
+@if (sonIslemler.Count > 0)
+{
+    <h5 style="margin-top:1.5rem; margin-bottom:0.5rem;">Son İşlemler</h5>
+    @foreach (var log in sonIslemler)
+    {
+        <div style="font-size:0.84rem; padding:0.4rem 0.6rem; background:#fff5f5; border-radius:6px; margin-bottom:4px; color:#c62828;">
+            <i class="fa-solid fa-minus"></i> @log
+        </div>
+    }
+}
+
+@code {
+    private bool isMobil = false;
+    private bool kameraAcik = false;
+    private string? kameraHata;
+    private string manuelBarkod = string.Empty;
+
+    private ItemUrun? bulunanUrun;
+    private bool aramaTamamlandi = false;
+    private decimal cikisAdet = 1;
+    private string? not;
+    private bool islemDevam = false;
+
+    private List<string> sonIslemler = new();
+    private DotNetObjectReference<StokCikis>? dotnetRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            isMobil = await JS.InvokeAsync<bool>("BarkodTarayici.isMobile");
+            StateHasChanged();
+        }
+    }
+
+    private async Task KameraAc()
+    {
+        kameraHata = null;
+        kameraAcik = true;
+        StateHasChanged();
+        await Task.Delay(300);
+        dotnetRef = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("BarkodTarayici.baslat", "barkod-reader-cikis", dotnetRef);
+    }
+
+    private async Task KameraKapat()
+    {
+        await JS.InvokeVoidAsync("BarkodTarayici.durdur");
+        kameraAcik = false;
+    }
+
+    [JSInvokable]
+    public async Task OnBarkodOkundu(string barkod)
+    {
+        await JS.InvokeVoidAsync("BarkodTarayici.durdur");
+        kameraAcik = false;
+        await BarkodAra(barkod);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public Task OnKameraHata(string hata)
+    {
+        kameraHata = "Kamera açılamadı: " + hata;
+        kameraAcik = false;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    private async Task ManuelBarkodKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await BarkodAra(manuelBarkod);
+    }
+
+    private async Task BarkodAra(string barkod)
+    {
+        if (string.IsNullOrWhiteSpace(barkod)) return;
+        bulunanUrun = null;
+        aramaTamamlandi = false;
+        cikisAdet = 1;
+        not = null;
+        bulunanUrun = await DataSvc.GetUrunByBarkod(barkod);
+        aramaTamamlandi = true;
+        StateHasChanged();
+    }
+
+    private async Task CikisYap()
+    {
+        if (bulunanUrun == null || cikisAdet <= 0) return;
+        islemDevam = true;
+        try
+        {
+            int userId = AuthState.CurrentUser?.ID ?? 0;
+            var result = await DataSvc.SetStokHareketi(bulunanUrun.ID, 2, cikisAdet, not, userId);
+            if (result.SonucKodu < 0)
+            {
+                NotificationSvc.Notify(NotificationSeverity.Error, "Hata", result.SonucAciklama, 4000);
+            }
+            else
+            {
+                var log = $"{DateTime.Now:HH:mm:ss} — {bulunanUrun.Ad}: -{cikisAdet:N2} çıkış yapıldı.";
+                sonIslemler.Insert(0, log);
+                if (sonIslemler.Count > 10) sonIslemler.RemoveAt(10);
+                NotificationSvc.Notify(NotificationSeverity.Success, "Başarılı",
+                    $"{bulunanUrun.Ad} için {cikisAdet:N2} adet stok çıkışı yapıldı.", 3000);
+                bulunanUrun = null;
+                aramaTamamlandi = false;
+                manuelBarkod = string.Empty;
+                cikisAdet = 1;
+                not = null;
+            }
+        }
+        finally
+        {
+            islemDevam = false;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("BarkodTarayici.durdur"); } catch { }
+        dotnetRef?.Dispose();
+    }
+}

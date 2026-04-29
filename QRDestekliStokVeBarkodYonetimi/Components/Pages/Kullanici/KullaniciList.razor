@@ -2,10 +2,7 @@
 @layout QRDestekliStokVeBarkodYonetimi.Components.Layout.MainLayout
 @rendermode InteractiveServer
 
-@inject DataService DataSvc
-@inject AuthStateService AuthState
-@inject DialogService DialogSvc
-@inject NotificationService NotificationSvc
+@inject NavigationManager Nav
 
 <PageTitle>Kullanıcılar</PageTitle>
 
@@ -59,13 +56,17 @@ else
             </RadzenDataGridColumn>
 
             <RadzenDataGridColumn TItem="ItemKullanicilar" Title="İşlemler"
-                                  Width="120px" TextAlign="TextAlign.Center"
+                                  Width="160px" TextAlign="TextAlign.Center"
                                   Sortable="false" Filterable="false">
                 <Template Context="row">
                     <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Info" Size="ButtonSize.Small"
                                   Variant="Variant.Flat"
                                   Click="@(() => OnDuzenleClick(row))"
                                   title="Düzenle" style="margin-right:4px;" />
+                    <RadzenButton Icon="shield" ButtonStyle="ButtonStyle.Success" Size="ButtonSize.Small"
+                                  Variant="Variant.Flat"
+                                  Click="@(() => { Nav.NavigateTo($"/kullanici-yetki/{row.ID}"); })"
+                                  title="Yetki Yönetimi" style="margin-right:4px;" />
                     <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
                                   Variant="Variant.Flat"
                                   Click="@(() => OnSilClick(row))"

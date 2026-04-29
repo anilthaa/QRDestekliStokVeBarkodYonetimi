@@ -3,6 +3,7 @@
 @inject DialogService DialogSvc
 @inject NotificationService NotificationSvc
 @inject QrService QrSvc
+@inject IWebHostEnvironment Env
 
 <RadzenTemplateForm TItem="ItemUrun" Data="@model" Submit="@OnSubmitAsync">
 
@@ -72,10 +73,55 @@
             </div>
         </div>
 
+        @if (!string.IsNullOrWhiteSpace(onizlemeResim))
+        {
+            <div @onclick="@(() => onizlemeResim = null)"
+                 style="position:fixed; inset:0; background:rgba(0,0,0,0.82); z-index:9999;
+                        display:flex; align-items:center; justify-content:center; cursor:zoom-out;">
+                <img src="@onizlemeResim" alt="Tam görünüm"
+                     style="max-width:90vw; max-height:90vh; border-radius:10px; box-shadow:0 4px 32px #000;" />
+            </div>
+        }
+
+        <!-- Çoklu resim yükleme -->
         <div>
-            <RadzenLabel Text="Resim Yolu" Component="ResimYolu" />
-            <RadzenTextBox @bind-Value="model.ResimYolu" Name="ResimYolu" Placeholder="/images/urun.png"
-                           Style="width:100%" Disabled="@isBusy" />
+            <RadzenLabel Text="Ürün Resimleri" />
+
+            @if (resimListesi.Count > 0)
+            {
+                <div style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-bottom:0.75rem;">
+                    @foreach (var resim in resimListesi)
+                    {
+                        var resimKopyasi = resim;
+                        <div style="position:relative; display:inline-block;">
+                            <img src="@resimKopyasi" alt="Ürün resmi"
+                                 style="width:90px; height:90px; object-fit:cover; border-radius:8px; border:1px solid #ddd; cursor:zoom-in;"
+                                 @onclick="@(() => onizlemeResim = resimKopyasi)" />
+                            <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                                          Variant="Variant.Flat"
+                                          Style="position:absolute; top:2px; right:2px; padding:1px 5px; min-width:unset;"
+                                          Click="@(() => ResimSil(resimKopyasi))" title="Resmi kaldır" />
+                        </div>
+                    }
+                </div>
+            }
+
+            <InputFile OnChange="@OnResimSecildi" accept="image/*" multiple
+                       style="display:block; margin-top:4px;" disabled="@isBusy" />
+            <div style="font-size:0.78rem; color:#888; margin-top:2px;">
+                Birden fazla resim seçebilirsiniz. Maksimum 5 resim, her biri en fazla 5 MB.
+            </div>
+
+            @if (resimYukleniyor)
+            {
+                <div style="font-size:0.8rem; color:#555; margin-top:4px;">
+                    <RadzenProgressBar Value="100" Mode="ProgressBarMode.Indeterminate" Style="height:6px;" />
+                </div>
+            }
+            @if (!string.IsNullOrWhiteSpace(resimHata))
+            {
+                <div style="font-size:0.8rem; color:#c62828; margin-top:4px;">@resimHata</div>
+            }
         </div>
 
         @if (!string.IsNullOrEmpty(errorMessage))
@@ -101,9 +147,19 @@
     private ItemUrun model = new() { Stok = 0, KritikStokSeviyesi = 0 };
     private bool isBusy;
     private string? errorMessage;
+    private bool resimYukleniyor;
+    private string? resimHata;
+
+    private string? onizlemeResim;
+
+    private List<string> resimListesi = new();
 
     private ItemKategori[] kategoriler = [];
     private ItemBirim[] birimler = [];
+
+    private static readonly string[] IzinliUzantilar = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
+    private const long MaxResimBoyutu = 5 * 1024 * 1024; // 5 MB
+    private const int MaxResimSayisi = 5;
 
     protected override async Task OnInitializedAsync()
     {
@@ -134,7 +190,76 @@
                 DelUser             = Item.DelUser,
                 DelDate             = Item.DelDate
             };
+
+            // Mevcut resimleri listeye yükle
+            if (!string.IsNullOrWhiteSpace(Item.ResimYolu))
+            {
+                resimListesi = Item.ResimYolu
+                    .Split(';', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(s => s.Trim())
+                    .ToList();
+            }
         }
+    }
+
+    private async Task OnResimSecildi(InputFileChangeEventArgs e)
+    {
+        resimHata = null;
+
+        var kalanSlot = MaxResimSayisi - resimListesi.Count;
+        if (kalanSlot <= 0)
+        {
+            resimHata = $"En fazla {MaxResimSayisi} resim eklenebilir.";
+            return;
+        }
+
+        var dosyalar = e.GetMultipleFiles(kalanSlot);
+        resimYukleniyor = true;
+
+        try
+        {
+            var klasor = Path.Combine(Env.WebRootPath, "uploads", "urunler");
+            Directory.CreateDirectory(klasor);
+
+            foreach (var dosya in dosyalar)
+            {
+                var uzanti = Path.GetExtension(dosya.Name).ToLowerInvariant();
+                if (!IzinliUzantilar.Contains(uzanti))
+                {
+                    resimHata = $"{dosya.Name}: Desteklenmeyen dosya türü.";
+                    continue;
+                }
+                if (dosya.Size > MaxResimBoyutu)
+                {
+                    resimHata = $"{dosya.Name}: Dosya 5 MB sınırını aşıyor.";
+                    continue;
+                }
+
+                var dosyaAdi = $"{Guid.NewGuid()}{uzanti}";
+                var hedef = Path.Combine(klasor, dosyaAdi);
+
+                await using var stream = dosya.OpenReadStream(MaxResimBoyutu);
+                await using var fs = File.Create(hedef);
+                await stream.CopyToAsync(fs);
+
+                resimListesi.Add($"/uploads/urunler/{dosyaAdi}");
+            }
+        }
+        catch (Exception ex)
+        {
+            resimHata = "Yükleme hatası: " + ex.Message;
+        }
+        finally
+        {
+            resimYukleniyor = false;
+        }
+    }
+
+    private void ResimSil(string yol)
+    {
+        var fizikselYol = Path.Combine(Env.WebRootPath, yol.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+        if (File.Exists(fizikselYol)) File.Delete(fizikselYol);
+        resimListesi.Remove(yol);
     }
 
     private void OnRandomBarkodClick()
@@ -156,6 +281,7 @@
                 model.UpdUser = userId;
 
             model.DelUser = 0;
+            model.ResimYolu = resimListesi.Count > 0 ? string.Join(";", resimListesi) : null;
 
             var result = await DataSvc.SetUrun(model);
 

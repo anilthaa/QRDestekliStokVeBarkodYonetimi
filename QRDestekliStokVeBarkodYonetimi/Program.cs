@@ -35,6 +35,9 @@ builder.Services.AddSingleton<JwtService>();
 // UI tarafı için oturum servisi
 builder.Services.AddScoped<AuthStateService>();
 
+// Yetki servisi (form bazlı yetki cache'i)
+builder.Services.AddScoped<YetkiService>();
+
 // QR kod üretim servisi
 builder.Services.AddSingleton<QrService>();
 
@@ -88,4 +91,55 @@ app.UseAuthorization();
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
+// Admin kullanıcı seed
+await SeedAdminAsync(app.Services, connectionString);
+
 app.Run();
+
+static async Task SeedAdminAsync(IServiceProvider services, string connectionString)
+{
+    try
+    {
+        var db = new QRDestekliStokVeBarkodYonetimi.Services.DBClass(connectionString);
+
+        // Kullanıcı var mı?
+        var mevcutSayisi = await db.SQLExecuteScalar<int>(
+            @"SELECT COUNT(*) FROM ""Kullanicilar"" WHERE ""DelUser"" IS NULL");
+
+        if (mevcutSayisi > 0) return; // Zaten en az bir kullanıcı var, seed gerekmiyor
+
+        // KullaniciTip yoksa oluştur
+        var tipSayisi = await db.SQLExecuteScalar<int>(
+            @"SELECT COUNT(*) FROM ""KullaniciTip"" WHERE ""DelUser"" IS NULL");
+
+        int tipId;
+        if (tipSayisi == 0)
+        {
+            tipId = await db.SQLExecuteScalar<int>(
+                @"INSERT INTO ""KullaniciTip"" (""Ad"", ""Aktif"", ""CreUser"", ""CreDate"")
+                  VALUES ('Admin', true, 1, now())
+                  RETURNING ""ID""");
+        }
+        else
+        {
+            tipId = await db.SQLExecuteScalar<int>(
+                @"SELECT ""ID"" FROM ""KullaniciTip"" WHERE ""DelUser"" IS NULL ORDER BY ""ID"" LIMIT 1");
+        }
+
+        // Admin şifresini hashle
+        var sifreHash = QRDestekliStokVeBarkodYonetimi.Services.PasswordHasher.Hash("Admin@123");
+
+        await db.SQLExecute(
+            @"INSERT INTO ""Kullanicilar""
+                (""KullaniciTip_ID"", ""Ad"", ""Soyad"", ""Eposta"", ""Sifre"", ""Aktif"", ""CreUser"", ""CreDate"")
+              VALUES
+                (@TipId, 'Admin', 'Kullanıcı', 'admin@sistem.com', @Sifre, true, 1, now())",
+            new { TipId = tipId, Sifre = sifreHash });
+
+        Console.WriteLine("✅ Admin kullanıcı oluşturuldu — admin@sistem.com / Admin@123");
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"⚠️  Admin seed hatası: {ex.Message}");
+    }
+}
