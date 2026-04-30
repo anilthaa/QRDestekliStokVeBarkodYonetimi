@@ -3,6 +3,9 @@
 @rendermode InteractiveServer
 @implements IAsyncDisposable
 
+@inject YetkiService YetkiSvc
+@inject NavigationManager Nav
+
 <PageTitle>Stok Giriş</PageTitle>
 
 <h3 style="margin-bottom:1.5rem;">
@@ -15,7 +18,6 @@
         <div style="font-size:0.85rem; color:#555; margin-bottom:0.5rem;">
             <i class="fa-solid fa-camera"></i> Ürün barkodunu kameraya gösterin
         </div>
-
         @if (!kameraAcik)
         {
             <RadzenButton Text="Kamerayı Aç" Icon="camera_alt" ButtonStyle="ButtonStyle.Primary"
@@ -27,7 +29,6 @@
             <RadzenButton Text="Kamerayı Kapat" Icon="camera_alt" ButtonStyle="ButtonStyle.Secondary"
                           Click="@KameraKapat" Style="width:100%; margin-top:0.5rem;" />
         }
-
         @if (!string.IsNullOrWhiteSpace(kameraHata))
         {
             <RadzenAlert AlertStyle="AlertStyle.Danger" Style="margin-top:0.5rem;">@kameraHata</RadzenAlert>
@@ -65,9 +66,7 @@ else
                 </div>
             </div>
         </div>
-
         <hr style="margin:0.75rem 0;" />
-
         <div style="display:flex; flex-direction:column; gap:0.75rem;">
             <div>
                 <RadzenLabel Text="Giriş Miktarı" />
@@ -80,7 +79,15 @@ else
                                Style="width:100%; margin-top:4px;" />
             </div>
             <RadzenButton Text="Stok Girişi Yap" Icon="add_circle" ButtonStyle="ButtonStyle.Success"
-                          Click="@GirisYap" Disabled="@islemDevam" Style="width:100%;" />
+                          Click="@GirisYap"
+                          Disabled="@(islemDevam || sadecOkuma)"
+                          Style="@("width:100%;" + (sadecOkuma ? "opacity:0.35;pointer-events:none;" : ""))" />
+            @if (sadecOkuma)
+            {
+                <div style="font-size:0.8rem; color:#c62828; margin-top:6px; text-align:center;">
+                    <i class="fa-solid fa-lock"></i> Bu sayfada yalnızca görüntüleme yetkiniz var.
+                </div>
+            }
         </div>
     </RadzenCard>
 }
@@ -116,6 +123,18 @@ else if (aramaTamamlandi)
 
     private List<string> sonIslemler = new();
     private DotNetObjectReference<StokGiris>? dotnetRef;
+    private bool sadecOkuma = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await YetkiSvc.EnsureFormsLoadedAsync();
+        if (!YetkiSvc.ErişimVar("/stok-giris"))
+        {
+            Nav.NavigateTo("/erisim-engeli", true);
+            return;
+        }
+        sadecOkuma = YetkiSvc.SadecOkuma("/stok-giris");
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -179,6 +198,7 @@ else if (aramaTamamlandi)
 
     private async Task GirisYap()
     {
+        if (sadecOkuma) return;
         if (bulunanUrun == null || girisAdet <= 0) return;
         islemDevam = true;
         try
@@ -203,10 +223,7 @@ else if (aramaTamamlandi)
                 not = null;
             }
         }
-        finally
-        {
-            islemDevam = false;
-        }
+        finally { islemDevam = false; }
     }
 
     public async ValueTask DisposeAsync()
