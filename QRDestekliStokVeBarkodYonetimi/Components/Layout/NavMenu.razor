@@ -24,13 +24,14 @@
     }
 
     <nav class="flex-column">
+        @* Ana Sayfa her zaman görünür, yetki kontrolü yok *@
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
+            <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
                 <i class="fa-solid fa-house"></i> Ana Sayfa
             </NavLink>
         </div>
 
-        @foreach (var form in GorunurMenuler().Where(f => f.UstMenu_ID == null).OrderBy(f => f.Sira))
+        @foreach (var form in GorunurMenuler().Where(f => f.UstMenu_ID == null && f.SayfaURL != "/").OrderBy(f => f.Sira))
         {
             var altMenuler = GorunurMenuler().Where(f => f.UstMenu_ID == form.ID).OrderBy(f => f.Sira).ToList();
             var hasChildren = altMenuler.Count > 0;
@@ -167,14 +168,30 @@
 
     /// <summary>
     /// Kullanıcının en az Okuma yetkisi olan formları döner.
-    /// Hiç yetki tanımı yoksa (boş map) tüm menü görünür.
+    ///
+    /// Kurallar:
+    ///  - Yetki henüz yüklenmediyse (IsLoaded = false) boş liste döner; menü gösterilmez.
+    ///  - Yüklendi fakat hiç erişilebilir form yoksa (tümü Gizli/tanımsız) boş liste döner.
+    ///  - Üst menü grubunun kendi ID'si yetkili olmasa bile, altında yetkili alt menü varsa grup da gösterilir.
     /// </summary>
     private IEnumerable<ItemForm> GorunurMenuler()
     {
+        // Yüklenmediyse hiç gösterme — "boş yetki = tümünü göster" mantığı artık geçersiz
+        if (!YetkiSvc.IsLoaded) return [];
+
         var erisebilir = YetkiSvc.ErisebilirFormIdler();
-        return erisebilir.Count == 0
-            ? menuItems
-            : menuItems.Where(f => erisebilir.Contains(f.ID));
+
+        // Doğrudan yetkili formlar (Gizli = 0 olanlar zaten hariç)
+        var gorunur = menuItems.Where(f => erisebilir.Contains(f.ID)).ToHashSet();
+
+        // Üst menü grubunun kendi ID'si yetkili olmasa bile altında yetkili alt menü varsa ekle
+        foreach (var grup in menuItems.Where(f => f.UstMenu_ID == null && !gorunur.Contains(f)))
+        {
+            if (menuItems.Any(f => f.UstMenu_ID == grup.ID && erisebilir.Contains(f.ID)))
+                gorunur.Add(grup);
+        }
+
+        return menuItems.Where(f => gorunur.Contains(f));
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)

@@ -1,0 +1,26 @@
+@page "/erisim-engeli"
+@layout QRDestekliStokVeBarkodYonetimi.Components.Layout.MainLayout
+@rendermode InteractiveServer
+
+@inject NavigationManager Nav
+
+<PageTitle>Erişim Engeli</PageTitle>
+
+<div style="display:flex; flex-direction:column; align-items:center; justify-content:center;
+            min-height:60vh; text-align:center; padding:2rem;">
+
+    <div style="font-size:5rem; color:#e0e0e0; margin-bottom:1.5rem;">
+        <i class="fa-solid fa-lock"></i>
+    </div>
+
+    <h2 style="margin:0 0 0.5rem; color:#444;">Erişim Engeli</h2>
+
+    <p style="color:#888; font-size:1rem; margin:0 0 2rem; max-width:420px;">
+        Bu sayfayı görüntülemek için gerekli yetkiye sahip değilsiniz.<br />
+        Yöneticinizle iletişime geçin.
+    </p>
+
+    <RadzenButton Text="Ana Sayfaya Dön" Icon="home"
+                  ButtonStyle="ButtonStyle.Primary"
+                  Click="@(() => Nav.NavigateTo("/"))" />
+</div>

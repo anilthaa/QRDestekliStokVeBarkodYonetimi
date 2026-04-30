@@ -2,12 +2,17 @@
 @layout QRDestekliStokVeBarkodYonetimi.Components.Layout.MainLayout
 @rendermode InteractiveServer
 
+@inject YetkiService YetkiSvc
+@inject NavigationManager Nav
+
 <PageTitle>Kategoriler</PageTitle>
 
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
     <h3 style="margin:0;">Kategori Listesi</h3>
     <RadzenButton Text="Yeni Kategori" Icon="add" ButtonStyle="ButtonStyle.Primary"
-                  Click="@OnYeniClick" />
+                  Click="@OnYeniClick"
+                  Disabled="@sadecOkuma"
+                  Style="@(sadecOkuma ? "opacity:0.35;pointer-events:none;" : "")" />
 </div>
 
 @if (isLoading)
@@ -53,10 +58,14 @@ else
                     <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Info" Size="ButtonSize.Small"
                                   Variant="Variant.Flat"
                                   Click="@(() => OnDuzenleClick(row))"
-                                  title="Düzenle" style="margin-right:4px;" />
+                                  Disabled="@sadecOkuma"
+                                  Style="@("margin-right:4px;" + (sadecOkuma ? "opacity:0.35;pointer-events:none;" : ""))"
+                                  title="Düzenle" />
                     <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
                                   Variant="Variant.Flat"
                                   Click="@(() => OnSilClick(row))"
+                                  Disabled="@sadecOkuma"
+                                  Style="@(sadecOkuma ? "opacity:0.35;pointer-events:none;" : "")"
                                   title="Sil" />
                 </Template>
             </RadzenDataGridColumn>
@@ -68,94 +77,62 @@ else
 @code {
     private ItemKategori[] kategoriler = [];
     private bool isLoading = true;
+    private bool sadecOkuma = false;
 
     protected override async Task OnInitializedAsync()
     {
+        await YetkiSvc.EnsureFormsLoadedAsync();
+        if (!YetkiSvc.ErişimVar("/kategoriler"))
+        {
+            Nav.NavigateTo("/erisim-engeli", true);
+            return;
+        }
+        sadecOkuma = YetkiSvc.SadecOkuma("/kategoriler");
         await LoadAsync();
     }
 
     private async Task LoadAsync()
     {
         isLoading = true;
-        try
-        {
-            kategoriler = await DataSvc.GetKategori();
-        }
-        finally
-        {
-            isLoading = false;
-        }
+        try { kategoriler = await DataSvc.GetKategori(); }
+        finally { isLoading = false; }
     }
 
     private async Task OnYeniClick()
     {
-        var result = await DialogSvc.OpenAsync<KategoriTnm>(
-            "Yeni Kategori",
+        if (sadecOkuma) return;
+        var result = await DialogSvc.OpenAsync<KategoriTnm>("Yeni Kategori",
             new Dictionary<string, object?> { { "Item", new ItemKategori { Aktif = true } } },
-            new DialogOptions
-            {
-                Width = "500px",
-                Resizable = false,
-                Draggable = true,
-                CloseDialogOnOverlayClick = false
-            });
-
-        if (result is true)
-            await LoadAsync();
+            new DialogOptions { Width = "500px", Resizable = false, Draggable = true, CloseDialogOnOverlayClick = false });
+        if (result is true) await LoadAsync();
     }
 
     private async Task OnDuzenleClick(ItemKategori item)
     {
-        var result = await DialogSvc.OpenAsync<KategoriTnm>(
-            "Kategori Düzenle",
+        if (sadecOkuma) return;
+        var result = await DialogSvc.OpenAsync<KategoriTnm>("Kategori Düzenle",
             new Dictionary<string, object?> { { "Item", item } },
-            new DialogOptions
-            {
-                Width = "500px",
-                Resizable = false,
-                Draggable = true,
-                CloseDialogOnOverlayClick = false
-            });
-
-        if (result is true)
-            await LoadAsync();
+            new DialogOptions { Width = "500px", Resizable = false, Draggable = true, CloseDialogOnOverlayClick = false });
+        if (result is true) await LoadAsync();
     }
 
     private async Task OnSilClick(ItemKategori item)
     {
+        if (sadecOkuma) return;
         var onay = await DialogSvc.Confirm(
-            $"<b>{item.Ad}</b> kategorisini silmek istediğinizden emin misiniz?",
-            "Kategori Sil",
-            new ConfirmOptions
-            {
-                OkButtonText = "Evet, Sil",
-                CancelButtonText = "İptal"
-            });
-
+            $"<b>{item.Ad}</b> kategorisini silmek istediğinizden emin misiniz?", "Kategori Sil",
+            new ConfirmOptions { OkButtonText = "Evet, Sil", CancelButtonText = "İptal" });
         if (onay != true) return;
 
         int userId = AuthState.CurrentUser?.ID ?? 0;
-
-        var silItem = new ItemKategori
-        {
-            ID      = item.ID,
-            Ad      = item.Ad,
-            Aktif   = item.Aktif,
-            CreUser = item.CreUser,
-            DelUser = userId
-        };
-
+        var silItem = new ItemKategori { ID = item.ID, Ad = item.Ad, Aktif = item.Aktif, CreUser = item.CreUser, DelUser = userId };
         var result = await DataSvc.SetKategori(silItem);
 
         if (result.SonucKodu < 0)
-        {
-            NotificationSvc.Notify(NotificationSeverity.Error, "Hata",
-                result.SonucAciklama ?? "Silme işlemi başarısız.", 4000);
-        }
+            NotificationSvc.Notify(NotificationSeverity.Error, "Hata", result.SonucAciklama ?? "Silme işlemi başarısız.", 4000);
         else
         {
-            NotificationSvc.Notify(NotificationSeverity.Success, "Başarılı",
-                $"{item.Ad} silindi.", 3000);
+            NotificationSvc.Notify(NotificationSeverity.Success, "Başarılı", $"{item.Ad} silindi.", 3000);
             await LoadAsync();
         }
     }

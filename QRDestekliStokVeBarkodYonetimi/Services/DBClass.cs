@@ -65,17 +65,27 @@ namespace QRDestekliStokVeBarkodYonetimi.Services
                 await db.OpenAsync();
                 var result = await db.ExecuteScalarAsync(SQLSorgu, Params);
 
-                if (result == null)
+                if (result == null || result == DBNull.Value)
                     return default!;
 
-                if (typeof(T) == typeof(int))
+                // Nullable tip desteği: int? gibi nullable türler için underlying type al
+                var targetType = typeof(T);
+                var underlyingType = Nullable.GetUnderlyingType(targetType);
+                var actualType = underlyingType ?? targetType;
+
+                // int / int? özel dönüşüm (PostgreSQL long döner)
+                if (actualType == typeof(int))
                 {
-                    if (result is long l) return (T)(object)(int)l;
-                    if (result is int i) return (T)(object)i;
-                    if (int.TryParse(result.ToString(), out var parsed)) return (T)(object)parsed;
+                    int intVal = result switch
+                    {
+                        long l  => (int)l,
+                        int  i  => i,
+                        _       => int.Parse(result.ToString()!)
+                    };
+                    return (T)(object)intVal;
                 }
 
-                return (T)Convert.ChangeType(result, typeof(T));
+                return (T)Convert.ChangeType(result, actualType);
             }
             catch (Exception ex)
             {

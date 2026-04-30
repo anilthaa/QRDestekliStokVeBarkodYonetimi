@@ -465,7 +465,7 @@ namespace QRDestekliStokVeBarkodYonetimi.Services
                 SELECT fy.""ID"", fy.""Kullanici_ID"", fy.""Form_ID"", fy.""Yetki"",
                        fy.""CreUser"", fy.""CreDate"", fy.""UpdUser"", fy.""UpdDate"",
                        fy.""DelUser"", fy.""DelDate""
-                FROM ""FormYetki"" fy
+                FROM ""KullaniciDetay"" fy
                 WHERE fy.""DelUser"" IS NULL AND fy.""Kullanici_ID"" = @KullaniciId
                 ORDER BY fy.""Form_ID""",
                 new { KullaniciId = kullaniciId })).ToArray();
@@ -473,82 +473,128 @@ namespace QRDestekliStokVeBarkodYonetimi.Services
 
         /// <summary>
         /// Kullanıcının belirli bir formdaki etkin yetkisini döner.
-        /// Kullanıcı bazlı ve tip bazlı yetkilerden büyük olanı (MAX) geçerlidir.
+        ///
+        /// Etkin Yetki Öncelik Kuralı:
+        ///   1. Kullanıcıya özel yetki tanımlanmışsa → o geçerlidir (tip yetkisini override eder).
+        ///   2. Kullanıcıya özel yetki yoksa          → tip yetkisi kullanılır.
+        ///   3. Her ikisi de yoksa                    → 0 (Gizli / Erişim Yok).
         /// </summary>
         public async Task<int> GetKullaniciFormYetkiSeviyesi(int kullaniciId, int formId)
         {
+            // Kullanıcıya özel yetki var mı?
             var kullaniciBazli = await SQLExecuteScalar<int?>(@"
-                SELECT ""Yetki"" FROM ""FormYetki""
-                WHERE ""DelUser"" IS NULL AND ""Kullanici_ID"" = @KullaniciId AND ""Form_ID"" = @FormId
+                SELECT ""Yetki"" FROM ""KullaniciDetay""
+                WHERE  ""DelUser""      IS NULL
+                  AND  ""Kullanici_ID"" = @KullaniciId
+                  AND  ""Form_ID""      = @FormId
                 LIMIT 1",
                 new { KullaniciId = kullaniciId, FormId = formId });
 
+            // Kullanıcıya özel yetki tanımlıysa doğrudan döner (tip yetkisine bakılmaz).
+            if (kullaniciBazli.HasValue)
+                return kullaniciBazli.Value;
+
+            // Yoksa tip bazlı yetkiye bak.
             var tipBazli = await SQLExecuteScalar<int?>(@"
                 SELECT tfy.""Yetki""
-                FROM ""KullaniciTipFormYetki"" tfy
-                JOIN ""Kullanicilar"" k ON k.""ID"" = @KullaniciId
-                WHERE tfy.""DelUser"" IS NULL
-                  AND tfy.""KullaniciTip_ID"" = k.""KullaniciTip_ID""
-                  AND tfy.""Form_ID"" = @FormId
+                FROM   ""KullaniciTipDetay"" tfy
+                JOIN   ""Kullanicilar""      k   ON k.""ID"" = @KullaniciId
+                WHERE  tfy.""DelUser""        IS NULL
+                  AND  tfy.""KullaniciTip_ID"" = k.""KullaniciTip_ID""
+                  AND  tfy.""Form_ID""          = @FormId
                 LIMIT 1",
                 new { KullaniciId = kullaniciId, FormId = formId });
 
-            return Math.Max(kullaniciBazli ?? 0, tipBazli ?? 0);
+            return tipBazli ?? 0;
         }
 
         /// <summary>
-        /// Kullanıcının erişebildiği (etkin yetki >= minYetki) formların ID listesini döner.
-        /// Etkin yetki = MAX(kullanıcı bazlı, tip bazlı).
+        /// Kullanıcının etkin yetkisi >= minYetki olan formların ID listesini döner.
+        ///
+        /// Etkin yetki öncelik kuralı:
+        ///   Kullanıcıya özel yetki tanımlıysa o geçerlidir; yoksa tip yetkisi kullanılır.
         /// </summary>
         public async Task<int[]> GetKullaniciErisebilirFormIdler(int kullaniciId, int minYetki = 1)
         {
-            // Kullanıcı bazlı yeterli yetki
-            var kullaniciBazli = (await SQLQueryAsync<int>(@"
-                SELECT ""Form_ID"" FROM ""FormYetki""
-                WHERE ""DelUser"" IS NULL AND ""Kullanici_ID"" = @KullaniciId AND ""Yetki"" >= @MinYetki",
-                new { KullaniciId = kullaniciId, MinYetki = minYetki })).ToHashSet();
+            // Kullanıcıya özel tüm form yetkileri (yetki değerinden bağımsız)
+            var kullaniciBazli = (await SQLQueryAsync<(int FormId, int Yetki)>(@"
+                SELECT ""Form_ID"" AS FormId, ""Yetki""
+                FROM   ""KullaniciDetay""
+                WHERE  ""DelUser"" IS NULL AND ""Kullanici_ID"" = @KullaniciId",
+                new { KullaniciId = kullaniciId }))
+                .ToDictionary(r => r.FormId, r => r.Yetki);
 
-            // Tip bazlı yeterli yetki
-            var tipBazli = await SQLQueryAsync<int>(@"
-                SELECT tfy.""Form_ID""
-                FROM ""KullaniciTipFormYetki"" tfy
-                JOIN ""Kullanicilar"" k ON k.""KullaniciTip_ID"" = tfy.""KullaniciTip_ID""
-                WHERE tfy.""DelUser"" IS NULL AND k.""ID"" = @KullaniciId AND tfy.""Yetki"" >= @MinYetki",
-                new { KullaniciId = kullaniciId, MinYetki = minYetki });
+            // Tip bazlı tüm form yetkileri
+            var tipBazli = (await SQLQueryAsync<(int FormId, int Yetki)>(@"
+                SELECT tfy.""Form_ID"" AS FormId, tfy.""Yetki""
+                FROM   ""KullaniciTipDetay"" tfy
+                JOIN   ""Kullanicilar""      k ON k.""KullaniciTip_ID"" = tfy.""KullaniciTip_ID""
+                WHERE  tfy.""DelUser"" IS NULL AND k.""ID"" = @KullaniciId",
+                new { KullaniciId = kullaniciId }))
+                .ToDictionary(r => r.FormId, r => r.Yetki);
 
-            // Her iki kaynaktan gelenler birleşir (union): her iki kaynaktan gelen yeterli yetki geçerlidir
-            foreach (var id in tipBazli) kullaniciBazli.Add(id);
-            return kullaniciBazli.ToArray();
+            var result = new HashSet<int>();
+
+            // Tip bazlı formları işle; kullanıcıya özel kayıt varsa onu uygula
+            foreach (var (formId, tipYetki) in tipBazli)
+            {
+                int etkinYetki = kullaniciBazli.TryGetValue(formId, out var kYetki) ? kYetki : tipYetki;
+                if (etkinYetki >= minYetki) result.Add(formId);
+            }
+
+            // Tip bazlı kaydı olmayan ama kullanıcıya özel yetki tanımlı formları ekle
+            foreach (var (formId, kYetki) in kullaniciBazli)
+            {
+                if (!tipBazli.ContainsKey(formId) && kYetki >= minYetki)
+                    result.Add(formId);
+            }
+
+            return result.ToArray();
         }
 
         /// <summary>
-        /// Kullanıcı-form yetkisini set eder (insert veya update). Yetki=0 ise kaydı siler.
+        /// Kullanıcı-form yetkisini set eder (insert veya update).
+        ///
+        /// Yetki değerleri: 0=Gizli, 1=Okuma, 2=Yazma, -1=Tip yatkısına dön (kaydı siler).
+        ///
+        /// Gizli (0) değeri bir override kaydı olarak saklanır; bu sayede tip yetkisi Yazma
+        /// olsa bile kullanıcı bazlı Gizli yetkisi doğru biçimde uygulanır.
+        /// Tip kalıtımına dönmek için yetki = -1 (KalitimYok) gönderilmelidir.
         /// </summary>
         public async Task SetKullaniciFormYetki(int kullaniciId, int formId, int yetki, int islemKullanici)
         {
             var mevcutId = await SQLExecuteScalar<int?>(@"
-                SELECT ""ID"" FROM ""FormYetki""
-                WHERE ""Kullanici_ID"" = @KullaniciId AND ""Form_ID"" = @FormId AND ""DelUser"" IS NULL
+                SELECT ""ID"" FROM ""KullaniciDetay""
+                WHERE  ""Kullanici_ID"" = @KullaniciId
+                  AND  ""Form_ID""      = @FormId
+                  AND  ""DelUser""      IS NULL
                 LIMIT 1",
                 new { KullaniciId = kullaniciId, FormId = formId });
 
+            // yetki = -1 → kullanıcıya özel kaydı kaldır; etkin yetki tip yetkisine döner.
+            if (yetki < 0)
+            {
+                if (mevcutId.HasValue)
+                    await SQLExecute(
+                        @"UPDATE ""KullaniciDetay"" SET ""DelUser"" = @Del, ""DelDate"" = now() WHERE ""ID"" = @ID",
+                        new { Del = islemKullanici, ID = mevcutId.Value });
+                return;
+            }
+
+            // yetki >= 0 → override kaydını yaz (Gizli=0 da dahil)
             if (mevcutId.HasValue)
             {
-                if (yetki == 0)
-                {
-                    await SQLExecute(@"UPDATE ""FormYetki"" SET ""DelUser"" = @Del, ""DelDate"" = now() WHERE ""ID"" = @ID",
-                        new { Del = islemKullanici, ID = mevcutId.Value });
-                }
-                else
-                {
-                    await SQLExecute(@"UPDATE ""FormYetki"" SET ""Yetki"" = @Yetki, ""UpdUser"" = @Upd, ""UpdDate"" = now() WHERE ""ID"" = @ID",
-                        new { Yetki = yetki, Upd = islemKullanici, ID = mevcutId.Value });
-                }
+                await SQLExecute(
+                    @"UPDATE ""KullaniciDetay""
+                      SET ""Yetki"" = @Yetki, ""UpdUser"" = @Upd, ""UpdDate"" = now()
+                      WHERE ""ID"" = @ID",
+                    new { Yetki = yetki, Upd = islemKullanici, ID = mevcutId.Value });
             }
-            else if (yetki > 0)
+            else
             {
-                await SQLExecute(@"INSERT INTO ""FormYetki"" (""Kullanici_ID"", ""Form_ID"", ""Yetki"", ""CreUser"", ""CreDate"")
-                                   VALUES (@KullaniciId, @FormId, @Yetki, @Cre, now())",
+                await SQLExecute(
+                    @"INSERT INTO ""KullaniciDetay"" (""Kullanici_ID"", ""Form_ID"", ""Yetki"", ""CreUser"", ""CreDate"")
+                      VALUES (@KullaniciId, @FormId, @Yetki, @Cre, now())",
                     new { KullaniciId = kullaniciId, FormId = formId, Yetki = yetki, Cre = islemKullanici });
             }
         }
@@ -564,7 +610,7 @@ namespace QRDestekliStokVeBarkodYonetimi.Services
                 SELECT tfy.""ID"", tfy.""KullaniciTip_ID"", tfy.""Form_ID"", tfy.""Yetki"",
                        tfy.""CreUser"", tfy.""CreDate"", tfy.""UpdUser"", tfy.""UpdDate"",
                        tfy.""DelUser"", tfy.""DelDate""
-                FROM ""KullaniciTipFormYetki"" tfy
+                FROM ""KullaniciTipDetay"" tfy
                 WHERE tfy.""DelUser"" IS NULL AND tfy.""KullaniciTip_ID"" = @TipId
                 ORDER BY tfy.""Form_ID""",
                 new { TipId = kullaniciTipId })).ToArray();
@@ -576,7 +622,7 @@ namespace QRDestekliStokVeBarkodYonetimi.Services
         public async Task SetKullaniciTipFormYetki(int kullaniciTipId, int formId, int yetki, int islemKullanici)
         {
             var mevcutId = await SQLExecuteScalar<int?>(@"
-                SELECT ""ID"" FROM ""KullaniciTipFormYetki""
+                SELECT ""ID"" FROM ""KullaniciTipDetay""
                 WHERE ""KullaniciTip_ID"" = @TipId AND ""Form_ID"" = @FormId AND ""DelUser"" IS NULL
                 LIMIT 1",
                 new { TipId = kullaniciTipId, FormId = formId });
@@ -585,18 +631,18 @@ namespace QRDestekliStokVeBarkodYonetimi.Services
             {
                 if (yetki == 0)
                 {
-                    await SQLExecute(@"UPDATE ""KullaniciTipFormYetki"" SET ""DelUser"" = @Del, ""DelDate"" = now() WHERE ""ID"" = @ID",
+                    await SQLExecute(@"UPDATE ""KullaniciTipDetay"" SET ""DelUser"" = @Del, ""DelDate"" = now() WHERE ""ID"" = @ID",
                         new { Del = islemKullanici, ID = mevcutId.Value });
                 }
                 else
                 {
-                    await SQLExecute(@"UPDATE ""KullaniciTipFormYetki"" SET ""Yetki"" = @Yetki, ""UpdUser"" = @Upd, ""UpdDate"" = now() WHERE ""ID"" = @ID",
+                    await SQLExecute(@"UPDATE ""KullaniciTipDetay"" SET ""Yetki"" = @Yetki, ""UpdUser"" = @Upd, ""UpdDate"" = now() WHERE ""ID"" = @ID",
                         new { Yetki = yetki, Upd = islemKullanici, ID = mevcutId.Value });
                 }
             }
             else if (yetki > 0)
             {
-                await SQLExecute(@"INSERT INTO ""KullaniciTipFormYetki"" (""KullaniciTip_ID"", ""Form_ID"", ""Yetki"", ""CreUser"", ""CreDate"")
+                await SQLExecute(@"INSERT INTO ""KullaniciTipDetay"" (""KullaniciTip_ID"", ""Form_ID"", ""Yetki"", ""CreUser"", ""CreDate"")
                                    VALUES (@TipId, @FormId, @Yetki, @Cre, now())",
                     new { TipId = kullaniciTipId, FormId = formId, Yetki = yetki, Cre = islemKullanici });
             }

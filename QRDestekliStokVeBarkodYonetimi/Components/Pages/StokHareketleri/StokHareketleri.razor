@@ -1,6 +1,9 @@
 @page "/stok-hareketleri"
 @layout QRDestekliStokVeBarkodYonetimi.Components.Layout.MainLayout
+@rendermode InteractiveServer
 
+@inject YetkiService YetkiSvc
+@inject NavigationManager Nav
 
 <PageTitle>Stok Hareketleri</PageTitle>
 
@@ -66,59 +69,30 @@ else
     </div>
 
     <RadzenDataGrid Data="@filtreliHareketler" TItem="ItemStokHareketleri"
-                    AllowSorting="true"
-                    AllowFiltering="true" FilterMode="FilterMode.SimpleWithMenu"
-                    AllowPaging="true" PageSize="20"
-                    EmptyText="Kayıt bulunamadı."
-                    ColumnWidth="160px">
+                    AllowSorting="true" AllowFiltering="true" FilterMode="FilterMode.SimpleWithMenu"
+                    AllowPaging="true" PageSize="20" EmptyText="Kayıt bulunamadı." ColumnWidth="160px">
         <Columns>
-
-            <RadzenDataGridColumn TItem="ItemStokHareketleri" Property="ID" Title="ID"
-                                  Width="70px" Frozen="true" />
-
-            <RadzenDataGridColumn TItem="ItemStokHareketleri" Property="UrunKodu" Title="Ürün Kodu"
-                                  Width="130px" />
-
-            <RadzenDataGridColumn TItem="ItemStokHareketleri" Property="UrunAd" Title="Ürün Adı"
-                                  MinWidth="180px" />
-
-            <RadzenDataGridColumn TItem="ItemStokHareketleri" Property="HareketTipi" Title="Hareket Tipi"
-                                  Width="130px" TextAlign="TextAlign.Center">
+            <RadzenDataGridColumn TItem="ItemStokHareketleri" Property="ID" Title="ID" Width="70px" Frozen="true" />
+            <RadzenDataGridColumn TItem="ItemStokHareketleri" Property="UrunKodu" Title="Ürün Kodu" Width="130px" />
+            <RadzenDataGridColumn TItem="ItemStokHareketleri" Property="UrunAd" Title="Ürün Adı" MinWidth="180px" />
+            <RadzenDataGridColumn TItem="ItemStokHareketleri" Property="HareketTipi" Title="Hareket Tipi" Width="130px" TextAlign="TextAlign.Center">
                 <Template Context="row">
-                    @if (row.HareketTipi == 1)
-                    {
-                        <RadzenBadge Text="Giriş" BadgeStyle="BadgeStyle.Success" />
-                    }
-                    else if (row.HareketTipi == 2)
-                    {
-                        <RadzenBadge Text="Çıkış" BadgeStyle="BadgeStyle.Danger" />
-                    }
-                    else
-                    {
-                        <RadzenBadge Text="Diğer" BadgeStyle="BadgeStyle.Info" />
-                    }
+                    @if (row.HareketTipi == 1) { <RadzenBadge Text="Giriş" BadgeStyle="BadgeStyle.Success" /> }
+                    else if (row.HareketTipi == 2) { <RadzenBadge Text="Çıkış" BadgeStyle="BadgeStyle.Danger" /> }
+                    else { <RadzenBadge Text="Diğer" BadgeStyle="BadgeStyle.Info" /> }
                 </Template>
             </RadzenDataGridColumn>
-
-            <RadzenDataGridColumn TItem="ItemStokHareketleri" Property="Miktar" Title="Miktar"
-                                  Width="110px" TextAlign="TextAlign.Right">
+            <RadzenDataGridColumn TItem="ItemStokHareketleri" Property="Miktar" Title="Miktar" Width="110px" TextAlign="TextAlign.Right">
                 <Template Context="row">
                     <span style="font-weight:600; color:@(row.HareketTipi == 1 ? "#2e7d32" : "#c62828")">
                         @(row.HareketTipi == 2 ? "-" : "+")@row.Miktar.ToString("N2")
                     </span>
                 </Template>
             </RadzenDataGridColumn>
-
-            <RadzenDataGridColumn TItem="ItemStokHareketleri" Property="Not" Title="Not"
-                                  MinWidth="200px">
-                <Template Context="row">
-                    @(string.IsNullOrWhiteSpace(row.Not) ? "-" : row.Not)
-                </Template>
+            <RadzenDataGridColumn TItem="ItemStokHareketleri" Property="Not" Title="Not" MinWidth="200px">
+                <Template Context="row">@(string.IsNullOrWhiteSpace(row.Not) ? "-" : row.Not)</Template>
             </RadzenDataGridColumn>
-
-            <RadzenDataGridColumn TItem="ItemStokHareketleri" Property="CreDate" Title="Tarih"
-                                  Width="160px" FormatString="{0:dd.MM.yyyy HH:mm}" />
-
+            <RadzenDataGridColumn TItem="ItemStokHareketleri" Property="CreDate" Title="Tarih" Width="160px" FormatString="{0:dd.MM.yyyy HH:mm}" />
         </Columns>
     </RadzenDataGrid>
 }
@@ -134,6 +108,12 @@ else
 
     protected override async Task OnInitializedAsync()
     {
+        await YetkiSvc.EnsureFormsLoadedAsync();
+        if (!YetkiSvc.ErişimVar("/stok-hareketleri"))
+        {
+            Nav.NavigateTo("/erisim-engeli", true);
+            return;
+        }
         await LoadAsync();
     }
 
@@ -150,25 +130,15 @@ else
             NotificationSvc.Notify(NotificationSeverity.Error, "Hata",
                 "Veriler yüklenirken bir sorun oluştu: " + ex.Message, 5000);
         }
-        finally
-        {
-            isLoading = false;
-        }
+        finally { isLoading = false; }
     }
 
     private void ApplyFilter()
     {
         var sorgu = tumHareketler.AsEnumerable();
-
-        if (filtreHareketTipi.HasValue)
-            sorgu = sorgu.Where(x => x.HareketTipi == filtreHareketTipi.Value);
-
-        if (filtreBasTarih.HasValue)
-            sorgu = sorgu.Where(x => x.CreDate.Date >= filtreBasTarih.Value.Date);
-
-        if (filtreBitTarih.HasValue)
-            sorgu = sorgu.Where(x => x.CreDate.Date <= filtreBitTarih.Value.Date);
-
+        if (filtreHareketTipi.HasValue) sorgu = sorgu.Where(x => x.HareketTipi == filtreHareketTipi.Value);
+        if (filtreBasTarih.HasValue) sorgu = sorgu.Where(x => x.CreDate.Date >= filtreBasTarih.Value.Date);
+        if (filtreBitTarih.HasValue) sorgu = sorgu.Where(x => x.CreDate.Date <= filtreBitTarih.Value.Date);
         filtreliHareketler = sorgu.ToArray();
     }
 
