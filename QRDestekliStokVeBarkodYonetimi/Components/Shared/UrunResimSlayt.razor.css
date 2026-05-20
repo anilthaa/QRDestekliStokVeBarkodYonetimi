@@ -1,0 +1,131 @@
+.urun-resim-slayt {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+
+.urun-resim-slayt-slider {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 220px;
+}
+
+.urun-resim-slayt.kompakt .urun-resim-slayt-slider {
+    min-height: 160px;
+}
+
+.urun-resim-slayt-frame {
+    margin: 0;
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.06);
+}
+
+.urun-resim-slayt-frame img {
+    display: block;
+    width: 100%;
+    max-height: 280px;
+    object-fit: contain;
+    background: #fff;
+}
+
+.urun-resim-slayt.kompakt .urun-resim-slayt-frame img {
+    max-height: 180px;
+}
+
+.urun-resim-slayt-btn {
+    flex-shrink: 0;
+    width: 34px;
+    height: 34px;
+    border: none;
+    border-radius: 50%;
+    background: #fff;
+    color: #4338ca;
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.15s, transform 0.15s;
+}
+
+.urun-resim-slayt-btn:hover {
+    background: #6366f1;
+    color: #fff;
+}
+
+.urun-resim-slayt-btn:active {
+    transform: scale(0.94);
+}
+
+.urun-resim-slayt-footer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.4rem;
+    padding-top: 0.65rem;
+}
+
+.urun-resim-slayt-dots {
+    display: flex;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+
+.urun-resim-slayt-dot {
+    width: 8px;
+    height: 8px;
+    padding: 0;
+    border: none;
+    border-radius: 50%;
+    background: #cbd5e1;
+    cursor: pointer;
+}
+
+.urun-resim-slayt-dot.active {
+    background: #6366f1;
+    transform: scale(1.15);
+}
+
+.urun-resim-slayt-counter {
+    font-size: 0.72rem;
+    color: #64748b;
+    font-weight: 600;
+}
+
+.urun-resim-slayt-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    min-height: 160px;
+    color: #94a3b8;
+    background: #f8fafc;
+    border: 1px dashed #e2e8f0;
+    border-radius: 12px;
+    padding: 1rem;
+}
+
+.urun-resim-slayt-empty.kompakt {
+    min-height: 120px;
+}
+
+.urun-resim-slayt-empty i {
+    font-size: 2rem;
+    opacity: 0.45;
+}
+
+.urun-resim-slayt-empty span {
+    font-size: 0.85rem;
+}

@@ -53,41 +53,48 @@ else
 @if (bulunanUrun != null)
 {
     <RadzenCard Style="margin-bottom:1rem; border-left:4px solid #2e7d32; padding:1rem;">
-        <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:0.5rem;">
-            <div>
-                <div style="font-size:1rem; font-weight:600;">@bulunanUrun.Ad</div>
-                <div style="font-size:0.82rem; color:#666;">Ürün Kodu: @bulunanUrun.UrunKodu</div>
-                <div style="font-size:0.82rem; color:#666;">Barkod: @bulunanUrun.BarkodNo</div>
+        <div class="stok-urun-kart">
+            <div class="stok-urun-gorsel">
+                <UrunResimSlayt ResimYolu="@bulunanUrun.ResimYolu" UrunAdi="@bulunanUrun.Ad" Kompakt="true" />
             </div>
-            <div style="text-align:right;">
-                <div style="font-size:0.82rem; color:#666;">Mevcut Stok</div>
-                <div style="font-size:1.4rem; font-weight:700; color:@(bulunanUrun.Stok <= bulunanUrun.KritikStokSeviyesi ? "#c62828" : "#2e7d32")">
-                    @bulunanUrun.Stok
+            <div class="stok-urun-icerik">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:0.5rem;">
+                    <div>
+                        <div style="font-size:1rem; font-weight:600;">@bulunanUrun.Ad</div>
+                        <div style="font-size:0.82rem; color:#666;">Ürün Kodu: @bulunanUrun.UrunKodu</div>
+                        <div style="font-size:0.82rem; color:#666;">Barkod: @bulunanUrun.BarkodNo</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div style="font-size:0.82rem; color:#666;">Mevcut Stok</div>
+                        <div style="font-size:1.4rem; font-weight:700; color:@(bulunanUrun.Stok <= bulunanUrun.KritikStokSeviyesi ? "#c62828" : "#2e7d32")">
+                            @bulunanUrun.Stok @birimAdi
+                        </div>
+                    </div>
+                </div>
+                <hr style="margin:0.75rem 0;" />
+                <div style="display:flex; flex-direction:column; gap:0.75rem;">
+                    <div>
+                        <RadzenLabel Text="@($"Giriş Miktarı ({birimAdi})")" />
+                        <RadzenNumeric @bind-Value="girisAdet" TValue="decimal" Min="1" Step="1"
+                                       Style="width:100%; margin-top:4px;" />
+                    </div>
+                    <div>
+                        <RadzenLabel Text="Not (isteğe bağlı)" />
+                        <RadzenTextBox @bind-Value="not" Placeholder="Açıklama..."
+                                       Style="width:100%; margin-top:4px;" />
+                    </div>
+                    <RadzenButton Text="Stok Girişi Yap" Icon="add_circle" ButtonStyle="ButtonStyle.Success"
+                                  Click="@GirisYap"
+                                  Disabled="@(islemDevam || sadecOkuma)"
+                                  Style="@("width:100%;" + (sadecOkuma ? "opacity:0.35;pointer-events:none;" : ""))" />
+                    @if (sadecOkuma)
+                    {
+                        <div style="font-size:0.8rem; color:#c62828; margin-top:6px; text-align:center;">
+                            <i class="fa-solid fa-lock"></i> Bu sayfada yalnızca görüntüleme yetkiniz var.
+                        </div>
+                    }
                 </div>
             </div>
-        </div>
-        <hr style="margin:0.75rem 0;" />
-        <div style="display:flex; flex-direction:column; gap:0.75rem;">
-            <div>
-                <RadzenLabel Text="Giriş Miktarı" />
-                <RadzenNumeric @bind-Value="girisAdet" TValue="decimal" Min="1" Step="1"
-                               Style="width:100%; margin-top:4px;" />
-            </div>
-            <div>
-                <RadzenLabel Text="Not (isteğe bağlı)" />
-                <RadzenTextBox @bind-Value="not" Placeholder="Açıklama..."
-                               Style="width:100%; margin-top:4px;" />
-            </div>
-            <RadzenButton Text="Stok Girişi Yap" Icon="add_circle" ButtonStyle="ButtonStyle.Success"
-                          Click="@GirisYap"
-                          Disabled="@(islemDevam || sadecOkuma)"
-                          Style="@("width:100%;" + (sadecOkuma ? "opacity:0.35;pointer-events:none;" : ""))" />
-            @if (sadecOkuma)
-            {
-                <div style="font-size:0.8rem; color:#c62828; margin-top:6px; text-align:center;">
-                    <i class="fa-solid fa-lock"></i> Bu sayfada yalnızca görüntüleme yetkiniz var.
-                </div>
-            }
         </div>
     </RadzenCard>
 }
@@ -116,6 +123,7 @@ else if (aramaTamamlandi)
     private string manuelBarkod = string.Empty;
 
     private ItemUrun? bulunanUrun;
+    private string birimAdi = "adet";
     private bool aramaTamamlandi = false;
     private decimal girisAdet = 1;
     private string? not;
@@ -127,7 +135,8 @@ else if (aramaTamamlandi)
 
     protected override async Task OnInitializedAsync()
     {
-        await YetkiSvc.EnsureFormsLoadedAsync();
+        await AuthState.InitializeAsync();
+        await YetkiSvc.EnsureReadyAsync();
         if (!YetkiSvc.ErişimVar("/stok-giris"))
         {
             Nav.NavigateTo("/erisim-engeli", true);
@@ -186,12 +195,20 @@ else if (aramaTamamlandi)
 
     private async Task BarkodAra(string barkod)
     {
+        barkod = QrSvc.BarkodNoCikar(barkod) ?? barkod;
         if (string.IsNullOrWhiteSpace(barkod)) return;
         bulunanUrun = null;
+        birimAdi = "adet";
         aramaTamamlandi = false;
         girisAdet = 1;
         not = null;
         bulunanUrun = await DataSvc.GetUrunByBarkod(barkod);
+        if (bulunanUrun != null)
+        {
+            var birimler = await DataSvc.GetBirim(bulunanUrun.Birim_ID);
+            if (birimler.Length > 0 && !string.IsNullOrWhiteSpace(birimler[0].Ad))
+                birimAdi = birimler[0].Ad.Trim();
+        }
         aramaTamamlandi = true;
         StateHasChanged();
     }
@@ -211,11 +228,13 @@ else if (aramaTamamlandi)
             }
             else
             {
-                var log = $"{DateTime.Now:HH:mm:ss} — {bulunanUrun.Ad}: +{girisAdet:N2} giriş yapıldı.";
+                var urunAd = bulunanUrun.Ad;
+                var birim = BirimMetni(birimAdi);
+                var log = $"{DateTime.Now:HH:mm:ss} — {urunAd}: +{girisAdet:N2} {birim} giriş yapıldı.";
                 sonIslemler.Insert(0, log);
                 if (sonIslemler.Count > 10) sonIslemler.RemoveAt(10);
                 NotificationSvc.Notify(NotificationSeverity.Success, "Başarılı",
-                    $"{bulunanUrun.Ad} için {girisAdet:N2} adet stok girişi yapıldı.", 3000);
+                    $"{urunAd} için {girisAdet:N2} {birim} stok girişi yapıldı.", 3000);
                 bulunanUrun = null;
                 aramaTamamlandi = false;
                 manuelBarkod = string.Empty;
@@ -225,6 +244,9 @@ else if (aramaTamamlandi)
         }
         finally { islemDevam = false; }
     }
+
+    private static string BirimMetni(string? birim) =>
+        string.IsNullOrWhiteSpace(birim) ? "adet" : birim.Trim().ToLowerInvariant();
 
     public async ValueTask DisposeAsync()
     {

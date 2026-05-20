@@ -2,9 +2,9 @@
 @layout QRDestekliStokVeBarkodYonetimi.Components.Layout.MainLayout
 @rendermode InteractiveServer
 
-@inject DataService DataSvc
-@inject AuthStateService AuthState
-@inject NavigationManager Nav
+@inject DataService         DataSvc
+@inject AuthStateService    AuthState
+@inject NavigationManager   Nav
 @inject NotificationService NotifSvc
 
 <PageTitle>Kullanıcı Tipi Yetki Yönetimi</PageTitle>
@@ -17,8 +17,8 @@
 }
 else
 {
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:0.5rem;">
-        <h4 style="margin:0;">
+    <div class="page-header page-header--lg">
+        <h4 class="page-header-title">
             <i class="fa-solid fa-shield-halved" style="color:#7b1fa2; margin-right:0.5rem;"></i>
             @if (kullaniciTip is not null)
             {
@@ -29,8 +29,10 @@ else
                 <span>Kullanıcı Tipi Yetki Yönetimi</span>
             }
         </h4>
-        <RadzenButton Text="Geri Dön" Icon="arrow_back" ButtonStyle="ButtonStyle.Light"
-                      Click="@(() => Nav.NavigateTo("/kullanici-tipler"))" />
+        <div class="page-header-actions">
+            <RadzenButton Text="Geri Dön" Icon="arrow_back" ButtonStyle="ButtonStyle.Light"
+                          Click="@(() => Nav.NavigateTo("/kullanici-tipler"))" />
+        </div>
     </div>
 
     @if (kullaniciTip is null)
@@ -47,24 +49,24 @@ else
                     <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
                 }
             </div>
+
             <p style="font-size:0.82rem; color:#888; margin:0 0 1rem;">
                 Bu yetki kümesi, tipin atandığı tüm kullanıcılara uygulanır.
-                Kullanıcı bazlı yetki varsa o önceliğe sahiptir.
+                Kullanıcı bazlı override varsa o önceliğe sahiptir.
             </p>
 
             <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
                 <thead>
                     <tr style="background:#f5f5f5; font-weight:600;">
                         <th style="padding:0.5rem 0.75rem; text-align:left; border-bottom:2px solid #e0e0e0;">Form / Sayfa</th>
-                        <th style="padding:0.5rem; text-align:center; border-bottom:2px solid #e0e0e0; width:100px;">Gizli</th>
-                        <th style="padding:0.5rem; text-align:center; border-bottom:2px solid #e0e0e0; width:100px;">Okuma</th>
-                        <th style="padding:0.5rem; text-align:center; border-bottom:2px solid #e0e0e0; width:100px;">Yazma</th>
+                        <th style="padding:0.5rem; text-align:center; border-bottom:2px solid #e0e0e0; width:170px;">Yetki</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var f in tumFormlar)
                     {
-                        var yetki = yetkiMap.TryGetValue(f.ID, out var y) ? y : 0;
+                        var yetki = yetkiMap.TryGetValue(f.ID, out var y) ? y : YetkiTipi.Gizli;
+
                         <tr style="border-bottom:1px solid #f0f0f0;">
                             <td style="padding:0.45rem 0.75rem;">
                                 @if (!string.IsNullOrWhiteSpace(f.Icon))
@@ -78,16 +80,14 @@ else
                                 }
                             </td>
                             <td style="text-align:center; padding:0.45rem;">
-                                <input type="radio" name="tipyetki_@f.ID" checked="@(yetki == 0)"
-                                       @onchange="@(() => YetkiDegistir(f.ID, 0))" />
-                            </td>
-                            <td style="text-align:center; padding:0.45rem;">
-                                <input type="radio" name="tipyetki_@f.ID" checked="@(yetki == 1)"
-                                       @onchange="@(() => YetkiDegistir(f.ID, 1))" />
-                            </td>
-                            <td style="text-align:center; padding:0.45rem;">
-                                <input type="radio" name="tipyetki_@f.ID" checked="@(yetki == 2)"
-                                       @onchange="@(() => YetkiDegistir(f.ID, 2))" />
+                                <RadzenDropDown TValue="int"
+                                                Value="@yetki"
+                                                Data="@PermissionLevelOption.TipSecenekleri"
+                                                ValueProperty="Deger"
+                                                TextProperty="Etiket"
+                                                Change="@(arg => YetkiDegistir(f.ID, (int)arg))"
+                                                Style="width:150px;"
+                                                Disabled="@yukleniyor" />
                             </td>
                         </tr>
                     }
@@ -101,11 +101,11 @@ else
     [Parameter] public int KullaniciTipId { get; set; }
 
     private bool authChecked = false;
-    private bool yukleniyor = false;
+    private bool yukleniyor  = false;
 
-    private ItemKullaniciTip? kullaniciTip;
-    private ItemForm[] tumFormlar = [];
-    private Dictionary<int, int> yetkiMap = new();
+    private ItemKullaniciTip?    kullaniciTip;
+    private ItemForm[]           tumFormlar = [];
+    private Dictionary<int, int> yetkiMap   = new();
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -125,9 +125,10 @@ else
 
     private async Task LoadAsync()
     {
-        yukleniyor = true;
-        tumFormlar = await DataSvc.GetTumFormlar();
+        yukleniyor   = true;
+        tumFormlar   = await DataSvc.GetTumFormlar();
         kullaniciTip = (await DataSvc.GetKullaniciTip(KullaniciTipId)).FirstOrDefault();
+        yetkiMap     = new();
 
         if (kullaniciTip is not null)
         {
@@ -139,6 +140,11 @@ else
 
     private async Task YetkiDegistir(int formId, int yeniYetki)
     {
+        // Aynı değer seçildiyse gereksiz DB yazımı yapma
+        if (yetkiMap.TryGetValue(formId, out var mevcut) && mevcut == yeniYetki)
+            return;
+
+        // UI state'i optimistik güncelle
         yetkiMap[formId] = yeniYetki;
 
         try
@@ -150,19 +156,24 @@ else
             NotifSvc.Notify(new NotificationMessage
             {
                 Severity = NotificationSeverity.Success,
-                Summary = "Kaydedildi",
+                Summary  = "Kaydedildi",
                 Duration = 1500
             });
         }
         catch (Exception ex)
         {
+            // Hata: state'i DB ile yeniden senkronla
+            await LoadAsync();
+
             NotifSvc.Notify(new NotificationMessage
             {
                 Severity = NotificationSeverity.Error,
-                Summary = "Hata",
-                Detail = ex.Message,
+                Summary  = "Hata",
+                Detail   = ex.Message,
                 Duration = 3000
             });
         }
+
+        StateHasChanged();
     }
 }

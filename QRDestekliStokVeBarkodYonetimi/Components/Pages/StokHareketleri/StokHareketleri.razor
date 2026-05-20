@@ -7,13 +7,20 @@
 
 <PageTitle>Stok Hareketleri</PageTitle>
 
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-    <h3 style="margin:0;">Stok Hareketleri</h3>
-    <RadzenButton Text="Yenile" Icon="refresh" ButtonStyle="ButtonStyle.Secondary"
-                  Click="@LoadAsync" />
+<div class="page-header">
+    <h3 class="page-header-title">Stok Hareketleri</h3>
+    <div class="page-header-actions">
+        <ExportButton TItem="ItemStokHareketleri"
+                      Items="@filtreliHareketler"
+                      Title="Stok Hareketleri"
+                      FileName="stok-hareketleri"
+                      Columns="@CiktiKolonlari()" />
+        <RadzenButton Text="Yenile" Icon="refresh" ButtonStyle="ButtonStyle.Secondary"
+                      Click="@LoadAsync" />
+    </div>
 </div>
 
-<div style="display:flex; gap:1rem; flex-wrap:wrap; margin-bottom:1rem; align-items:flex-end;">
+<div class="filter-toolbar">
     <div>
         <RadzenLabel Text="Hareket Tipi" />
         <RadzenSelectBar @bind-Value="@filtreHareketTipi" TValue="short?" Style="margin-top:4px;">
@@ -106,9 +113,22 @@ else
     private DateTime? filtreBasTarih = null;
     private DateTime? filtreBitTarih = null;
 
+    private IList<ExportColumn<ItemStokHareketleri>> CiktiKolonlari() => new List<ExportColumn<ItemStokHareketleri>>
+    {
+        new() { Header = "ID",          Value = h => h.ID,        Align = ExportAlign.Right, Width = 0.6f },
+        new() { Header = "Ürün Kodu",   Value = h => h.UrunKodu,  Width = 1.2f },
+        new() { Header = "Ürün Adı",    Value = h => h.UrunAd,    Width = 2f   },
+        new() { Header = "Hareket Tipi", Value = h => h.HareketTipi == 1 ? "Giriş" : (h.HareketTipi == 2 ? "Çıkış" : "Diğer"),
+                                         Align = ExportAlign.Center, Width = 1f },
+        new() { Header = "Miktar",      Value = h => h.Miktar,    Format = "N2", Align = ExportAlign.Right, Width = 0.9f },
+        new() { Header = "Not",         Value = h => string.IsNullOrWhiteSpace(h.Not) ? "-" : h.Not, Width = 2f },
+        new() { Header = "Tarih",       Value = h => h.CreDate,   Format = "dd.MM.yyyy HH:mm", Align = ExportAlign.Center, Width = 1.3f },
+    };
+
     protected override async Task OnInitializedAsync()
     {
-        await YetkiSvc.EnsureFormsLoadedAsync();
+        await AuthState.InitializeAsync();
+        await YetkiSvc.EnsureReadyAsync();
         if (!YetkiSvc.ErişimVar("/stok-hareketleri"))
         {
             Nav.NavigateTo("/erisim-engeli", true);

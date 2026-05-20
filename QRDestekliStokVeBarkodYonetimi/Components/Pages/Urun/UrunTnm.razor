@@ -7,16 +7,16 @@
 
 <RadzenTemplateForm TItem="ItemUrun" Data="@model" Submit="@OnSubmitAsync">
 
-    <div class="rz-p-4" style="min-width:480px; display:flex; flex-direction:column; gap:1rem;">
+    <div class="form-shell form-shell--wide rz-p-4">
 
-        <div style="display:flex; gap:1rem;">
-            <div style="flex:1;">
+        <div class="form-row">
+            <div>
                 <RadzenLabel Text="Ürün Kodu *" Component="UrunKodu" />
                 <RadzenTextBox @bind-Value="model.UrunKodu" Name="UrunKodu" Placeholder="Ürün kodu giriniz"
                                Style="width:100%" Disabled="@isBusy" />
                 <RadzenRequiredValidator Component="UrunKodu" Text="Ürün kodu zorunludur." Style="display:block" />
             </div>
-            <div style="flex:1;">
+            <div>
                 <RadzenLabel Text="Barkod No" Component="BarkodNo" />
                 <div style="display:flex; gap:0.4rem; align-items:center;">
                     <RadzenTextBox @bind-Value="model.BarkodNo" Name="BarkodNo" Placeholder="Barkod numarası"
@@ -41,8 +41,8 @@
                             Style="width:100%" Rows="3" Disabled="@isBusy" />
         </div>
 
-        <div style="display:flex; gap:1rem;">
-            <div style="flex:1;">
+        <div class="form-row">
+            <div>
                 <RadzenLabel Text="Kategori *" Component="Kategori_ID" />
                 <RadzenDropDown @bind-Value="model.Kategori_ID" Name="Kategori_ID"
                                 Data="@kategoriler" TextProperty="Ad" ValueProperty="ID"
@@ -50,7 +50,7 @@
                                 Disabled="@isBusy" AllowClear="true" />
                 <RadzenRequiredValidator Component="Kategori_ID" Text="Kategori zorunludur." Style="display:block" />
             </div>
-            <div style="flex:1;">
+            <div>
                 <RadzenLabel Text="Birim *" Component="Birim_ID" />
                 <RadzenDropDown @bind-Value="model.Birim_ID" Name="Birim_ID"
                                 Data="@birimler" TextProperty="Ad" ValueProperty="ID"
@@ -60,13 +60,13 @@
             </div>
         </div>
 
-        <div style="display:flex; gap:1rem;">
-            <div style="flex:1;">
+        <div class="form-row">
+            <div>
                 <RadzenLabel Text="Stok Miktarı" Component="Stok" />
                 <RadzenNumeric @bind-Value="model.Stok" Name="Stok"
                                Style="width:100%" Disabled="@isBusy" Min="0" />
             </div>
-            <div style="flex:1;">
+            <div>
                 <RadzenLabel Text="Kritik Stok Seviyesi" Component="KritikStokSeviyesi" />
                 <RadzenNumeric @bind-Value="model.KritikStokSeviyesi" Name="KritikStokSeviyesi"
                                Style="width:100%" Disabled="@isBusy" Min="0" />
@@ -130,7 +130,7 @@
                          AllowClose="false">@errorMessage</RadzenAlert>
         }
 
-        <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:0.5rem;">
+        <div class="form-actions">
             <RadzenButton ButtonStyle="ButtonStyle.Light" Text="İptal" Icon="cancel"
                           Click="@OnCancel" Disabled="@isBusy" />
             <RadzenButton ButtonType="ButtonType.Submit" Text="Kaydet" Icon="save"
@@ -281,8 +281,10 @@
                 model.UpdUser = userId;
 
             model.DelUser = 0;
+
             model.ResimYolu = resimListesi.Count > 0 ? string.Join(";", resimListesi) : null;
 
+            var yeniKayit = model.ID == 0;
             var result = await DataSvc.SetUrun(model);
 
             if (result.SonucKodu < 0)
@@ -292,7 +294,7 @@
             }
 
             NotificationSvc.Notify(NotificationSeverity.Success, "Başarılı",
-                model.ID == 0 ? "Ürün eklendi." : "Ürün güncellendi.", 3000);
+                yeniKayit ? "Ürün eklendi." : "Ürün güncellendi.", 3000);
 
             DialogSvc.Close(true);
         }

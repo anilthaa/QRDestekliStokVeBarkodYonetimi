@@ -1,4 +1,6 @@
-﻿@inject DataService DataSvc
+﻿@implements IDisposable
+
+@inject DataService DataSvc
 @inject AuthStateService AuthState
 @inject YetkiService YetkiSvc
 @inject NavigationManager NavigationManager
@@ -11,82 +13,56 @@
 
 <input type="checkbox" title="Navigation menu" class="navbar-toggler" />
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
+<div class="nav-scrollable">
     @if (AuthState.CurrentUser is not null)
     {
-        <div class="user-box">
-            <div class="user-avatar">@Initials(AuthState.CurrentUser)</div>
+        <a href="/profil" class="user-box user-box-link" title="Profilimi Görüntüle"
+           onclick="document.querySelector('.navbar-toggler:checked')?.click()">
+            <div class="user-avatar">
+                @if (!string.IsNullOrWhiteSpace(AuthState.CurrentUser.ProfilResmi))
+                {
+                    <img src="@($"{AuthState.CurrentUser.ProfilResmi}?v={AuthState.CurrentUser.UpdDate?.Ticks ?? AuthState.CurrentUser.ID}")"
+                         alt="" />
+                }
+                else
+                {
+                    @Initials(AuthState.CurrentUser)
+                }
+            </div>
             <div class="user-info">
                 <div class="user-name">@AuthState.CurrentUser.Ad @AuthState.CurrentUser.Soyad</div>
                 <div class="user-mail">@AuthState.CurrentUser.Eposta</div>
             </div>
-        </div>
+            <i class="fa-solid fa-chevron-right user-box-arrow"></i>
+        </a>
     }
 
     <nav class="flex-column">
         @* Ana Sayfa her zaman görünür, yetki kontrolü yok *@
         <div class="nav-item px-3">
-            <NavLink class="nav-link" href="/" Match="NavLinkMatch.All">
+            <NavLink class="nav-link" href="/" Match="NavLinkMatch.All"
+                     onclick="document.querySelector('.navbar-toggler:checked')?.click()">
                 <i class="fa-solid fa-house"></i> Ana Sayfa
             </NavLink>
         </div>
 
-        @foreach (var form in GorunurMenuler().Where(f => f.UstMenu_ID == null && f.SayfaURL != "/").OrderBy(f => f.Sira))
+        @{
+            var visibleForms = GorunurMenuler();
+        }
+        @foreach (var root in visibleForms.Where(f => f.UstMenu_ID == null && f.SayfaURL != "/").OrderBy(f => f.Sira))
         {
-            var altMenuler = GorunurMenuler().Where(f => f.UstMenu_ID == form.ID).OrderBy(f => f.Sira).ToList();
-            var hasChildren = altMenuler.Count > 0;
-            var isOpen = expandedMenus.Contains(form.ID);
-
-            @if (hasChildren)
-            {
-                <div class="nav-item px-3">
-                    <button class="nav-link nav-group-btn @(isOpen ? "open" : "")"
-                            @onclick="@(() => ToggleMenu(form.ID))"
-                            @onclick:stopPropagation="true">
-                        @if (!string.IsNullOrWhiteSpace(form.Icon))
-                        {
-                            <i class="@form.Icon"></i>
-                        }
-                        <span class="nav-group-label">@form.Ad</span>
-                        <i class="fa-solid fa-chevron-down nav-chevron @(isOpen ? "rotated" : "")"></i>
-                    </button>
-
-                    @if (isOpen)
-                    {
-                        <div class="nav-submenu">
-                            @foreach (var alt in altMenuler)
-                            {
-                                <NavLink class="nav-link nav-sublink" href="@alt.SayfaURL">
-                                    @if (!string.IsNullOrWhiteSpace(alt.Icon))
-                                    {
-                                        <i class="@alt.Icon"></i>
-                                    }
-                                    @alt.Ad
-                                </NavLink>
-                            }
-                        </div>
-                    }
-                </div>
-            }
-            else
-            {
-                <div class="nav-item px-3">
-                    <NavLink class="nav-link" href="@form.SayfaURL">
-                        @if (!string.IsNullOrWhiteSpace(form.Icon))
-                        {
-                            <i class="@form.Icon"></i>
-                        }
-                        @form.Ad
-                    </NavLink>
-                </div>
-            }
+            @RenderMenuForm(root, 0, visibleForms)
         }
     </nav>
 
     <div class="logout-footer">
-        <button type="button" class="logout-btn-fixed" @onclick="LogoutAsync">
-            <i class="fa-solid fa-right-from-bracket"></i> Çıkış Yap
-        </button>
+        @* Cookie auth: form-post /api/auth/logout cookie'yi temizler ve /login'e redirect eder.
+           Tam HTTP request olduğu için Blazor circuit de yeniden kurulur, state temiz başlar. *@
+        <form method="post" action="/api/auth/logout" style="margin:0;">
+            <button type="submit" class="logout-btn-fixed">
+                <i class="fa-solid fa-right-from-bracket"></i> Çıkış Yap
+            </button>
+        </form>
     </div>
 </div>
 
@@ -96,10 +72,12 @@
         flex-direction: column;
         height: 100%;
     }
-    .nav-scrollable nav {
-        flex: 1;
-        overflow-y: auto;
-    }
+
+        .nav-scrollable nav {
+            flex: 1;
+            overflow-y: auto;
+        }
+
     .nav-group-btn {
         display: flex;
         align-items: center;
@@ -114,34 +92,49 @@
         text-align: left;
         transition: color 0.15s;
     }
-    .nav-group-btn:hover, .nav-group-btn.open {
-        color: #fff;
-    }
+
+        .nav-group-btn:hover, .nav-group-btn.open {
+            color: #fff;
+        }
+
+        /* İkonu leaf linklerle aynı sabit-genişlikli kolonda hizala. */
+        .nav-group-btn > i {
+            width: 1.25rem;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
     .nav-group-label {
         flex: 1;
     }
+
     .nav-chevron {
         font-size: 0.7rem;
         transition: transform 0.2s ease;
     }
-    .nav-chevron.rotated {
-        transform: rotate(180deg);
-    }
+
+        .nav-chevron.rotated {
+            transform: rotate(180deg);
+        }
+
     .nav-submenu {
-        padding-left: 1.2rem;
+        padding-left: 0.6rem;
         border-left: 2px solid rgba(255,255,255,0.15);
-        margin: 0.15rem 0 0.25rem 0.5rem;
+        margin: 0.15rem 0 0.25rem 0.25rem;
     }
+
     .nav-sublink {
-        font-size: 0.88rem !important;
+        font-size: 0.95rem !important;
         padding-top: 0.25rem !important;
         padding-bottom: 0.25rem !important;
     }
+
     .logout-footer {
         padding: 0.75rem 1rem;
         border-top: 1px solid rgba(255,255,255,0.12);
         margin-top: auto;
     }
+
     .logout-btn-fixed {
         display: flex;
         align-items: center;
@@ -156,9 +149,40 @@
         cursor: pointer;
         transition: background 0.15s, color 0.15s;
     }
-    .logout-btn-fixed:hover {
-        background: rgba(255,255,255,0.1);
-        color: #fff;
+
+        .logout-btn-fixed:hover {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+        }
+    /* ── Tıklanabilir kullanıcı kutusu ──────────────────────── */
+    .user-box-link {
+        display: flex;
+        align-items: center;
+        text-decoration: none;
+        cursor: pointer;
+        border-radius: 8px;
+        transition: background 0.15s;
+        padding: 0.5rem 0.75rem;
+        margin: 0.5rem 0.5rem 0;
+        color: rgba(255,255,255,0.85);
+    }
+
+        .user-box-link:hover {
+            background: rgba(255,255,255,0.1);
+            color: #fff;
+        }
+
+    .user-box-arrow {
+        font-size: 0.65rem;
+        opacity: 0.4;
+        margin-left: auto;
+        flex-shrink: 0;
+        transition: opacity 0.15s, transform 0.15s;
+    }
+
+    .user-box-link:hover .user-box-arrow {
+        opacity: 0.9;
+        transform: translateX(2px);
     }
 </style>
 
@@ -172,26 +196,34 @@
     /// Kurallar:
     ///  - Yetki henüz yüklenmediyse (IsLoaded = false) boş liste döner; menü gösterilmez.
     ///  - Yüklendi fakat hiç erişilebilir form yoksa (tümü Gizli/tanımsız) boş liste döner.
-    ///  - Üst menü grubunun kendi ID'si yetkili olmasa bile, altında yetkili alt menü varsa grup da gösterilir.
+    ///  - Üst menü grubunun kendi ID'si yetkili olmasa bile, altında yetkili (herhangi bir
+    ///    derinlikte) bir form varsa, o formun tüm UstMenu_ID atalar zinciri görünür kümeye
+    ///    eklenir. Böylece sınırsız iç içe menü yapıları doğru render edilir.
     /// </summary>
-    private IEnumerable<ItemForm> GorunurMenuler()
+    private IReadOnlyList<ItemForm> GorunurMenuler()
     {
         // Yüklenmediyse hiç gösterme — "boş yetki = tümünü göster" mantığı artık geçersiz
-        if (!YetkiSvc.IsLoaded) return [];
+        if (!YetkiSvc.IsLoaded) return Array.Empty<ItemForm>();
 
         var erisebilir = YetkiSvc.ErisebilirFormIdler();
 
         // Doğrudan yetkili formlar (Gizli = 0 olanlar zaten hariç)
         var gorunur = menuItems.Where(f => erisebilir.Contains(f.ID)).ToHashSet();
 
-        // Üst menü grubunun kendi ID'si yetkili olmasa bile altında yetkili alt menü varsa ekle
-        foreach (var grup in menuItems.Where(f => f.UstMenu_ID == null && !gorunur.Contains(f)))
+        // UstMenu_ID zincirini yukarı doğru yürüyerek tüm ataları ekle.
+        // Aksi halde derin (3+ seviye) hiyerarşilerde aradaki gruplar gizli kalır.
+        var byId = menuItems.ToDictionary(f => f.ID);
+        foreach (var f in menuItems.Where(f => erisebilir.Contains(f.ID)).ToList())
         {
-            if (menuItems.Any(f => f.UstMenu_ID == grup.ID && erisebilir.Contains(f.ID)))
-                gorunur.Add(grup);
+            var cur = f;
+            while (cur.UstMenu_ID is int parentId && byId.TryGetValue(parentId, out var parent))
+            {
+                if (!gorunur.Add(parent)) break; // ata zaten eklenmişse daha yukarı çıkmaya gerek yok
+                cur = parent;
+            }
         }
 
-        return menuItems.Where(f => gorunur.Contains(f));
+        return menuItems.Where(f => gorunur.Contains(f)).ToList();
     }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
@@ -217,28 +249,29 @@
 
     private async void OnAuthChanged()
     {
-        if (AuthState.IsAuthenticated)
+        try
         {
-            try
+            if (AuthState.IsAuthenticated)
             {
                 menuItems = await DataSvc.GetFormlar();
                 if (AuthState.CurrentUser is not null)
                     await YetkiSvc.LoadAsync(AuthState.CurrentUser.ID);
             }
-            catch { }
+            else
+            {
+                menuItems = [];
+                expandedMenus.Clear();
+                YetkiSvc.Clear();
+            }
+            await InvokeAsync(StateHasChanged);
         }
-        else
-        {
-            menuItems = [];
-            expandedMenus.Clear();
-            YetkiSvc.Clear();
-        }
-        await InvokeAsync(StateHasChanged);
+        catch { /* event handler'da exception yutulur; UI çökmesin */ }
     }
 
     private async void OnYetkiChanged()
     {
-        await InvokeAsync(StateHasChanged);
+        try { await InvokeAsync(StateHasChanged); }
+        catch { /* dispose sonrası çağrı vb. durumlar için sessiz */ }
     }
 
     public void Dispose()
@@ -255,16 +288,61 @@
             expandedMenus.Add(id);
     }
 
-    private async Task LogoutAsync()
-    {
-        await AuthState.LogoutAsync();
-        NavigationManager.NavigateTo("/login", replace: true);
-    }
-
     private static string Initials(ItemKullanicilar u)
     {
         var a = !string.IsNullOrWhiteSpace(u.Ad) ? char.ToUpperInvariant(u.Ad[0]).ToString() : "";
         var s = !string.IsNullOrWhiteSpace(u.Soyad) ? char.ToUpperInvariant(u.Soyad[0]).ToString() : "";
         return (a + s) is var init && init.Length > 0 ? init : "?";
     }
+
+    // Recursive render — her seviye için kendini çağırır.
+    // Üretilen tüm .nav-item div'leri NavMenu'nün scope attribute'unu taşıdığı için
+    // NavMenu.razor.css içindeki ".nav-item ::deep .nav-link" gibi scoped kurallar
+    // tüm derinliklere otomatik olarak uygulanır → görsel tutarlılık.
+    private RenderFragment RenderMenuForm(ItemForm form, int depth, IReadOnlyList<ItemForm> all) =>
+        @<text>
+            @{
+                var children = all.Where(f => f.UstMenu_ID == form.ID).OrderBy(f => f.Sira).ToList();
+                var hasChildren = children.Count > 0;
+                var isOpen = expandedMenus.Contains(form.ID);
+            }
+            @if (hasChildren)
+            {
+                <div class="nav-item px-3">
+                    <button type="button" class="nav-link nav-group-btn @(isOpen ? "open" : "")"
+                            @onclick="@(() => ToggleMenu(form.ID))">
+                        @if (!string.IsNullOrWhiteSpace(form.Icon))
+                        {
+                            <i class="@form.Icon"></i>
+                        }
+                        <span class="nav-group-label">@form.Ad</span>
+                        <i class="fa-solid fa-chevron-down nav-chevron @(isOpen ? "rotated" : "")"></i>
+                    </button>
+
+                    @if (isOpen)
+                    {
+                        <div class="nav-submenu">
+                            @foreach (var child in children)
+                            {
+                                @RenderMenuForm(child, depth + 1, all)
+                            }
+                        </div>
+                    }
+                </div>
+            }
+            else
+            {
+                var linkClass = depth > 0 ? "nav-link nav-sublink" : "nav-link";
+                <div class="nav-item px-3">
+                    <NavLink class="@linkClass" href="@form.SayfaURL"
+                             onclick="document.querySelector('.navbar-toggler:checked')?.click()">
+                        @if (!string.IsNullOrWhiteSpace(form.Icon))
+                        {
+                            <i class="@form.Icon"></i>
+                        }
+                        @form.Ad
+                    </NavLink>
+                </div>
+            }
+        </text>;
 }

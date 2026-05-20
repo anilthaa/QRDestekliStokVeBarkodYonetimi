@@ -1,0 +1,22 @@
+.dashboard-detail-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    width: 100%;
+    /* Mobilde/tablette alt alta daha ferah aralık */
+    gap: 2.5rem;
+}
+
+.dashboard-detail-panel {
+    min-width: 0;
+}
+
+@media (min-width: 992px) {
+    .dashboard-detail-grid.two-col {
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem 2rem;
+    }
+
+    .dashboard-detail-grid:not(.two-col) {
+        gap: 1.5rem;
+    }
+}

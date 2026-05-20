@@ -1,6 +1,6 @@
 <RadzenTemplateForm TItem="ItemKullaniciTip" Data="@model" Submit="@OnSubmitAsync">
 
-    <div class="rz-p-4" style="min-width:420px; display:flex; flex-direction:column; gap:1rem;">
+    <div class="form-shell rz-p-4">
 
         <div>
             <RadzenLabel Text="Kullanıcı Tipi Adı *" Component="Ad" />
@@ -14,13 +14,20 @@
             <RadzenLabel Text="Aktif" Component="Aktif" />
         </div>
 
+        <div style="display:flex; align-items:flex-start; gap:0.5rem;">
+            <RadzenCheckBox @bind-Value="model.Varsayilan" Name="Varsayilan" Disabled="@isBusy" />
+            <RadzenLabel Text="Yeni kayıt olan kullanıcılar için varsayılan tip"
+                         Component="Varsayilan"
+                         Style="line-height:1.35;" />
+        </div>
+
         @if (!string.IsNullOrEmpty(errorMessage))
         {
             <RadzenAlert AlertStyle="AlertStyle.Danger" ShowIcon="true" Variant="Variant.Flat"
                          AllowClose="false">@errorMessage</RadzenAlert>
         }
 
-        <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:0.5rem;">
+        <div class="form-actions">
             <RadzenButton ButtonStyle="ButtonStyle.Light" Text="İptal" Icon="cancel"
                           Click="@OnCancel" Disabled="@isBusy" />
             <RadzenButton ButtonType="ButtonType.Submit" Text="Kaydet" Icon="save"
@@ -47,6 +54,7 @@
                 ID      = Item.ID,
                 Ad      = Item.Ad,
                 Aktif   = Item.Aktif,
+                Varsayilan = Item.Varsayilan,
                 CreUser = Item.CreUser,
                 CreDate = Item.CreDate,
                 UpdUser = Item.UpdUser,
@@ -72,6 +80,7 @@
 
             model.DelUser = 0;
 
+            var yeniKayit = model.ID == 0;
             var result = await DataSvc.SetKullaniciTip(model);
 
             if (result.SonucKodu < 0)
@@ -81,7 +90,7 @@
             }
 
             NotificationSvc.Notify(NotificationSeverity.Success, "Başarılı",
-                model.ID == 0 ? "Kullanıcı tipi eklendi." : "Kullanıcı tipi güncellendi.", 3000);
+                yeniKayit ? "Kullanıcı tipi eklendi." : "Kullanıcı tipi güncellendi.", 3000);
 
             DialogSvc.Close(true);
         }

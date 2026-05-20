@@ -1,0 +1,67 @@
+.profil-page {
+    box-sizing: border-box;
+    width: 100%;
+    max-width: 960px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+    padding: 0 1rem 2.5rem;
+}
+
+.profil-hero {
+    border-radius: 16px;
+    box-shadow: 0 4px 24px rgba(99, 102, 241, 0.22);
+}
+
+@media (min-width: 640px) {
+    .profil-page {
+        padding: 0 1.25rem 2.5rem;
+    }
+}
+
+@media (min-width: 992px) {
+    .profil-page {
+        padding: 0 0 2.5rem;
+    }
+}
+
+.profil-forms-grid {
+    display: grid;
+    gap: 1.75rem;
+    grid-template-columns: 1fr;
+    width: 100%;
+    align-items: stretch;
+}
+
+@media (min-width: 992px) {
+    .profil-forms-grid {
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem 1.75rem;
+    }
+}
+
+.profil-form-card {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+}
+
+.profil-form-card ::deep .rz-card-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+}
+
+.profil-section-head {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin-bottom: 1.25rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid var(--rz-border-color);
+}

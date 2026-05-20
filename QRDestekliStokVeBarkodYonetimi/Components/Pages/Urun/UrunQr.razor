@@ -4,7 +4,13 @@
     {
         <div style="text-align:center;">
             <p style="margin:0 0 0.25rem 0; color:#555; font-size:0.85rem;">Barkod: <strong>@BarkodNo</strong></p>
-            <p style="margin:0 0 1rem 0; color:#555; font-size:0.85rem;">Ürün: <strong>@UrunAdi</strong></p>
+            <p style="margin:0 0 0.5rem 0; color:#555; font-size:0.85rem;">Ürün: <strong>@UrunAdi</strong></p>
+            @if (!string.IsNullOrEmpty(detayUrl))
+            {
+                <p style="margin:0 0 1rem 0; color:#666; font-size:0.78rem; word-break:break-all; max-width:300px;">
+                    QR içeriği: <span style="color:#4338ca;">@detayUrl</span>
+                </p>
+            }
         </div>
 
         <img src="data:image/png;base64,@qrBase64"
@@ -33,10 +39,14 @@
     [Parameter] public string? BarkodNo { get; set; }
     [Parameter] public string? UrunAdi { get; set; }
 
+    [Inject] private NavigationManager Nav { get; set; } = default!;
+
     private string? qrBase64;
+    private string? detayUrl;
 
     protected override void OnParametersSet()
     {
-        qrBase64 = QrSvc.GenerateQrBase64(BarkodNo);
+        detayUrl = QrSvc.BuildUrunDetayUrl(Nav.BaseUri, BarkodNo);
+        qrBase64 = QrSvc.GenerateQrBase64(detayUrl);
     }
 }

@@ -1,10 +1,17 @@
+using System.Security.Claims;
 using Dapper;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server;
 using QRDestekliStokVeBarkodYonetimi.Components;
 using QRDestekliStokVeBarkodYonetimi.Services;
+using QuestPDF.Infrastructure;
 using Radzen;
+
+// QuestPDF açık kaynak (Community) lisansı — ticari olmayan / küçük şirket
+// kullanımı için ücretsizdir. Kütüphane çalışmadan önce mutlaka set edilmeli.
+QuestPDF.Settings.License = LicenseType.Community;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,39 +30,58 @@ var connectionString = builder.Configuration.GetConnectionString("PostgreSqlConn
 
 builder.Services.AddSingleton(new DBClass(connectionString));
 
-builder.Services.AddScoped<DataService>(sp =>
-    new DataService(connectionString, sp.GetRequiredService<AuthenticationStateProvider>()));
+builder.Services.AddSingleton<SifreDegistirDogrulamaService>();
 
+builder.Services.AddScoped<DataService>(sp => new DataService(
+    connectionString,
+    sp.GetRequiredService<EmailService>(),
+    sp.GetRequiredService<SifreDegistirDogrulamaService>(),
+    sp.GetRequiredService<KullaniciHesapOnayTokenService>()));
 builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection(JwtSettings.SectionName));
 builder.Services.AddSingleton<JwtService>();
 
+// Mail altyapısı — profil sayfasındaki e-posta doğrulama akışı için.
+// SmtpSettings doluysa gerçek mail gönderir, eksikse log + false döner.
+builder.Services.Configure<SmtpSettings>(builder.Configuration.GetSection(SmtpSettings.SectionName));
+builder.Services.AddScoped<EmailService>();
+builder.Services.AddSingleton<EpostaDogrulamaService>();
+builder.Services.AddSingleton<SifreSifirlamaTokenService>();
+builder.Services.AddSingleton<KullaniciHesapOnayTokenService>();
+
 builder.Services.AddScoped<AuthStateService>();
+builder.Services.AddScoped<IAuthState>(sp => sp.GetRequiredService<AuthStateService>());
+
+builder.Services.AddScoped<IYetkiDataAccess>(sp => sp.GetRequiredService<DataService>());
 builder.Services.AddScoped<YetkiService>();
 builder.Services.AddSingleton<QrService>();
+builder.Services.AddScoped<ExportService>();
 
+builder.Services.AddHttpContextAccessor();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<AuthenticationStateProvider, ServerAuthenticationStateProvider>();
 
-var jwtSettings = builder.Configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>()
-    ?? throw new InvalidOperationException("Jwt ayarları appsettings.json içinde bulunamadı.");
-
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options =>
+// ─────────────────────────────────────────────────────────────────────────────
+// Kimlik Doğrulama (Cookie)
+//
+// Login bilgisi (kullanıcı ID, ad-soyad, eposta, kullanıcı tipi) HttpOnly bir
+// cookie'de tutulur. Tarayıcı her HTTP isteğinde cookie'yi taşıdığı için yeni
+// circuit / yeni sekme / F5 sonrasında oturum korunur. Token bellek-içi tutulurken
+// URL'den direkt sayfa açılışlarında AuthStateService boş kalıyor ve yetki kontrolü
+// kullanıcıyı /erisim-engeli'ne atıyordu — cookie buna kalıcı çözüm.
+// ─────────────────────────────────────────────────────────────────────────────
+builder.Services
+    .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
     {
-        options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();
-        options.SaveToken = true;
-        options.TokenValidationParameters = new Microsoft.IdentityModel.Tokens.TokenValidationParameters
-        {
-            ValidateIssuer           = true,
-            ValidateAudience         = true,
-            ValidateLifetime         = true,
-            ValidateIssuerSigningKey = true,
-            ValidIssuer              = jwtSettings.Issuer,
-            ValidAudience            = jwtSettings.Audience,
-            IssuerSigningKey         = new Microsoft.IdentityModel.Tokens.SymmetricSecurityKey(
-                                           System.Text.Encoding.UTF8.GetBytes(jwtSettings.SecretKey)),
-            ClockSkew = TimeSpan.FromSeconds(30)
-        };
+        options.Cookie.Name = "qr.auth";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.SameSite = SameSiteMode.Lax;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        options.LoginPath = "/login";
+        options.LogoutPath = "/api/auth/logout";
+        options.AccessDeniedPath = "/erisim-engeli";
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+        options.SlidingExpiration = true;
     });
 
 builder.Services.AddAuthorization();
@@ -74,90 +100,196 @@ app.UseAntiforgery();
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Anonim GET / isteklerinde Blazor MainLayout/Home çizilmeden login'e yönlendir
+// (açılışta boş dashboard flash'ını önler).
+app.Use(async (context, next) =>
+{
+    if (HttpMethods.IsGet(context.Request.Method) &&
+        context.Request.Path == "/" &&
+        !context.Response.HasStarted)
+    {
+        var auth = await context.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        var girisYapilmis = auth.Succeeded && auth.Principal?.Identity?.IsAuthenticated == true;
+        if (!girisYapilmis)
+        {
+            context.Response.Redirect("/login");
+            return;
+        }
+    }
+
+    await next();
+});
+
 app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
-// Form menü yapısını her başlatmada güncelle, sonra admin seed yap
-await SeedFormsAsync(connectionString);
+// ─────────────────────────────────────────────────────────────────────────────
+// Auth endpoint'leri — Login.razor / Register.razor / NavMenu logout form'ları
+// buralara HTML form-post yapar. Cookie burada SignInAsync ile set edilir.
+// ─────────────────────────────────────────────────────────────────────────────
+app.MapPost("/api/auth/login", async (
+        HttpContext ctx,
+        DataService data) =>
+    {
+        var form = await ctx.Request.ReadFormAsync();
+        var eposta = form["Eposta"].ToString();
+        var sifre = form["Sifre"].ToString();
+        var returnUrl = form["ReturnUrl"].ToString();
+        var beniHatirla = string.Equals(form["BeniHatirla"].ToString(), "true", StringComparison.OrdinalIgnoreCase);
+
+        if (string.IsNullOrWhiteSpace(eposta) || string.IsNullOrWhiteSpace(sifre))
+            return Results.Redirect("/login?error=" + Uri.EscapeDataString("E-posta ve şifre zorunludur."));
+
+        var result = await data.LoginKullanici(eposta, sifre);
+        if (result.Data is null)
+            return Results.Redirect("/login?error=" + Uri.EscapeDataString(
+                string.IsNullOrEmpty(result.SonucAciklama) ? "Giriş başarısız." : result.SonucAciklama));
+
+        var user = result.Data;
+        var claims = new List<Claim>
+        {
+            new(ClaimTypes.NameIdentifier, user.ID.ToString()),
+            new(ClaimTypes.Name,           $"{user.Ad} {user.Soyad}".Trim()),
+            new(ClaimTypes.Email,          user.Eposta ?? string.Empty),
+            new("KullaniciTip_ID",         user.KullaniciTip_ID.ToString()),
+            new("Ad",                      user.Ad ?? string.Empty),
+            new("Soyad",                   user.Soyad ?? string.Empty)
+        };
+
+        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
+        var principal = new ClaimsPrincipal(identity);
+        var authProps = new AuthenticationProperties { IsPersistent = beniHatirla };
+        if (beniHatirla)
+            authProps.ExpiresUtc = DateTimeOffset.UtcNow.AddDays(30);
+        await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, authProps);
+
+        var hedef = string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl;
+        // Açık redirect koruması: yalnız aynı origin'e izin ver
+        if (!Uri.IsWellFormedUriString(hedef, UriKind.Relative)) hedef = "/";
+        return Results.Redirect(hedef);
+    })
+    .DisableAntiforgery();
+
+app.MapPost("/api/auth/register", async (
+        HttpContext ctx,
+        DataService data) =>
+    {
+        var form = await ctx.Request.ReadFormAsync();
+        var ad = form["Ad"].ToString();
+        var soyad = form["Soyad"].ToString();
+        var eposta = form["Eposta"].ToString();
+        var sifre = form["Sifre"].ToString();
+        var sifreTekrar = form["SifreTekrar"].ToString();
+
+        string? hata =
+            string.IsNullOrWhiteSpace(ad) ? "Ad zorunludur." :
+            string.IsNullOrWhiteSpace(soyad) ? "Soyad zorunludur." :
+            string.IsNullOrWhiteSpace(eposta) ? "E-posta zorunludur." :
+            string.IsNullOrWhiteSpace(sifre) ? "Şifre zorunludur." :
+            sifre.Length < 6 ? "Şifre en az 6 karakter olmalıdır." :
+            sifre != sifreTekrar ? "Şifreler eşleşmiyor." :
+            null;
+
+        if (hata is not null)
+            return Results.Redirect("/register?error=" + Uri.EscapeDataString(hata));
+
+        var result = await data.RegisterKullanici(ad, soyad, eposta, sifre);
+        if (result.SonucKodu < 0 || result.Data <= 0)
+            return Results.Redirect("/register?error=" + Uri.EscapeDataString(
+                string.IsNullOrEmpty(result.SonucAciklama) ? "Kayıt sırasında bir hata oluştu." : result.SonucAciklama));
+
+        return Results.Redirect("/login?registered=1");
+    })
+    .DisableAntiforgery();
+
+app.MapPost("/api/auth/logout", async (HttpContext ctx) =>
+    {
+        await ctx.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+        return Results.Redirect("/login");
+    })
+    .DisableAntiforgery();
+
+app.MapPost("/api/auth/forgot-password", async (
+        HttpContext ctx,
+        DataService data,
+        EmailService email,
+        SifreSifirlamaTokenService tokenSvc) =>
+    {
+        var form = await ctx.Request.ReadFormAsync();
+        var eposta = form["Eposta"].ToString().Trim();
+
+        if (!string.IsNullOrWhiteSpace(eposta))
+        {
+            var user = await data.GetKullaniciByEposta(eposta);
+            if (user is not null && user.Aktif != false && !string.IsNullOrWhiteSpace(user.Eposta))
+            {
+                var token = tokenSvc.OlusturKaydet(user.ID);
+                var link =
+                    $"{ctx.Request.Scheme}://{ctx.Request.Host}/sifre-sifirla?token={Uri.EscapeDataString(token)}";
+                var html =
+                    "<p>Merhaba,</p>" +
+                    "<p>Şifre sıfırlama talebinde bulundunuz. Aşağıdaki bağlantıya tıklayarak yeni şifrenizi " +
+                    "belirleyebilirsiniz. Bağlantı 60 dakika geçerlidir.</p>" +
+                    $"<p><a href=\"{link}\">Şifremi sıfırla</a></p>" +
+                    "<p>Bu talebi siz oluşturmadıysanız bu e-postayı yok sayabilirsiniz.</p>";
+                await email.SendAsync(user.Eposta, "Şifre sıfırlama", html);
+            }
+        }
+
+        return Results.Redirect("/sifremi-unuttum?gonderildi=1");
+    })
+    .DisableAntiforgery();
+
+app.MapPost("/api/auth/reset-password", async (
+        HttpContext ctx,
+        DataService data,
+        SifreSifirlamaTokenService tokenSvc) =>
+    {
+        var form = await ctx.Request.ReadFormAsync();
+        var token = form["Token"].ToString();
+        var yeni = form["YeniSifre"].ToString();
+        var yeniTekrar = form["YeniSifreTekrar"].ToString();
+
+        if (!tokenSvc.TryPeekValidToken(token, out var userId))
+            return Results.Redirect("/sifre-sifirla?error=" + Uri.EscapeDataString(
+                "Bağlantı geçersiz veya süresi dolmuş. Lütfen yeni şifre sıfırlama talebi oluşturun."));
+
+        string? sifreHata =
+            string.IsNullOrWhiteSpace(yeni) ? "Şifre zorunludur." :
+            yeni.Length < 6 ? "Şifre en az 6 karakter olmalıdır." :
+            yeni != yeniTekrar ? "Şifreler eşleşmiyor." :
+            null;
+
+        if (sifreHata is not null)
+            return Results.Redirect(
+                "/sifre-sifirla?token=" + Uri.EscapeDataString(token) + "&error=" + Uri.EscapeDataString(sifreHata));
+
+        var result = await data.SifreSifirlaTokenIle(userId, yeni);
+        if (result.SonucKodu < 0)
+            return Results.Redirect("/sifre-sifirla?token=" + Uri.EscapeDataString(token) + "&error=" +
+                Uri.EscapeDataString(
+                    string.IsNullOrEmpty(result.SonucAciklama) ? "Şifre güncellenemedi." : result.SonucAciklama));
+
+        tokenSvc.TryConsume(token, out _);
+        return Results.Redirect("/login?sifirlandi=1");
+    })
+    .DisableAntiforgery();
+
+app.MapGet("/api/auth/confirm-account", async (string? token, DataService data) =>
+    {
+        var result = await data.KullaniciHesapOnayla(token);
+        if (result.SonucKodu >= 0)
+            return Results.Redirect("/hesap-onay?success=1");
+        return Results.Redirect("/hesap-onay?error=" + Uri.EscapeDataString(
+            result.SonucAciklama ?? "Onay işlemi başarısız."));
+    });
+
+// Menü yapısı tamamen Form tablosundaki UstMenu_ID zincirinden sürülür.
+// Buraya hardcoded form/menü seed eklenmez — Form kayıtları DB üzerinden
+// (SQL veya ileride eklenecek bir Form CRUD sayfasından) yönetilir.
 await SeedAdminAsync(connectionString);
 
 app.Run();
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Form / Menü seed  (her başlatmada çalışır, idempotent)
-// ─────────────────────────────────────────────────────────────────────────────
-static async Task SeedFormsAsync(string connectionString)
-{
-    await using var conn = new Npgsql.NpgsqlConnection(connectionString);
-    try
-    {
-        await conn.OpenAsync();
-
-        // Yerel yardımcı: URL bazlı form ID'si getir; yoksa INSERT edip döner
-        async Task<int> UpsertForm(string ad, bool isMenu, int? ustMenuId, int sira, string? sayfaUrl, string? icon)
-        {
-            // Var mı? SayfaURL null olanlar Ad ile eşleştirilir
-            int? mevcutId = sayfaUrl is not null
-                ? await conn.ExecuteScalarAsync<int?>(
-                    @"SELECT ""ID"" FROM ""Form"" WHERE ""SayfaURL"" = @Url AND ""DelUser"" IS NULL LIMIT 1",
-                    new { Url = sayfaUrl })
-                : await conn.ExecuteScalarAsync<int?>(
-                    @"SELECT ""ID"" FROM ""Form"" WHERE ""Ad"" = @Ad AND ""SayfaURL"" IS NULL AND ""DelUser"" IS NULL LIMIT 1",
-                    new { Ad = ad });
-
-            if (mevcutId.HasValue)
-            {
-                // UstMenu_ID ve Sira'yı güncelle (önceki düz seed'i düzelt)
-                await conn.ExecuteAsync(
-                    @"UPDATE ""Form"" SET ""UstMenu_ID"" = @UstMenuId, ""Sira"" = @Sira, ""Ad"" = @Ad,
-                             ""IsMenu"" = @IsMenu, ""Icon"" = @Icon, ""UpdUser"" = 1, ""UpdDate"" = now()
-                      WHERE ""ID"" = @Id",
-                    new { UstMenuId = ustMenuId, Sira = sira, Ad = ad, IsMenu = isMenu, Icon = icon, Id = mevcutId.Value });
-                return mevcutId.Value;
-            }
-
-            return (int)(await conn.ExecuteScalarAsync<long>(
-                @"INSERT INTO ""Form"" (""Ad"", ""IsMenu"", ""UstMenu_ID"", ""Sira"", ""SayfaURL"", ""Icon"", ""CreUser"", ""CreDate"")
-                  VALUES (@Ad, @IsMenu, @UstMenuId, @Sira, @SayfaUrl, @Icon, 1, now())
-                  RETURNING ""ID""",
-                new { Ad = ad, IsMenu = isMenu, UstMenuId = ustMenuId, Sira = sira, SayfaUrl = sayfaUrl, Icon = icon }))!;
-        }
-
-        // ── Üst menü grupları (UstMenu_ID = null) ────────────────────────────
-        //    Ana Sayfa menüde hardcoded — Form tablosuna eklenmez.
-        //    Grup formlarının SayfaURL'si null — sadece Ad ile tanımlanır.
-        int idStokGrup  = await UpsertForm("Stok Yönetimi", true, null, 1, null, "swap_vert");
-        int idTanimGrup = await UpsertForm("Tanımlar",       true, null, 2, null, "tune");
-        int idYonetGrup = await UpsertForm("Yönetim",        true, null, 3, null, "admin_panel_settings");
-
-        // ── Stok Yönetimi alt menüleri ────────────────────────────────────────
-        await UpsertForm("Stok Hareketleri", true, idStokGrup,  1, "/stok-hareketleri", "swap_vert");
-        await UpsertForm("Stok Giriş",       true, idStokGrup,  2, "/stok-giris",        "arrow_downward");
-        await UpsertForm("Stok Çıkış",       true, idStokGrup,  3, "/stok-cikis",        "arrow_upward");
-
-        // ── Tanımlar alt menüleri ─────────────────────────────────────────────
-        await UpsertForm("Birimler",    true, idTanimGrup, 1, "/birimler",    "scale");
-        await UpsertForm("Kategoriler", true, idTanimGrup, 2, "/kategoriler", "category");
-        await UpsertForm("Ürünler",     true, idTanimGrup, 3, "/urunler",     "inventory_2");
-
-        // ── Yönetim alt menüleri ──────────────────────────────────────────────
-        await UpsertForm("Kullanıcılar",      true,  idYonetGrup, 1, "/kullanicilar",     "people");
-        await UpsertForm("Kullanıcı Tipleri", true,  idYonetGrup, 2, "/kullanici-tipler", "manage_accounts");
-
-        // ── Yetki formları (menüde görünmez, yetki sistemi için gerekli) ──────
-        await UpsertForm("Kullanıcı Yetki",     false, null, 10, "/kullanici-yetki",     null);
-        await UpsertForm("Kullanıcı Tip Yetki", false, null, 11, "/kullanici-tip-yetki", null);
-
-        Console.WriteLine("✅ Form / menü yapısı hazır.");
-    }
-    catch (Exception ex)
-    {
-        Console.WriteLine($"⚠️  Form seed hatası: {ex.GetType().Name} — {ex.Message}");
-        if (ex.InnerException is not null)
-            Console.WriteLine($"   Inner: {ex.InnerException.Message}");
-    }
-    finally { await conn.CloseAsync(); }
-}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Admin kullanıcı seed  (yalnızca admin e-postası yoksa çalışır)
@@ -211,8 +343,8 @@ static async Task SeedAdminAsync(string connectionString)
 
         var adminId = (int)(await conn.ExecuteScalarAsync<long>(
             @"INSERT INTO ""Kullanicilar""
-                (""KullaniciTip_ID"", ""Ad"", ""Soyad"", ""Eposta"", ""Sifre"", ""Aktif"", ""CreUser"", ""CreDate"")
-              VALUES (@TipId, 'Admin', 'Kullanıcı', @Email, @Sifre, true, 1, now())
+                (""KullaniciTip_ID"", ""Ad"", ""Soyad"", ""Eposta"", ""Sifre"", ""ProfilResmi"", ""Aktif"", ""CreUser"", ""CreDate"")
+              VALUES (@TipId, 'Admin', 'Kullanıcı', @Email, @Sifre, NULL, true, 1, now())
               RETURNING ""ID""",
             new { TipId = tipId, Email = adminEmail, Sifre = sifreHash }))!;
 

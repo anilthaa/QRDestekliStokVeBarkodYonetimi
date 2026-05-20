@@ -1,3 +1,4 @@
 <Solution>
+  <Project Path="QRDestekliStokVeBarkodYonetimi.Tests/QRDestekliStokVeBarkodYonetimi.Tests.csproj" />
   <Project Path="QRDestekliStokVeBarkodYonetimi/QRDestekliStokVeBarkodYonetimi.csproj" />
 </Solution>

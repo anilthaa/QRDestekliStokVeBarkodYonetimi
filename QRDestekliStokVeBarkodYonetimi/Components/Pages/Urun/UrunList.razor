@@ -7,12 +7,19 @@
 
 <PageTitle>Ürünler</PageTitle>
 
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-    <h3 style="margin:0;">Ürün Listesi</h3>
-    <RadzenButton Text="Yeni Ürün" Icon="add" ButtonStyle="ButtonStyle.Primary"
-                  Click="@OnYeniClick"
-                  Disabled="@sadecOkuma"
-                  Style="@(sadecOkuma ? "opacity:0.35;pointer-events:none;" : "")" />
+<div class="page-header">
+    <h3 class="page-header-title">Ürün Listesi</h3>
+    <div class="page-header-actions">
+        <ExportButton TItem="ItemUrun"
+                      Items="@urunler"
+                      Title="Ürün Listesi"
+                      FileName="urun-listesi"
+                      Columns="@CiktiKolonlari()" />
+        <RadzenButton Text="Yeni Ürün" Icon="add" ButtonStyle="ButtonStyle.Primary"
+                      Click="@OnYeniClick"
+                      Disabled="@sadecOkuma"
+                      Style="@(sadecOkuma ? "opacity:0.35;pointer-events:none;" : "")" />
+    </div>
 </div>
 
 @if (isLoading)
@@ -76,9 +83,23 @@ else
     private bool isLoading = true;
     private bool sadecOkuma = false;
 
+    private IList<ExportColumn<ItemUrun>> CiktiKolonlari() => new List<ExportColumn<ItemUrun>>
+    {
+        new() { Header = "ID",          Value = u => u.ID,          Align = ExportAlign.Right, Width = 0.6f },
+        new() { Header = "Ürün Kodu",   Value = u => u.UrunKodu,    Width = 1.2f },
+        new() { Header = "Ürün Adı",    Value = u => u.Ad,          Width = 2f   },
+        new() { Header = "Barkod No",   Value = u => u.BarkodNo,    Width = 1.4f },
+        new() { Header = "Kategori",    Value = u => kategoriler.FirstOrDefault(k => k.ID == u.Kategori_ID)?.Ad ?? "-", Width = 1.4f },
+        new() { Header = "Birim",       Value = u => birimler.FirstOrDefault(b => b.ID == u.Birim_ID)?.Ad ?? "-", Width = 0.9f },
+        new() { Header = "Stok",        Value = u => u.Stok,        Format = "N0", Align = ExportAlign.Right, Width = 0.8f },
+        new() { Header = "Kritik Stok", Value = u => u.KritikStokSeviyesi, Format = "N0", Align = ExportAlign.Right, Width = 0.9f },
+        new() { Header = "Açıklama",    Value = u => u.Aciklama,    Width = 2f   },
+    };
+
     protected override async Task OnInitializedAsync()
     {
-        await YetkiSvc.EnsureFormsLoadedAsync();
+        await AuthState.InitializeAsync();
+        await YetkiSvc.EnsureReadyAsync();
         if (!YetkiSvc.ErişimVar("/urunler"))
         {
             Nav.NavigateTo("/erisim-engeli", true);

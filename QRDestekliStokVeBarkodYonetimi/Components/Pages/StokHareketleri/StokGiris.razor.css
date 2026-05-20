@@ -1,0 +1,23 @@
+.stok-urun-kart {
+    display: flex;
+    gap: 1.25rem;
+    align-items: flex-start;
+    flex-wrap: wrap;
+}
+
+.stok-urun-gorsel {
+    flex: 0 0 240px;
+    max-width: 100%;
+    min-width: 180px;
+}
+
+.stok-urun-icerik {
+    flex: 1;
+    min-width: 220px;
+}
+
+@media (max-width: 640px) {
+    .stok-urun-gorsel {
+        flex: 1 1 100%;
+    }
+}
