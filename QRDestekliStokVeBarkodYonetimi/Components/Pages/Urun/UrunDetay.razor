@@ -1,0 +1,220 @@
+@page "/urun/{BarkodNo}"
+@layout QRDestekliStokVeBarkodYonetimi.Components.Layout.PublicLayout
+@rendermode InteractiveServer
+
+<PageTitle>@(urun is null ? "Ürün bulunamadı" : urun.Ad)</PageTitle>
+
+@if (isLoading)
+{
+    <div class="urun-detay-loading">
+        <div class="urun-detay-spinner"></div>
+        <span>Yükleniyor…</span>
+    </div>
+}
+else if (urun is null)
+{
+    <div class="urun-detay-card urun-detay-notfound">
+        <div class="urun-detay-notfound-icon">
+            <i class="fa-solid fa-box-open"></i>
+        </div>
+        <h1>Ürün bulunamadı</h1>
+        <p>
+            <strong>@BarkodNo</strong> barkod numarasına ait kayıtlı bir ürün yok
+            veya ürün kaldırılmış olabilir.
+        </p>
+        <a href="/login" class="urun-detay-link-btn">Giriş yap</a>
+    </div>
+}
+else
+{
+    <article class="urun-detay-card">
+        <div class="urun-detay-body">
+            <aside class="urun-detay-gallery-panel">
+                @if (resimler.Count > 0)
+                {
+                    <div class="urun-detay-slider">
+                        @if (resimler.Count > 1)
+                        {
+                            <button type="button" class="urun-detay-slider-btn prev"
+                                    @onclick="OncekiResim" aria-label="Önceki resim">
+                                <i class="fa-solid fa-chevron-left"></i>
+                            </button>
+                        }
+
+                        <figure class="urun-detay-slider-frame">
+                            <img src="@resimler[aktifResimIndex]" alt="@($"{urun.Ad} — {aktifResimIndex + 1}")" />
+                        </figure>
+
+                        @if (resimler.Count > 1)
+                        {
+                            <button type="button" class="urun-detay-slider-btn next"
+                                    @onclick="SonrakiResim" aria-label="Sonraki resim">
+                                <i class="fa-solid fa-chevron-right"></i>
+                            </button>
+                        }
+                    </div>
+
+                    @if (resimler.Count > 1)
+                    {
+                        <div class="urun-detay-slider-footer">
+                            <div class="urun-detay-slider-dots">
+                                @for (var i = 0; i < resimler.Count; i++)
+                                {
+                                    var idx = i;
+                                    <button type="button"
+                                            class="urun-detay-dot @(aktifResimIndex == idx ? "active" : "")"
+                                            @onclick="@(() => ResimSec(idx))"
+                                            aria-label="@($"Resim {idx + 1}")"></button>
+                                }
+                            </div>
+                            <span class="urun-detay-slider-counter">@(aktifResimIndex + 1) / @resimler.Count</span>
+                        </div>
+                    }
+                }
+                else
+                {
+                    <div class="urun-detay-gallery-empty">
+                        <i class="fa-solid fa-image"></i>
+                        <span>Ürün resmi yok</span>
+                    </div>
+                }
+            </aside>
+
+            <div class="urun-detay-content">
+                <header class="urun-detay-header">
+                    <span class="urun-detay-kategori">@kategoriAdi</span>
+                    <h1>@urun.Ad</h1>
+                    <p class="urun-detay-kod">@urun.UrunKodu</p>
+
+                    <div class="urun-detay-stok-badge @(kritikStok ? "kritik" : "normal")">
+                        <i class="fa-solid @(kritikStok ? "fa-triangle-exclamation" : "fa-boxes-stacked")"></i>
+                        <div>
+                            <span class="urun-detay-stok-label">Stok durumu</span>
+                            <span class="urun-detay-stok-value">
+                                @urun.Stok <small>@birimAdi</small>
+                                @if (kritikStok)
+                                {
+                                    <em class="urun-detay-stok-warn">Kritik seviye</em>
+                                }
+                            </span>
+                        </div>
+                    </div>
+                </header>
+
+                <section class="urun-detay-info">
+                    <h2>Ürün bilgileri</h2>
+                    <dl class="urun-detay-grid">
+                        <div class="urun-detay-row">
+                            <dt>Ürün kodu</dt>
+                            <dd>@urun.UrunKodu</dd>
+                        </div>
+                        <div class="urun-detay-row">
+                            <dt>Barkod no</dt>
+                            <dd>@urun.BarkodNo</dd>
+                        </div>
+                        <div class="urun-detay-row">
+                            <dt>Kategori</dt>
+                            <dd>@kategoriAdi</dd>
+                        </div>
+                        <div class="urun-detay-row">
+                            <dt>Birim</dt>
+                            <dd>@birimAdi</dd>
+                        </div>
+                        <div class="urun-detay-row">
+                            <dt>Stok miktarı</dt>
+                            <dd class="@(kritikStok ? "kritik-text" : "")">@urun.Stok @birimAdi</dd>
+                        </div>
+                        <div class="urun-detay-row">
+                            <dt>Kritik stok seviyesi</dt>
+                            <dd>@urun.KritikStokSeviyesi @birimAdi</dd>
+                        </div>
+                    </dl>
+                </section>
+
+                @if (!string.IsNullOrWhiteSpace(urun.Aciklama))
+                {
+                    <section class="urun-detay-aciklama">
+                        <h2>Açıklama</h2>
+                        <p>@urun.Aciklama</p>
+                    </section>
+                }
+
+                <footer class="urun-detay-footer">
+                    <span><i class="fa-regular fa-calendar"></i> Kayıt: @urun.CreDate.ToString("dd.MM.yyyy HH:mm")</span>
+                    @if (urun.UpdDate.HasValue)
+                    {
+                        <span><i class="fa-regular fa-clock"></i> Güncelleme: @urun.UpdDate.Value.ToString("dd.MM.yyyy HH:mm")</span>
+                    }
+                </footer>
+            </div>
+        </div>
+    </article>
+}
+
+@code {
+    [Parameter] public string BarkodNo { get; set; } = string.Empty;
+
+    private ItemUrun? urun;
+    private string kategoriAdi = "—";
+    private string birimAdi = "—";
+    private bool isLoading = true;
+    private bool kritikStok;
+    private List<string> resimler = [];
+    private int aktifResimIndex;
+
+    private void OncekiResim()
+    {
+        if (resimler.Count <= 1) return;
+        aktifResimIndex = aktifResimIndex == 0 ? resimler.Count - 1 : aktifResimIndex - 1;
+    }
+
+    private void SonrakiResim()
+    {
+        if (resimler.Count <= 1) return;
+        aktifResimIndex = aktifResimIndex >= resimler.Count - 1 ? 0 : aktifResimIndex + 1;
+    }
+
+    private void ResimSec(int index)
+    {
+        if (index >= 0 && index < resimler.Count)
+            aktifResimIndex = index;
+    }
+
+    protected override async Task OnInitializedAsync()
+    {
+        var barkod = QrSvc.BarkodNoCikar(BarkodNo) ?? BarkodNo?.Trim();
+        if (string.IsNullOrWhiteSpace(barkod))
+        {
+            isLoading = false;
+            return;
+        }
+
+        try
+        {
+            urun = await DataSvc.GetUrunByBarkod(barkod);
+            if (urun is null)
+                return;
+
+            kritikStok = urun.Stok <= urun.KritikStokSeviyesi;
+
+            var kat = (await DataSvc.GetKategori(urun.Kategori_ID)).FirstOrDefault();
+            kategoriAdi = kat?.Ad ?? "—";
+
+            var bir = (await DataSvc.GetBirim(urun.Birim_ID)).FirstOrDefault();
+            birimAdi = bir?.Ad ?? "—";
+
+            if (!string.IsNullOrWhiteSpace(urun.ResimYolu))
+            {
+                resimler = urun.ResimYolu
+                    .Split(';', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(s => s.Trim())
+                    .Where(s => s.Length > 0)
+                    .ToList();
+            }
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}

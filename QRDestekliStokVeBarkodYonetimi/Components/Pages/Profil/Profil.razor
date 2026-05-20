@@ -1,0 +1,914 @@
+@page "/profil"
+@layout QRDestekliStokVeBarkodYonetimi.Components.Layout.MainLayout
+@rendermode InteractiveServer
+@using Microsoft.AspNetCore.Authorization
+@using System.Collections.Generic
+@using System.IO
+@using System.Text.RegularExpressions
+@attribute [Authorize]
+@inject EmailService EmailSvc
+@inject EpostaDogrulamaService DogrulamaSvc
+
+<PageTitle>Profilim</PageTitle>
+
+@if (isLoading)
+{
+    <div style="display:flex; justify-content:center; padding:3rem;">
+        <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate"
+                                   Size="ProgressBarCircularSize.Large" />
+    </div>
+}
+else if (kullanici is null)
+{
+    <RadzenAlert AlertStyle="AlertStyle.Danger" ShowIcon="true" Variant="Variant.Flat" AllowClose="false">
+        Kullanıcı bilgileri yüklenemedi.
+    </RadzenAlert>
+}
+else
+{
+    <div class="profil-page">
+
+        @* ── Hero Kartı ─────────────────────────────────────────────── *@
+        <RadzenCard class="profil-hero"
+                    Style="background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%); color:#fff; padding:2rem;">
+            <div style="display:flex; align-items:center; gap:1.5rem; flex-wrap:wrap;">
+                <div style="width:80px; height:80px; border-radius:50%; background:rgba(255,255,255,0.2); border:3px solid rgba(255,255,255,0.5);
+                    display:flex; align-items:center; justify-content:center; font-size:2rem; font-weight:700; flex-shrink:0; overflow:hidden;">
+                    @if (!string.IsNullOrWhiteSpace(kullanici.ProfilResmi))
+                    {
+                        <img src="@($"{kullanici.ProfilResmi}?v={kullanici.UpdDate?.Ticks ?? kullanici.ID}")" alt=""
+                             style="width:100%;height:100%;object-fit:cover;" />
+                    }
+                    else
+                    {
+                        @Initials(kullanici)
+                    }
+                </div>
+                <div style="display:flex; flex-direction:column; gap:0.35rem;">
+                    <h2 style="margin:0; font-size:1.6rem; font-weight:700; color:#fff;">@kullanici.Ad @kullanici.Soyad</h2>
+                    <span style="font-size:0.95rem; opacity:0.85;">@kullanici.Eposta</span>
+                    <span style="display:inline-flex; align-items:center; gap:0.35rem; padding:0.2rem 0.75rem; border-radius:20px;
+                        font-size:0.82rem; font-weight:600; width:fit-content;
+                        background:rgba(255,255,255,0.2);">
+                        <RadzenIcon Icon="@(kullanici.Aktif == true ? "check_circle" : "cancel")" />
+                        @(kullanici.Aktif == true ? "Aktif" : "Pasif")
+                    </span>
+                </div>
+            </div>
+        </RadzenCard>
+
+        @* ── İçerik Grid ────────────────────────────────────────────── *@
+        <div class="profil-forms-grid">
+
+            @* SOL: Bilgileri Güncelle *@
+            <RadzenCard class="profil-form-card">
+                <div class="profil-section-head">
+                    <RadzenIcon Icon="manage_accounts" Style="color:var(--rz-primary);" />
+                    <span style="font-weight:600; font-size:1rem;">Bilgileri Güncelle</span>
+                </div>
+
+                <div style="margin-bottom:1rem; padding:0.85rem; border-radius:8px;
+                            background:var(--rz-base-background-color); border:1px solid var(--rz-base-300);">
+                    <RadzenLabel Text="Profil resmi" style="display:block; margin-bottom:0.35rem;" />
+                    <div style="display:flex; flex-wrap:wrap; align-items:center; gap:0.75rem;">
+                        <InputFile id="profilResimDosya" OnChange="@OnProfilResmiSecildi" accept="image/jpeg,image/png,image/webp,image/gif"
+                                   disabled="@profilResmiYukleniyor" style="display:none;" />
+                        <label for="profilResimDosya" class="rz-button rz-button-sm rz-button-secondary"
+                               style="margin:0; cursor:pointer;">
+                            <span>@(profilResmiYukleniyor ? "Yükleniyor…" : "Resim seç")</span>
+                        </label>
+                        @if (!string.IsNullOrWhiteSpace(kullanici.ProfilResmi))
+                        {
+                            <RadzenButton Text="Resmi kaldır" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                                          Icon="delete" Click="@ProfilResmiKaldirAsync"
+                                          Disabled="@profilResmiYukleniyor" />
+                        }
+                    </div>
+                    <span style="font-size:0.8rem; color:var(--rz-text-secondary-color); display:block; margin-top:0.35rem;">
+                        JPEG, PNG, WebP veya GIF; en fazla 2 MB.
+                    </span>
+                    @if (!string.IsNullOrEmpty(profilResmiHata))
+                    {
+                        <div style="color:var(--rz-danger); font-size:0.85rem; margin-top:0.5rem;">@profilResmiHata</div>
+                    }
+                </div>
+
+                <RadzenTemplateForm TItem="ItemKullanicilar" Data="@kullanici" Submit="@ProfilGuncelleAsync">
+
+                    <div style="display:flex; flex-direction:column; gap:1rem;">
+
+                        <div>
+                            <RadzenLabel Text="Ad *" Component="Ad" />
+                            <RadzenTextBox @bind-Value="kullanici.Ad" Name="Ad" Placeholder="Adınız"
+                                           Style="width:100%;" Disabled="@profilIsBusy" />
+                            <RadzenRequiredValidator Component="Ad" Text="Ad zorunludur." Style="display:block;" />
+                        </div>
+
+                        <div>
+                            <RadzenLabel Text="Soyad *" Component="Soyad" />
+                            <RadzenTextBox @bind-Value="kullanici.Soyad" Name="Soyad" Placeholder="Soyadınız"
+                                           Style="width:100%;" Disabled="@profilIsBusy" />
+                            <RadzenRequiredValidator Component="Soyad" Text="Soyad zorunludur." Style="display:block;" />
+                        </div>
+
+                        <div>
+                            <RadzenLabel Text="E-posta *" Component="Eposta" />
+                            <RadzenTextBox @bind-Value="kullanici.Eposta" Name="Eposta" Placeholder="E-posta adresiniz"
+                                           Style="width:100%;" Disabled="@(profilIsBusy || kodGonderildi)" />
+                            <RadzenRequiredValidator Component="Eposta" Text="E-posta zorunludur." Style="display:block;" />
+                            <RadzenEmailValidator Component="Eposta" Text="Geçerli bir e-posta giriniz." Style="display:block;" />
+
+                            @* ── E-posta değişti, henüz kod gönderilmedi: "Kod Gönder" linki ─────── *@
+                            @if (EpostaDegisti() && !kodGonderildi)
+                            {
+                                <div style="display:flex; align-items:center; gap:0.5rem; margin-top:0.5rem;
+                                            padding:0.55rem 0.75rem; border-radius:6px;
+                                            background:rgba(255,193,7,0.08); border:1px solid rgba(255,193,7,0.25);">
+                                    <RadzenIcon Icon="info" Style="font-size:1rem; color:#f57c00;" />
+                                    <span style="font-size:0.85rem; flex:1;">E-posta'yı değiştirmek için doğrulama kodu gönderin.</span>
+                                    <RadzenButton Text="Kod Gönder" Icon="mail"
+                                                  Variant="Variant.Text" Size="ButtonSize.Small"
+                                                  ButtonStyle="ButtonStyle.Primary"
+                                                  Click="@OnKodGonderClick"
+                                                  IsBusy="@kodGonderiliyor"
+                                                  BusyText="Gönderiliyor…" />
+
+                                </div>
+                            }
+
+                            @* ── Kod gönderildi: doğrulama kartı ─────────────────────────────────── *@
+                            @if (kodGonderildi)
+                            {
+                                <div style="margin-top:0.6rem; padding:0.85rem; border-radius:8px;
+                                            background:rgba(33,150,243,0.06); border:1px solid rgba(33,150,243,0.25);">
+                                    <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.6rem;">
+                                        <RadzenIcon Icon="mark_email_read" Style="color:#1976d2;" />
+                                        <span style="font-size:0.88rem;">
+                                            <b>@bekleyenYeniEposta</b> adresine 6 haneli kod gönderildi
+                                            <span style="color:var(--rz-text-secondary-color);">(10dk geçerli)</span>.
+                                        </span>
+                                    </div>
+                                    <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                                        <RadzenTextBox @bind-Value="dogrulamaKodu" MaxLength="6"
+                                                       Placeholder="000000"
+                                                       Style="flex:1; min-width:140px; letter-spacing:6px; text-align:center; font-weight:700; font-size:1.1rem;" />
+                                        <RadzenButton Text="Doğrula ve Güncelle" Icon="check" ButtonStyle="ButtonStyle.Success"
+                                                      Click="@OnDogrulaClick" IsBusy="@dogrulaniyor"
+                                                      BusyText="Doğrulanıyor…" />
+                                        <RadzenButton Text="İptal" Icon="close" ButtonStyle="ButtonStyle.Light"
+                                                      Click="@OnIptalDogrulamaClick" Disabled="@dogrulaniyor" />
+                                    </div>
+                                    @if (!string.IsNullOrEmpty(dogrulamaHata))
+                                    {
+                                        <div style="color:var(--rz-danger); font-size:0.85rem; margin-top:0.5rem;
+                                                    display:flex; align-items:center; gap:0.35rem;">
+                                            <RadzenIcon Icon="error" Style="font-size:1rem;" />
+                                            @dogrulamaHata
+                                        </div>
+                                    }
+                                </div>
+                            }
+                        </div>
+
+                        <div style="display:flex; flex-wrap:wrap; gap:0.5rem 1.5rem; padding:0.6rem 0.75rem;
+                            background:var(--rz-base-background-color); border-radius:6px;">
+                            <span style="display:flex; align-items:center; gap:0.4rem; font-size:0.8rem; color:var(--rz-text-secondary-color);">
+                                <RadzenIcon Icon="calendar_month" Style="font-size:0.95rem;" />
+                                Kayıt: @kullanici.CreDate.ToString("dd.MM.yyyy")
+                            </span>
+                            @if (kullanici.UpdDate.HasValue)
+                            {
+                                <span style="display:flex; align-items:center; gap:0.4rem; font-size:0.8rem; color:var(--rz-text-secondary-color);">
+                                    <RadzenIcon Icon="edit_calendar" Style="font-size:0.95rem;" />
+                                    Güncelleme: @kullanici.UpdDate.Value.ToString("dd.MM.yyyy HH:mm")
+                                </span>
+                            }
+                        </div>
+
+                        @if (!string.IsNullOrEmpty(profilHata))
+                        {
+                            <RadzenAlert AlertStyle="AlertStyle.Danger" ShowIcon="true"
+                                         Variant="Variant.Flat" AllowClose="false">
+                                @profilHata
+                            </RadzenAlert>
+                        }
+
+                        <div class="form-actions" style="margin-top:0.25rem;">
+                            <RadzenButton ButtonType="ButtonType.Submit" Text="Bilgileri Güncelle" Icon="save"
+                                          IsBusy="@profilIsBusy" BusyText="Kaydediliyor…" />
+                        </div>
+
+                    </div>
+
+                </RadzenTemplateForm>
+            </RadzenCard>
+
+            @* SAĞ: Şifre Değiştir (e-posta OTP) ─────────────────────────────────── *@
+            <RadzenCard class="profil-form-card">
+                <div class="profil-section-head">
+                    <RadzenIcon Icon="lock" Style="color:var(--rz-primary);" />
+                    <span style="font-weight:600; font-size:1rem;">Şifre Değiştir</span>
+                </div>
+
+                <RadzenTemplateForm TItem="SifreModel" Data="@sifreForm" Submit="@OnSifreKoduGonderAsync"
+                                    Style="display:flex; flex-direction:column; flex:1;">
+
+                    <div style="display:flex; flex-direction:column; gap:1rem; flex:1;">
+
+                        <p style="margin:0; font-size:0.87rem; color:var(--rz-text-secondary-color);">
+                            Yeni şifrenizi kaydetmek için önce doğrulama kodu gönderilir; kodu e-postanıza gelen 6 rakam olarak girersiniz.
+                        </p>
+
+                        <div>
+                            <RadzenLabel Text="Mevcut Şifre *" Component="EskiSifre" />
+                            <RadzenPassword @bind-Value="sifreForm.EskiSifre" Name="EskiSifre"
+                                            Placeholder="Mevcut şifreniz" Style="width:100%;"
+                                            Disabled="@sifreAlanlariKilitli" />
+                            <RadzenRequiredValidator Component="EskiSifre" Text="Mevcut şifre zorunludur." Style="display:block;" />
+                        </div>
+
+                        <div>
+                            <RadzenLabel Text="Yeni Şifre *" Component="YeniSifre" />
+                            <RadzenPassword @bind-Value="sifreForm.YeniSifre" Name="YeniSifre"
+                                            Placeholder="En az 6 karakter" Style="width:100%;"
+                                            Disabled="@sifreAlanlariKilitli" />
+                            <RadzenRequiredValidator Component="YeniSifre" Text="Yeni şifre zorunludur." Style="display:block;" />
+                            <RadzenLengthValidator Component="YeniSifre" Min="6" Text="Şifre en az 6 karakter olmalıdır." Style="display:block;" />
+                        </div>
+
+                        <div>
+                            <RadzenLabel Text="Yeni Şifre (Tekrar) *" Component="YeniSifreTekrar" />
+                            <RadzenPassword @bind-Value="sifreForm.YeniSifreTekrar" Name="YeniSifreTekrar"
+                                            Placeholder="Şifreyi tekrar girin" Style="width:100%;"
+                                            Disabled="@sifreAlanlariKilitli" />
+                            <RadzenRequiredValidator Component="YeniSifreTekrar" Text="Tekrar şifre zorunludur." Style="display:block;" />
+                            <RadzenCompareValidator Component="YeniSifreTekrar" Value="@sifreForm.YeniSifre"
+                                                    Text="Şifreler eşleşmiyor." Style="display:block;" />
+                        </div>
+
+                        @if (sifreKodGonderildi)
+                        {
+                            <div style="padding:0.85rem; border-radius:8px;
+                                        background:rgba(33,150,243,0.06); border:1px solid rgba(33,150,243,0.25);">
+                                <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.6rem;">
+                                    <RadzenIcon Icon="mark_email_read" Style="color:#1976d2;" />
+                                    <span style="font-size:0.88rem;">
+                                        Kayıtlı adresinize <b>@(bekleyenSifreEposta ?? "—")</b> 6 haneli doğrulama kodu gönderildi
+                                        <span style="color:var(--rz-text-secondary-color);">(10dk geçerli)</span>.
+                                    </span>
+                                </div>
+                                <div style="display:flex; gap:0.5rem; flex-wrap:wrap;">
+                                    <RadzenTextBox @bind-Value="sifreDogrulamaKodu" MaxLength="6"
+                                                   Placeholder="000000"
+                                                   Style="flex:1; min-width:140px; letter-spacing:6px; text-align:center; font-weight:700; font-size:1.1rem;"
+                                                   Disabled="@sifreDogrulaniyor" />
+                                    <RadzenButton Text="Doğrula ve şifreyi güncelle" Icon="check" ButtonStyle="ButtonStyle.Success"
+                                                  Click="@OnSifreOtpOnayAsync" IsBusy="@sifreDogrulaniyor"
+                                                  BusyText="Doğrulanıyor…" />
+                                    <RadzenButton Text="İptal" Icon="close" ButtonStyle="ButtonStyle.Light"
+                                                  Click="@OnSifreOtpIptal" Disabled="@sifreDogrulaniyor" />
+                                </div>
+                                @if (!string.IsNullOrEmpty(sifreDogrulamaHata))
+                                {
+                                    <div style="color:var(--rz-danger); font-size:0.85rem; margin-top:0.5rem;
+                                                display:flex; align-items:center; gap:0.35rem;">
+                                        <RadzenIcon Icon="error" Style="font-size:1rem;" />
+                                        @sifreDogrulamaHata
+                                    </div>
+                                }
+                            </div>
+                        }
+
+                        @if (!string.IsNullOrEmpty(sifreHata))
+                        {
+                            <RadzenAlert AlertStyle="AlertStyle.Danger" ShowIcon="true"
+                                         Variant="Variant.Flat" AllowClose="false">
+                                @sifreHata
+                            </RadzenAlert>
+                        }
+
+                        @if (!sifreKodGonderildi)
+                        {
+                            <div class="form-actions" style="margin-top:auto;">
+                                <RadzenButton ButtonType="ButtonType.Submit" Text="Doğrulama kodu gönder" Icon="mail"
+                                              ButtonStyle="ButtonStyle.Primary"
+                                              IsBusy="@sifreIsBusy" BusyText="Gönderiliyor…" />
+                            </div>
+                        }
+
+                    </div>
+
+                </RadzenTemplateForm>
+            </RadzenCard>
+
+        </div>
+
+    </div>
+}
+
+@code {
+
+    // ── İç model: şifre formu için ayrı sınıf ──────────────────────────────
+    private sealed class SifreModel
+    {
+        public string EskiSifre { get; set; } = string.Empty;
+        public string YeniSifre { get; set; } = string.Empty;
+        public string YeniSifreTekrar { get; set; } = string.Empty;
+    }
+
+    // ── State ───────────────────────────────────────────────────────────────
+    private ItemKullanicilar? kullanici;
+    private SifreModel sifreForm = new();
+    private bool isLoading = true;
+    private bool profilIsBusy = false;
+    private bool sifreIsBusy = false;
+    private string profilHata = string.Empty;
+    private string sifreHata = string.Empty;
+    private string profilResmiHata = string.Empty;
+    private bool profilResmiYukleniyor = false;
+
+    // ── E-posta doğrulama akışı state ───────────────────────────────────────
+    private bool kodGonderiliyor = false;
+    private bool kodGonderildi = false;
+    private string dogrulamaKodu = string.Empty;
+    private string? bekleyenYeniEposta;
+    private bool dogrulaniyor = false;
+    private string dogrulamaHata = string.Empty;
+
+    // ── Şifre değiştirme OTP akışı ────────────────────────────────────────────
+    private bool sifreKodGonderildi = false;
+    private string? bekleyenSifreEposta;
+    private string sifreDogrulamaKodu = string.Empty;
+    private bool sifreDogrulaniyor = false;
+    private string sifreDogrulamaHata = string.Empty;
+
+    private bool sifreAlanlariKilitli => sifreIsBusy || sifreDogrulaniyor || sifreKodGonderildi;
+
+    private static readonly Regex EpostaRegex =
+        new(@"^[^@\s]+@[^@\s]+\.[^@\s]+$", RegexOptions.Compiled);
+
+    private const long ProfilResmiMaxBoyut = 2 * 1024 * 1024;
+
+    private static readonly HashSet<string> ProfilResmiMime = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "image/jpeg", "image/png", "image/webp", "image/gif"
+    };
+
+    // ── Lifecycle ───────────────────────────────────────────────────────────
+
+    protected override async Task OnInitializedAsync()
+    {
+        await AuthState.InitializeAsync();
+
+        if (!AuthState.IsAuthenticated || AuthState.CurrentUser is null)
+        {
+            NavigationManager.NavigateTo("/login", forceLoad: true);
+            return;
+        }
+
+        await YukleAsync();
+    }
+
+    // ── Veri yükleme ────────────────────────────────────────────────────────
+
+    private async Task YukleAsync()
+    {
+        isLoading = true;
+        try
+        {
+            var liste = await DataSvc.GetKullanici(AuthState.CurrentUser!.ID);
+            kullanici = liste.FirstOrDefault();
+        }
+        catch (Exception ex)
+        {
+            NotificationSvc.Notify(NotificationSeverity.Error, "Hata",
+            $"Profil yüklenemedi: {ex.Message}", 4000);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    // ── Profil güncelle ─────────────────────────────────────────────────────
+
+    private async Task ProfilGuncelleAsync()
+    {
+        if (kullanici is null || AuthState.CurrentUser is null)
+            return;
+
+        profilHata = string.Empty;
+        profilIsBusy = true;
+
+        try
+        {
+            // E-posta değişikliği yalnızca "Kod Gönder → Doğrula" akışıyla yapılabilir.
+            // Bu form sadece Ad/Soyad'ı kaydeder; eğer kullanıcı e-posta'yı değiştirip
+            // doğrulamadan submit ederse, eski adresi DB'ye geri yazıp uyarı gösteririz.
+            var epostaDegismis = !string.Equals(AuthState.CurrentUser.Eposta, kullanici.Eposta,
+                StringComparison.OrdinalIgnoreCase);
+            if (epostaDegismis)
+            {
+                kullanici.Eposta = AuthState.CurrentUser.Eposta ?? string.Empty;
+                NotificationSvc.Notify(NotificationSeverity.Warning, "Bilgi",
+                    "E-posta değişikliği için 'Kod Gönder' adımını kullanın. Şu an yalnızca ad/soyad güncellendi.", 5000);
+            }
+
+            kullanici.Sifre = string.Empty; // boş → DB COALESCE ile mevcut hash'i korur
+            kullanici.UpdUser = AuthState.CurrentUser.ID;
+            kullanici.DelUser = 0;
+
+            var sonuc = await DataSvc.SetKullanici(kullanici);
+
+            if (sonuc.SonucKodu < 0)
+            {
+                profilHata = sonuc.SonucAciklama ?? "Güncelleme sırasında bir hata oluştu.";
+                return;
+            }
+
+            NotificationSvc.Notify(NotificationSeverity.Success, "Başarılı",
+                "Profil bilgileriniz güncellendi.", 3500);
+
+            await YukleAsync();
+            SyncAuthUserFromKullanici();
+        }
+        catch (Exception ex)
+        {
+            profilHata = $"Beklenmeyen hata: {ex.Message}";
+        }
+        finally
+        {
+            profilIsBusy = false;
+        }
+    }
+
+    // ── E-posta doğrulama akışı ─────────────────────────────────────────────
+
+    /// <summary>
+    /// Textbox'taki e-posta, oturumdaki e-postadan farklı ve geçerli formatta mı?
+    /// "Kod Gönder" linkinin görünürlüğünü kontrol eder.
+    /// </summary>
+    private bool EpostaDegisti()
+    {
+        if (kullanici is null || AuthState.CurrentUser is null) return false;
+        var yeni = (kullanici.Eposta ?? string.Empty).Trim();
+        var eski = (AuthState.CurrentUser.Eposta ?? string.Empty).Trim();
+        if (string.Equals(yeni, eski, StringComparison.OrdinalIgnoreCase)) return false;
+        if (yeni.Length == 0) return false;
+        return EpostaRegex.IsMatch(yeni);
+    }
+
+    /// <summary>
+    /// "Kod Gönder" tıklamasında: çakışma kontrolü → onay kutucuğu → 6 haneli kod
+    /// üret + 2 mail (yeni adrese kod, eski adrese bilgilendirme) → başarı kutucuğu.
+    /// </summary>
+    private async Task OnKodGonderClick()
+    {
+        if (kullanici is null || AuthState.CurrentUser is null) return;
+
+        var yeni = (kullanici.Eposta ?? string.Empty).Trim();
+        var eski = (AuthState.CurrentUser.Eposta ?? string.Empty).Trim();
+
+        if (!EpostaDegisti()) return;
+
+        // Çakışma kontrolü: yeni adres başka biri tarafından kullanılıyorsa engelle
+        var mevcut = await DataSvc.GetKullaniciByEposta(yeni);
+        if (mevcut is not null && mevcut.ID != kullanici.ID)
+        {
+            profilHata = "Bu e-posta başka bir kullanıcı tarafından kullanılıyor.";
+            return;
+        }
+
+        // 1. onay kutucuğu — kullanıcı maillerin nereye gideceğini bilsin
+        var onay = await DialogSvc.Confirm(
+            $"Doğrulama kodu <b>{yeni}</b> adresine,<br/>" +
+            $"bilgilendirme maili ise <b>{eski}</b> adresine gönderilecek.<br/><br/>" +
+            $"Devam edilsin mi?",
+            "Doğrulama Kodu Gönder",
+            new ConfirmOptions
+            {
+                OkButtonText = "Evet, Gönder",
+                CancelButtonText = "İptal"
+            });
+
+        if (onay != true) return;
+
+        kodGonderiliyor = true;
+        try
+        {
+            // Kodu üret + sakla, sonra iki maili paralel gönder.
+            var kod = DogrulamaSvc.OlusturVeKaydet(kullanici.ID, yeni);
+            var ad = (kullanici.Ad ?? string.Empty).Trim();
+
+            var bodyKod =
+                $@"<div style='font-family:Segoe UI, Arial, sans-serif; max-width:520px; margin:0 auto;'>
+                    <h2 style='color:#1f6feb; margin-bottom:0.5rem;'>E-posta Doğrulama</h2>
+                    <p>Merhaba <b>{ad}</b>,</p>
+                    <p>Hesabınızdaki e-posta adresini <b>{yeni}</b> olarak değiştirmek için doğrulama kodunuz:</p>
+                    <div style='font-size:1.8rem; font-weight:700; letter-spacing:8px;
+                                background:#f5f7fa; padding:1rem; text-align:center;
+                                border-radius:8px; color:#1f3a93; margin:1rem 0;'>{kod}</div>
+                    <p style='color:#666; font-size:0.9rem;'>Bu kod 10 dakika geçerlidir.
+                       Bu işlemi siz yapmadıysanız bu maili dikkate almayın.</p>
+                </div>";
+
+            var bodyBilgi =
+                $@"<div style='font-family:Segoe UI, Arial, sans-serif; max-width:520px; margin:0 auto;'>
+                    <h2 style='color:#c62828; margin-bottom:0.5rem;'>Hesabınızda Değişiklik Talebi</h2>
+                    <p>Merhaba <b>{ad}</b>,</p>
+                    <p>Hesabınızda e-posta değişiklik talebi yapıldı:
+                       <b>{eski}</b> → <b>{yeni}</b>.</p>
+                    <p style='color:#c62828;'><b>Bu işlemi siz yapmadıysanız</b> lütfen yöneticinizle iletişime geçin
+                       ve şifrenizi değiştirin.</p>
+                </div>";
+
+            var t1 = EmailSvc.SendAsync(yeni, "E-posta Doğrulama Kodu", bodyKod);
+            var t2 = EmailSvc.SendAsync(eski, "Hesabınızda E-posta Değişiklik Talebi", bodyBilgi);
+            await Task.WhenAll(t1, t2);
+
+            // Yeni adrese kod gitmesi kritik — eskinin gitmemesi durumunda akışı yine de devam ettirelim
+            // ama kullanıcıya bildirimle haber verelim. Yeni başarısızsa akış durur.
+            if (!t1.Result)
+            {
+                DogrulamaSvc.Iptal(kullanici.ID);
+                await DialogSvc.Alert(
+                    "Doğrulama maili gönderilemedi. SMTP ayarlarınızı kontrol edin veya tekrar deneyin.",
+                    "Mail Gönderim Başarısız",
+                    new AlertOptions { OkButtonText = "Tamam" });
+                return;
+            }
+
+            bekleyenYeniEposta = yeni;
+            kodGonderildi = true;
+            dogrulamaKodu = string.Empty;
+            dogrulamaHata = string.Empty;
+
+            // 2. onay kutucuğu — başarı bildirimi
+            var bilgilendirmeNotu = t2.Result
+                ? $"Mevcut adresinize ({eski}) bilgilendirme maili de gönderildi."
+                : "<i>(Mevcut adresinize bilgilendirme maili gönderilemedi, ama doğrulama akışına devam edebilirsiniz.)</i>";
+
+            await DialogSvc.Alert(
+                $"Doğrulama kodu <b>{yeni}</b> adresine başarıyla gönderildi.<br/>" +
+                $"Lütfen e-posta kutunuzu kontrol edin ve gelen 6 haneli kodu aşağıdaki kutuya girin.<br/><br/>" +
+                bilgilendirmeNotu,
+                "Mail Başarıyla Gönderildi",
+                new AlertOptions { OkButtonText = "Tamam" });
+        }
+        catch (Exception ex)
+        {
+            DogrulamaSvc.Iptal(kullanici.ID);
+            await DialogSvc.Alert(
+                $"Mail gönderilirken beklenmeyen bir hata oluştu: {ex.Message}",
+                "Hata",
+                new AlertOptions { OkButtonText = "Tamam" });
+        }
+        finally
+        {
+            kodGonderiliyor = false;
+        }
+    }
+
+    /// <summary>
+    /// Kullanıcının girdiği kodu doğrular; başarılıysa yeni e-postayı DB'ye yazar
+    /// ve AuthState'i günceller.
+    /// </summary>
+    private async Task OnDogrulaClick()
+    {
+        if (kullanici is null || AuthState.CurrentUser is null) return;
+
+        dogrulamaHata = string.Empty;
+        var giris = (dogrulamaKodu ?? string.Empty).Trim();
+
+        if (giris.Length != 6 || !giris.All(char.IsDigit))
+        {
+            dogrulamaHata = "6 haneli rakamsal kodu eksiksiz girin.";
+            return;
+        }
+
+        var (ok, yeniEposta) = DogrulamaSvc.Dogrula(kullanici.ID, giris);
+        if (!ok || string.IsNullOrEmpty(yeniEposta))
+        {
+            dogrulamaHata = "Kod hatalı veya süresi dolmuş. Lütfen yeni kod gönderin.";
+            return;
+        }
+
+        dogrulaniyor = true;
+        try
+        {
+            // DB'ye yeni e-posta ile kayıt et
+            kullanici.Eposta = yeniEposta;
+            kullanici.Sifre = string.Empty; // mevcut hash korunur (DB'de COALESCE)
+            kullanici.UpdUser = AuthState.CurrentUser.ID;
+            kullanici.DelUser = 0;
+
+            var sonuc = await DataSvc.SetKullanici(kullanici);
+            if (sonuc.SonucKodu < 0)
+            {
+                dogrulamaHata = sonuc.SonucAciklama ?? "Güncelleme başarısız.";
+                return;
+            }
+
+            await YukleAsync();
+            SyncAuthUserFromKullanici();
+
+            // UI state'i sıfırla
+            kodGonderildi = false;
+            bekleyenYeniEposta = null;
+            dogrulamaKodu = string.Empty;
+            dogrulamaHata = string.Empty;
+
+            NotificationSvc.Notify(NotificationSeverity.Success, "Başarılı",
+                "E-posta adresiniz başarıyla güncellendi.", 3500);
+        }
+        catch (Exception ex)
+        {
+            dogrulamaHata = $"Beklenmeyen hata: {ex.Message}";
+        }
+        finally
+        {
+            dogrulaniyor = false;
+        }
+    }
+
+    /// <summary>
+    /// Doğrulamayı iptal eder: bekleyen kodu siler ve e-posta alanını eski değere döndürür.
+    /// </summary>
+    private void OnIptalDogrulamaClick()
+    {
+        if (kullanici is null || AuthState.CurrentUser is null) return;
+
+        DogrulamaSvc.Iptal(kullanici.ID);
+        kullanici.Eposta = AuthState.CurrentUser.Eposta ?? string.Empty;
+
+        kodGonderildi = false;
+        bekleyenYeniEposta = null;
+        dogrulamaKodu = string.Empty;
+        dogrulamaHata = string.Empty;
+    }
+
+    // ── Şifre değiştir (OTP) ────────────────────────────────────────────────
+
+    private async Task OnSifreKoduGonderAsync()
+    {
+        if (AuthState.CurrentUser is null || sifreKodGonderildi)
+            return;
+
+        var onay = await DialogSvc.Confirm(
+            $"Doğrulama kodu, hesabınızda kayıtlı <b>{(AuthState.CurrentUser.Eposta ?? "").Trim()}</b> adresine gönderilecektir.<br/><br/>Devam edilsin mi?",
+            "Şifre değişikliği doğrulama",
+            new ConfirmOptions
+            {
+                OkButtonText = "Evet, Gönder",
+                CancelButtonText = "İptal"
+            });
+
+        if (onay != true)
+            return;
+
+        sifreHata = string.Empty;
+        sifreIsBusy = true;
+
+        try
+        {
+            var sonuc = await DataSvc.ProfilSifreDegisimKoduGonder(
+                AuthState.CurrentUser.ID,
+                sifreForm.EskiSifre,
+                sifreForm.YeniSifre);
+
+            if (sonuc.SonucKodu < 0)
+            {
+                sifreHata = sonuc.SonucAciklama ?? "Kod gönderilemedi.";
+                return;
+            }
+
+            bekleyenSifreEposta = (AuthState.CurrentUser.Eposta ?? string.Empty).Trim();
+            sifreKodGonderildi = true;
+            sifreDogrulamaKodu = string.Empty;
+            sifreDogrulamaHata = string.Empty;
+
+            await DialogSvc.Alert(
+                $"Doğrulama kodu <b>{bekleyenSifreEposta}</b> adresine gönderildi.<br/>" +
+                "Lütfen e-postanızdaki 6 haneli kodu aşağıya girin.",
+                "Mail gönderildi",
+                new AlertOptions { OkButtonText = "Tamam" });
+        }
+        catch (Exception ex)
+        {
+            DataSvc.ProfilSifreDegisimKoduIptal(AuthState.CurrentUser.ID);
+            await DialogSvc.Alert(
+                $"Kod gönderilirken beklenmeyen bir hata oluştu: {ex.Message}",
+                "Hata",
+                new AlertOptions { OkButtonText = "Tamam" });
+        }
+        finally
+        {
+            sifreIsBusy = false;
+        }
+    }
+
+    private async Task OnSifreOtpOnayAsync()
+    {
+        if (AuthState.CurrentUser is null)
+            return;
+
+        sifreDogrulamaHata = string.Empty;
+        var giris = (sifreDogrulamaKodu ?? string.Empty).Trim();
+
+        if (giris.Length != 6 || !giris.All(char.IsDigit))
+        {
+            sifreDogrulamaHata = "6 haneli rakamsal kodu eksiksiz girin.";
+            return;
+        }
+
+        sifreDogrulaniyor = true;
+
+        try
+        {
+            var sonuc = await DataSvc.ProfilSifreDegisimKoduOnayla(AuthState.CurrentUser.ID, giris);
+            if (sonuc.SonucKodu < 0)
+            {
+                sifreDogrulamaHata = sonuc.SonucAciklama ?? "Şifre güncellenemedi.";
+                return;
+            }
+
+            sifreKodGonderildi = false;
+            bekleyenSifreEposta = null;
+            sifreDogrulamaKodu = string.Empty;
+            sifreDogrulamaHata = string.Empty;
+            sifreForm = new SifreModel();
+
+            AuthState.NotifyStateChanged();
+            NotificationSvc.Notify(NotificationSeverity.Success, "Başarılı",
+                "Şifreniz başarıyla değiştirildi.", 3500);
+        }
+        catch (Exception ex)
+        {
+            sifreDogrulamaHata = $"Beklenmeyen hata: {ex.Message}";
+        }
+        finally
+        {
+            sifreDogrulaniyor = false;
+        }
+    }
+
+    private void OnSifreOtpIptal()
+    {
+        if (AuthState.CurrentUser is null)
+            return;
+
+        DataSvc.ProfilSifreDegisimKoduIptal(AuthState.CurrentUser.ID);
+        sifreKodGonderildi = false;
+        bekleyenSifreEposta = null;
+        sifreDogrulamaKodu = string.Empty;
+        sifreDogrulamaHata = string.Empty;
+        sifreHata = string.Empty;
+    }
+
+    // ── Yardımcı ────────────────────────────────────────────────────────────
+
+    private void SyncAuthUserFromKullanici()
+    {
+        if (kullanici is null || AuthState.CurrentUser is null) return;
+        AuthState.CurrentUser.Ad = kullanici.Ad;
+        AuthState.CurrentUser.Soyad = kullanici.Soyad;
+        AuthState.CurrentUser.Eposta = kullanici.Eposta;
+        AuthState.CurrentUser.ProfilResmi = kullanici.ProfilResmi;
+        AuthState.CurrentUser.Aktif = kullanici.Aktif;
+        AuthState.CurrentUser.UpdDate = kullanici.UpdDate;
+        AuthState.NotifyStateChanged();
+    }
+
+    private void ProfilResmiDosyalariniSil(int userId)
+    {
+        var dir = Path.Combine(Env.WebRootPath, "uploads", "profiles");
+        if (!Directory.Exists(dir)) return;
+        foreach (var p in Directory.GetFiles(dir, $"{userId}.*"))
+        {
+            try { File.Delete(p); } catch { /* yoksay */ }
+        }
+    }
+
+    private static string? MimeToUzanti(string? mime) => mime switch
+    {
+        "image/jpeg" => "jpg",
+        "image/png" => "png",
+        "image/webp" => "webp",
+        "image/gif" => "gif",
+        _ => null
+    };
+
+    private async Task OnProfilResmiSecildi(InputFileChangeEventArgs e)
+    {
+        profilResmiHata = string.Empty;
+        if (kullanici is null || AuthState.CurrentUser is null) return;
+
+        var file = e.File;
+        if (file is null) return;
+
+        if (file.Size > ProfilResmiMaxBoyut)
+        {
+            profilResmiHata = "Dosya en fazla 2 MB olabilir.";
+            return;
+        }
+
+        if (!ProfilResmiMime.Contains(file.ContentType))
+        {
+            profilResmiHata = "Yalnızca JPEG, PNG, WebP veya GIF yükleyebilirsiniz.";
+            return;
+        }
+
+        var uzanti = MimeToUzanti(file.ContentType);
+        if (uzanti is null) return;
+
+        profilResmiYukleniyor = true;
+        try
+        {
+            var profilDizin = Path.Combine(Env.WebRootPath, "uploads", "profiles");
+            Directory.CreateDirectory(profilDizin);
+            ProfilResmiDosyalariniSil(kullanici.ID);
+
+            var relatif = $"/uploads/profiles/{kullanici.ID}.{uzanti}";
+            var dosyaYolu = Path.Combine(profilDizin, $"{kullanici.ID}.{uzanti}");
+            await using (var fs = File.Create(dosyaYolu))
+            {
+                await using var stream = file.OpenReadStream(ProfilResmiMaxBoyut);
+                await stream.CopyToAsync(fs);
+            }
+
+            kullanici.ProfilResmi = relatif;
+            kullanici.Sifre = string.Empty;
+            kullanici.UpdUser = AuthState.CurrentUser.ID;
+            kullanici.DelUser = 0;
+
+            var sonuc = await DataSvc.SetKullanici(kullanici);
+            if (sonuc.SonucKodu < 0)
+            {
+                profilResmiHata = sonuc.SonucAciklama ?? "Kayıt başarısız.";
+                ProfilResmiDosyalariniSil(kullanici.ID);
+                await YukleAsync();
+                return;
+            }
+
+            await YukleAsync();
+            SyncAuthUserFromKullanici();
+            NotificationSvc.Notify(NotificationSeverity.Success, "Başarılı",
+                "Profil resminiz güncellendi.", 3000);
+        }
+        catch (Exception ex)
+        {
+            profilResmiHata = $"Yükleme başarısız: {ex.Message}";
+            ProfilResmiDosyalariniSil(kullanici.ID);
+        }
+        finally
+        {
+            profilResmiYukleniyor = false;
+        }
+    }
+
+    private async Task ProfilResmiKaldirAsync()
+    {
+        profilResmiHata = string.Empty;
+        if (kullanici is null || AuthState.CurrentUser is null) return;
+        if (string.IsNullOrWhiteSpace(kullanici.ProfilResmi)) return;
+
+        profilResmiYukleniyor = true;
+        try
+        {
+            ProfilResmiDosyalariniSil(kullanici.ID);
+            kullanici.ProfilResmi = null;
+            kullanici.Sifre = string.Empty;
+            kullanici.UpdUser = AuthState.CurrentUser.ID;
+            kullanici.DelUser = 0;
+
+            var sonuc = await DataSvc.SetKullanici(kullanici);
+            if (sonuc.SonucKodu < 0)
+            {
+                profilResmiHata = sonuc.SonucAciklama ?? "Güncelleme başarısız.";
+                await YukleAsync();
+                return;
+            }
+
+            await YukleAsync();
+            SyncAuthUserFromKullanici();
+            NotificationSvc.Notify(NotificationSeverity.Success, "Başarılı",
+                "Profil resmi kaldırıldı.", 3000);
+        }
+        catch (Exception ex)
+        {
+            profilResmiHata = ex.Message;
+        }
+        finally
+        {
+            profilResmiYukleniyor = false;
+        }
+    }
+
+    private static string Initials(ItemKullanicilar u)
+    {
+        var a = !string.IsNullOrWhiteSpace(u.Ad) ? char.ToUpperInvariant(u.Ad[0]).ToString() : "";
+        var s = !string.IsNullOrWhiteSpace(u.Soyad) ? char.ToUpperInvariant(u.Soyad[0]).ToString() : "";
+        var init = a + s;
+        return init.Length > 0 ? init : "?";
+    }
+}

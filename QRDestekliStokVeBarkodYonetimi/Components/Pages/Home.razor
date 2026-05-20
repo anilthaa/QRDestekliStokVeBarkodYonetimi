@@ -20,6 +20,7 @@
 
 @inject DataService DataSvc
 @inject AuthStateService AuthState
+@inject YetkiService YetkiSvc
 @inject NavigationManager Nav
 
 <PageTitle>Dashboard</PageTitle>
@@ -55,118 +56,161 @@
     {
         <div style="display:grid; grid-template-columns:repeat(auto-fill,minmax(200px,1fr)); gap:1rem; margin-bottom:1.5rem;">
 
-            <div @onclick='@(() => Nav.NavigateTo("/urunler"))' class="stat-card">
-                <RadzenCard Style="padding:1.2rem; border-top:4px solid #1976d2;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <div style="font-size:0.8rem; color:#888; margin-bottom:4px;">Toplam Ürün</div>
-                            <div style="font-size:2rem; font-weight:700; color:#1976d2;">@ozet.ToplamUrun</div>
+            @if (canUrun)
+            {
+                <div @onclick='@(() => Nav.NavigateTo("/urunler"))' class="stat-card">
+                    <RadzenCard Style="padding:1.2rem; border-top:4px solid #1976d2;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <div style="font-size:0.8rem; color:#888; margin-bottom:4px;">Toplam Ürün</div>
+                                <div style="font-size:2rem; font-weight:700; color:#1976d2;">@ozet.ToplamUrun</div>
+                            </div>
+                            <i class="fa-solid fa-boxes-packing" style="font-size:2rem; color:#1976d2; opacity:0.25;"></i>
                         </div>
-                        <i class="fa-solid fa-boxes-packing" style="font-size:2rem; color:#1976d2; opacity:0.25;"></i>
-                    </div>
-                </RadzenCard>
-            </div>
+                    </RadzenCard>
+                </div>
+            }
 
-            <div @onclick='@(() => Nav.NavigateTo("/kategoriler"))' class="stat-card">
-                <RadzenCard Style="padding:1.2rem; border-top:4px solid #7b1fa2;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <div style="font-size:0.8rem; color:#888; margin-bottom:4px;">Toplam Kategori</div>
-                            <div style="font-size:2rem; font-weight:700; color:#7b1fa2;">@ozet.ToplamKategori</div>
+            @if (canKategori)
+            {
+                <div @onclick='@(() => Nav.NavigateTo("/kategoriler"))' class="stat-card">
+                    <RadzenCard Style="padding:1.2rem; border-top:4px solid #7b1fa2;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <div style="font-size:0.8rem; color:#888; margin-bottom:4px;">Toplam Kategori</div>
+                                <div style="font-size:2rem; font-weight:700; color:#7b1fa2;">@ozet.ToplamKategori</div>
+                            </div>
+                            <i class="fa-solid fa-layer-group" style="font-size:2rem; color:#7b1fa2; opacity:0.25;"></i>
                         </div>
-                        <i class="fa-solid fa-layer-group" style="font-size:2rem; color:#7b1fa2; opacity:0.25;"></i>
-                    </div>
-                </RadzenCard>
-            </div>
+                    </RadzenCard>
+                </div>
+            }
 
-            <div @onclick='@(() => Nav.NavigateTo("/kullanicilar"))' class="stat-card">
-                <RadzenCard Style="padding:1.2rem; border-top:4px solid #0288d1;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <div style="font-size:0.8rem; color:#888; margin-bottom:4px;">Toplam Kullanıcı</div>
-                            <div style="font-size:2rem; font-weight:700; color:#0288d1;">@ozet.ToplamKullanici</div>
+            @if (canKullanici)
+            {
+                <div @onclick='@(() => Nav.NavigateTo("/kullanicilar"))' class="stat-card">
+                    <RadzenCard Style="padding:1.2rem; border-top:4px solid #0288d1;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <div style="font-size:0.8rem; color:#888; margin-bottom:4px;">Toplam Kullanıcı</div>
+                                <div style="font-size:2rem; font-weight:700; color:#0288d1;">@ozet.ToplamKullanici</div>
+                            </div>
+                            <i class="fa-solid fa-users" style="font-size:2rem; color:#0288d1; opacity:0.25;"></i>
                         </div>
-                        <i class="fa-solid fa-users" style="font-size:2rem; color:#0288d1; opacity:0.25;"></i>
-                    </div>
-                </RadzenCard>
-            </div>
+                    </RadzenCard>
+                </div>
+            }
 
-            <div @onclick='@(() => Nav.NavigateTo("/stok-hareketleri"))' class="stat-card">
-                <RadzenCard Style="padding:1.2rem; border-top:4px solid #455a64;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <div style="font-size:0.8rem; color:#888; margin-bottom:4px;">Toplam Hareket</div>
-                            <div style="font-size:2rem; font-weight:700; color:#455a64;">@ozet.ToplamHareket</div>
+            @if (canStokHareketleri)
+            {
+                <div @onclick='@(() => Nav.NavigateTo("/stok-hareketleri"))' class="stat-card">
+                    <RadzenCard Style="padding:1.2rem; border-top:4px solid #455a64;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <div style="font-size:0.8rem; color:#888; margin-bottom:4px;">Toplam Hareket</div>
+                                <div style="font-size:2rem; font-weight:700; color:#455a64;">@ozet.ToplamHareket</div>
+                            </div>
+                            <i class="fa-solid fa-arrow-right-arrow-left" style="font-size:2rem; color:#455a64; opacity:0.25;"></i>
                         </div>
-                        <i class="fa-solid fa-arrow-right-arrow-left" style="font-size:2rem; color:#455a64; opacity:0.25;"></i>
-                    </div>
-                </RadzenCard>
-            </div>
+                    </RadzenCard>
+                </div>
+            }
 
-            <div @onclick='@(() => Nav.NavigateTo("/stok-giris"))' class="stat-card">
-                <RadzenCard Style="padding:1.2rem; border-top:4px solid #2e7d32;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <div style="font-size:0.8rem; color:#888; margin-bottom:4px;">Bugün Giriş</div>
-                            <div style="font-size:2rem; font-weight:700; color:#2e7d32;">@ozet.BugunkuGiris.ToString("N0")</div>
+            @if (canStokGiris)
+            {
+                <div @onclick='@(() => Nav.NavigateTo("/stok-giris"))' class="stat-card">
+                    <RadzenCard Style="padding:1.2rem; border-top:4px solid #2e7d32;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <div style="font-size:0.8rem; color:#888; margin-bottom:4px;">Bugün Giriş</div>
+                                <div style="font-size:2rem; font-weight:700; color:#2e7d32;">@ozet.BugunkuGiris.ToString("N0")</div>
+                            </div>
+                            <i class="fa-solid fa-download" style="font-size:2rem; color:#2e7d32; opacity:0.25;"></i>
                         </div>
-                        <i class="fa-solid fa-download" style="font-size:2rem; color:#2e7d32; opacity:0.25;"></i>
-                    </div>
-                </RadzenCard>
-            </div>
+                    </RadzenCard>
+                </div>
+            }
 
-            <div @onclick='@(() => Nav.NavigateTo("/stok-cikis"))' class="stat-card">
-                <RadzenCard Style="padding:1.2rem; border-top:4px solid #c62828;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <div style="font-size:0.8rem; color:#888; margin-bottom:4px;">Bugün Çıkış</div>
-                            <div style="font-size:2rem; font-weight:700; color:#c62828;">@ozet.BugunkuCikis.ToString("N0")</div>
+            @if (canStokCikis)
+            {
+                <div @onclick='@(() => Nav.NavigateTo("/stok-cikis"))' class="stat-card">
+                    <RadzenCard Style="padding:1.2rem; border-top:4px solid #c62828;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <div style="font-size:0.8rem; color:#888; margin-bottom:4px;">Bugün Çıkış</div>
+                                <div style="font-size:2rem; font-weight:700; color:#c62828;">@ozet.BugunkuCikis.ToString("N0")</div>
+                            </div>
+                            <i class="fa-solid fa-upload" style="font-size:2rem; color:#c62828; opacity:0.25;"></i>
                         </div>
-                        <i class="fa-solid fa-upload" style="font-size:2rem; color:#c62828; opacity:0.25;"></i>
-                    </div>
-                </RadzenCard>
-            </div>
+                    </RadzenCard>
+                </div>
+            }
 
-            <div @onclick='@(() => Nav.NavigateTo("/urunler"))' class="stat-card">
-                <RadzenCard Style="padding:1.2rem; border-top:4px solid #e65100;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <div style="font-size:0.8rem; color:#888; margin-bottom:4px;">Kritik Stok</div>
-                            <div style="font-size:2rem; font-weight:700; color:@(ozet.KritikStokSayisi > 0 ? "#e65100" : "#888");">@ozet.KritikStokSayisi</div>
+            @if (canUrun)
+            {
+                <div @onclick='@(() => Nav.NavigateTo("/urunler"))' class="stat-card">
+                    <RadzenCard Style="padding:1.2rem; border-top:4px solid #e65100;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <div style="font-size:0.8rem; color:#888; margin-bottom:4px;">Kritik Stok</div>
+                                <div style="font-size:2rem; font-weight:700; color:@(ozet.KritikStokSayisi > 0 ? "#e65100" : "#888");">@ozet.KritikStokSayisi</div>
+                            </div>
+                            <i class="fa-solid fa-triangle-exclamation" style="font-size:2rem; color:#e65100; opacity:0.25;"></i>
                         </div>
-                        <i class="fa-solid fa-triangle-exclamation" style="font-size:2rem; color:#e65100; opacity:0.25;"></i>
-                    </div>
-                </RadzenCard>
-            </div>
+                    </RadzenCard>
+                </div>
+            }
 
-            <div @onclick='@(() => Nav.NavigateTo("/stok-hareketleri"))' class="stat-card">
-                <RadzenCard Style="padding:1.2rem; border-top:4px solid #00838f;">
-                    <div style="display:flex; justify-content:space-between; align-items:center;">
-                        <div>
-                            <div style="font-size:0.8rem; color:#888; margin-bottom:4px;">Bugün Hareket</div>
-                            <div style="font-size:2rem; font-weight:700; color:#00838f;">@ozet.BugunkuHareket</div>
+            @if (canStokHareketleri)
+            {
+                <div @onclick='@(() => Nav.NavigateTo("/stok-hareketleri"))' class="stat-card">
+                    <RadzenCard Style="padding:1.2rem; border-top:4px solid #00838f;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <div>
+                                <div style="font-size:0.8rem; color:#888; margin-bottom:4px;">Bugün Hareket</div>
+                                <div style="font-size:2rem; font-weight:700; color:#00838f;">@ozet.BugunkuHareket</div>
+                            </div>
+                            <i class="fa-solid fa-calendar-day" style="font-size:2rem; color:#00838f; opacity:0.25;"></i>
                         </div>
-                        <i class="fa-solid fa-calendar-day" style="font-size:2rem; color:#00838f; opacity:0.25;"></i>
-                    </div>
-                </RadzenCard>
-            </div>
+                    </RadzenCard>
+                </div>
+            }
 
         </div>
 
-        <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-bottom:2.5rem; margin-top:2.5rem;">
-            <RadzenButton Text="Stok Giriş" Icon="add_circle" ButtonStyle="ButtonStyle.Success"
-                          Click='@(() => Nav.NavigateTo("/stok-giris"))' />
-            <RadzenButton Text="Stok Çıkış" Icon="remove_circle" ButtonStyle="ButtonStyle.Danger"
-                          Click='@(() => Nav.NavigateTo("/stok-cikis"))' />
-            <RadzenButton Text="Ürün Listesi" Icon="inventory_2" ButtonStyle="ButtonStyle.Primary"
-                          Click='@(() => Nav.NavigateTo("/urunler"))' />
-            <RadzenButton Text="Tüm Hareketler" Icon="swap_horiz" ButtonStyle="ButtonStyle.Secondary"
-                          Click='@(() => Nav.NavigateTo("/stok-hareketleri"))' />
-        </div>
+        @if (canStokGiris || canStokCikis || canUrun || canStokHareketleri)
+        {
+            <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-bottom:2.5rem; margin-top:2.5rem;">
+                @if (canStokGiris)
+                {
+                    <RadzenButton Text="Stok Giriş" Icon="add_circle" ButtonStyle="ButtonStyle.Success"
+                                  Click='@(() => Nav.NavigateTo("/stok-giris"))' />
+                }
+                @if (canStokCikis)
+                {
+                    <RadzenButton Text="Stok Çıkış" Icon="remove_circle" ButtonStyle="ButtonStyle.Danger"
+                                  Click='@(() => Nav.NavigateTo("/stok-cikis"))' />
+                }
+                @if (canUrun)
+                {
+                    <RadzenButton Text="Ürün Listesi" Icon="inventory_2" ButtonStyle="ButtonStyle.Primary"
+                                  Click='@(() => Nav.NavigateTo("/urunler"))' />
+                }
+                @if (canStokHareketleri)
+                {
+                    <RadzenButton Text="Tüm Hareketler" Icon="swap_horiz" ButtonStyle="ButtonStyle.Secondary"
+                                  Click='@(() => Nav.NavigateTo("/stok-hareketleri"))' />
+                }
+            </div>
+        }
 
-        <div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;">
+        @if (canUrun || canStokHareketleri)
+        {
+        <div class="dashboard-detail-grid @(canUrun && canStokHareketleri ? "two-col" : null)">
 
-            <div>
+            @if (canUrun)
+            {
+            <div class="dashboard-detail-panel">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
                     <h5 style="margin:0;">
                         <i class="fa-solid fa-triangle-exclamation" style="color:#e65100;"></i> Kritik Stok Ürünleri
@@ -200,8 +244,11 @@
                     </RadzenDataGrid>
                 }
             </div>
+            }
 
-            <div>
+            @if (canStokHareketleri)
+            {
+            <div class="dashboard-detail-panel">
                 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.75rem;">
                     <h5 style="margin:0;">
                         <i class="fa-solid fa-clock-rotate-left" style="color:#455a64;"></i> Son Stok Hareketleri
@@ -248,8 +295,10 @@
                     </RadzenDataGrid>
                 }
             </div>
+            }
 
         </div>
+        }
     }
 }
 
@@ -259,6 +308,12 @@
     private ItemStokHareketleri[] sonHareketler = [];
     private bool isLoading = true;
     private bool authChecked = false;
+    private bool canUrun;
+    private bool canKategori;
+    private bool canKullanici;
+    private bool canStokHareketleri;
+    private bool canStokGiris;
+    private bool canStokCikis;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -271,6 +326,13 @@
                 return;
             }
             authChecked = true;
+            await YetkiSvc.EnsureReadyAsync();
+            canUrun = YetkiSvc.ErişimVar("/urunler");
+            canKategori = YetkiSvc.ErişimVar("/kategoriler");
+            canKullanici = YetkiSvc.ErişimVar("/kullanicilar");
+            canStokHareketleri = YetkiSvc.ErişimVar("/stok-hareketleri");
+            canStokGiris = YetkiSvc.ErişimVar("/stok-giris");
+            canStokCikis = YetkiSvc.ErişimVar("/stok-cikis");
             await LoadAsync();
             StateHasChanged();
         }
@@ -283,13 +345,13 @@
         isLoading = true;
         try
         {
-            var t1 = DataSvc.GetDashboardOzet();
-            var t2 = DataSvc.GetKritikStokUrunler();
-            var t3 = DataSvc.GetSonHareketler(10);
-            await Task.WhenAll(t1, t2, t3);
-            ozet = t1.Result;
-            kritikStokUrunler = t2.Result;
-            sonHareketler = t3.Result;
+            var ozetTask = DataSvc.GetDashboardOzetAsync(canUrun, canKategori, canKullanici, canStokHareketleri, canStokGiris, canStokCikis);
+            var kritikTask = canUrun ? DataSvc.GetKritikStokUrunler() : Task.FromResult(Array.Empty<ItemUrun>());
+            var sonTask = canStokHareketleri ? DataSvc.GetSonHareketler(10) : Task.FromResult(Array.Empty<ItemStokHareketleri>());
+            await Task.WhenAll(ozetTask, kritikTask, sonTask);
+            ozet = await ozetTask;
+            kritikStokUrunler = await kritikTask;
+            sonHareketler = await sonTask;
         }
         catch { }
         finally

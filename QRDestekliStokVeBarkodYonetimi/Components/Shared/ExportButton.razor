@@ -1,0 +1,95 @@
+@*
+    Sayfa başlıklarındaki "Çıktı Al" butonu — Radzen RadzenSplitButton üzerinde
+    Excel / PDF / CSV seçeneklerini açılır menü olarak sunar. Ana butona tıklamak
+    varsayılan olarak Excel çıktısı üretir.
+
+    Kullanım:
+    <ExportButton TItem="ItemUrun"
+                  Items="@urunler"
+                  Title="Ürün Listesi"
+                  FileName="urun-listesi"
+                  Columns="@KolonlariAl()" />
+
+    private IList<ExportColumn<ItemUrun>> KolonlariAl() => new[] { ... };
+*@
+@typeparam TItem
+@inject ExportService ExportSvc
+@inject IJSRuntime JS
+@inject NotificationService Notif
+
+<RadzenSplitButton Click="@OnSecim"
+                   Text="Çıktı Al"
+                   Icon="download"
+                   ButtonStyle="ButtonStyle.Light"
+                   Disabled="@(Items is null || !Items.Any())"
+                   Style="margin-right:0;">
+    <ChildContent>
+        <RadzenSplitButtonItem Text="Excel olarak indir" Icon="table_view"  Value="excel" />
+        <RadzenSplitButtonItem Text="PDF olarak indir"   Icon="picture_as_pdf" Value="pdf" />
+        <RadzenSplitButtonItem Text="CSV olarak indir"   Icon="description" Value="csv" />
+    </ChildContent>
+</RadzenSplitButton>
+
+@code {
+    [Parameter, EditorRequired] public IEnumerable<TItem> Items { get; set; } = Array.Empty<TItem>();
+    [Parameter, EditorRequired] public IList<ExportColumn<TItem>> Columns { get; set; } = new List<ExportColumn<TItem>>();
+    [Parameter] public string Title { get; set; } = "Liste";
+    [Parameter] public string FileName { get; set; } = "liste";
+
+    private async Task OnSecim(RadzenSplitButtonItem? item)
+    {
+        // Ana butona tıklanırsa varsayılan: Excel
+        var format = item?.Value ?? "excel";
+        await ExportEt(format);
+    }
+
+    private async Task ExportEt(string format)
+    {
+        if (Items is null || Columns is null || !Columns.Any())
+        {
+            Notif.Notify(NotificationSeverity.Warning, "Çıktı", "Dışa aktarılacak kolon tanımlanmamış.", 3500);
+            return;
+        }
+
+        try
+        {
+            byte[] bytes;
+            string contentType, uzanti;
+
+            switch (format)
+            {
+                case "pdf":
+                    bytes       = ExportSvc.ToPdf(Title, Items, Columns);
+                    contentType = "application/pdf";
+                    uzanti      = "pdf";
+                    break;
+                case "csv":
+                    bytes       = ExportSvc.ToCsv(Items, Columns);
+                    contentType = "text/csv;charset=utf-8";
+                    uzanti      = "csv";
+                    break;
+                default:
+                    bytes       = ExportSvc.ToExcel(Title, Items, Columns);
+                    contentType = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+                    uzanti      = "xlsx";
+                    break;
+            }
+
+            var ad = $"{TemizDosyaAdi(FileName)}_{DateTime.Now:yyyyMMdd_HHmm}.{uzanti}";
+            await JS.InvokeVoidAsync("DosyaIndir.indir", ad, contentType, Convert.ToBase64String(bytes));
+            Notif.Notify(NotificationSeverity.Success, "Çıktı hazır", $"{ad} indirildi.", 2500);
+        }
+        catch (Exception ex)
+        {
+            Notif.Notify(NotificationSeverity.Error, "Çıktı hatası", ex.Message, 5000);
+        }
+    }
+
+    private static string TemizDosyaAdi(string s)
+    {
+        if (string.IsNullOrWhiteSpace(s)) return "liste";
+        var gecersiz = Path.GetInvalidFileNameChars();
+        var temiz = new string(s.Select(c => gecersiz.Contains(c) ? '_' : c).ToArray());
+        return temiz.Trim().Replace(' ', '_');
+    }
+}

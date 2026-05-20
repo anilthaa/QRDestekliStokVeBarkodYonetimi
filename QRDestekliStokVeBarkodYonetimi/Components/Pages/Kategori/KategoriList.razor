@@ -7,12 +7,19 @@
 
 <PageTitle>Kategoriler</PageTitle>
 
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-    <h3 style="margin:0;">Kategori Listesi</h3>
-    <RadzenButton Text="Yeni Kategori" Icon="add" ButtonStyle="ButtonStyle.Primary"
-                  Click="@OnYeniClick"
-                  Disabled="@sadecOkuma"
-                  Style="@(sadecOkuma ? "opacity:0.35;pointer-events:none;" : "")" />
+<div class="page-header">
+    <h3 class="page-header-title">Kategori Listesi</h3>
+    <div class="page-header-actions">
+        <ExportButton TItem="ItemKategori"
+                      Items="@kategoriler"
+                      Title="Kategori Listesi"
+                      FileName="kategori-listesi"
+                      Columns="@CiktiKolonlari()" />
+        <RadzenButton Text="Yeni Kategori" Icon="add" ButtonStyle="ButtonStyle.Primary"
+                      Click="@OnYeniClick"
+                      Disabled="@sadecOkuma"
+                      Style="@(sadecOkuma ? "opacity:0.35;pointer-events:none;" : "")" />
+    </div>
 </div>
 
 @if (isLoading)
@@ -40,8 +47,22 @@ else
             <RadzenDataGridColumn TItem="ItemKategori" Property="Aciklama" Title="Açıklama"
                                   MinWidth="200px" />
 
-            <RadzenDataGridColumn TItem="ItemKategori" Property="ResimYolu" Title="Resim Yolu"
-                                  MinWidth="160px" />
+            <RadzenDataGridColumn TItem="ItemKategori" Title="Resim"
+                                  Width="90px" TextAlign="TextAlign.Center"
+                                  Sortable="false" Filterable="false">
+                <Template Context="row">
+                    @if (!string.IsNullOrWhiteSpace(row.ResimYolu))
+                    {
+                        <img src="@row.ResimYolu" alt="@row.Ad"
+                             title="@row.Ad"
+                             style="width:52px;height:52px;object-fit:cover;border-radius:8px;border:1px solid #e2e8f0;display:block;margin:0 auto;" />
+                    }
+                    else
+                    {
+                        <span style="color:#94a3b8;font-size:0.85rem;">—</span>
+                    }
+                </Template>
+            </RadzenDataGridColumn>
 
             <RadzenDataGridColumn TItem="ItemKategori" Property="Aktif" Title="Aktif"
                                   Width="90px" TextAlign="TextAlign.Center">
@@ -79,9 +100,19 @@ else
     private bool isLoading = true;
     private bool sadecOkuma = false;
 
+    private IList<ExportColumn<ItemKategori>> CiktiKolonlari() => new List<ExportColumn<ItemKategori>>
+    {
+        new() { Header = "ID",          Value = k => k.ID,        Align = ExportAlign.Right, Width = 0.6f },
+        new() { Header = "Kategori Adı", Value = k => k.Ad,        Width = 1.6f },
+        new() { Header = "Açıklama",    Value = k => k.Aciklama,  Width = 2.4f },
+        new() { Header = "Resim Yolu",  Value = k => k.ResimYolu, Width = 1.6f },
+        new() { Header = "Aktif",       Value = k => k.Aktif,     Align = ExportAlign.Center, Width = 0.7f },
+    };
+
     protected override async Task OnInitializedAsync()
     {
-        await YetkiSvc.EnsureFormsLoadedAsync();
+        await AuthState.InitializeAsync();
+        await YetkiSvc.EnsureReadyAsync();
         if (!YetkiSvc.ErişimVar("/kategoriler"))
         {
             Nav.NavigateTo("/erisim-engeli", true);

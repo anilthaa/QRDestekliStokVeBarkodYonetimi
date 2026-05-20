@@ -7,12 +7,19 @@
 
 <PageTitle>Kullanıcı Tipleri</PageTitle>
 
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-    <h3 style="margin:0;">Kullanıcı Tipi Listesi</h3>
-    <RadzenButton Text="Yeni Kullanıcı Tipi" Icon="add" ButtonStyle="ButtonStyle.Primary"
-                  Click="@OnYeniClick"
-                  Disabled="@sadecOkuma"
-                  Style="@(sadecOkuma ? "opacity:0.35;pointer-events:none;" : "")" />
+<div class="page-header">
+    <h3 class="page-header-title">Kullanıcı Tipi Listesi</h3>
+    <div class="page-header-actions">
+        <ExportButton TItem="ItemKullaniciTip"
+                      Items="@tipler"
+                      Title="Kullanıcı Tipi Listesi"
+                      FileName="kullanici-tipi-listesi"
+                      Columns="@CiktiKolonlari()" />
+        <RadzenButton Text="Yeni Kullanıcı Tipi" Icon="add" ButtonStyle="ButtonStyle.Primary"
+                      Click="@OnYeniClick"
+                      Disabled="@sadecOkuma"
+                      Style="@(sadecOkuma ? "opacity:0.35;pointer-events:none;" : "")" />
+    </div>
 </div>
 
 @if (isLoading)
@@ -38,6 +45,18 @@ else
                                 Style="@(row.Aktif == true ? "color:#2e7d32" : "color:#c62828")" />
                 </Template>
             </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="ItemKullaniciTip" Property="Varsayilan" Title="Varsayılan" Width="110px" TextAlign="TextAlign.Center">
+                <Template Context="row">
+                    @if (row.Varsayilan)
+                    {
+                        <RadzenBadge Text="Varsayılan" BadgeStyle="BadgeStyle.Info" />
+                    }
+                    else
+                    {
+                        <span style="color:var(--rz-text-secondary-color); font-size:0.85rem;">—</span>
+                    }
+                </Template>
+            </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="ItemKullaniciTip" Title="İşlemler" Width="160px" TextAlign="TextAlign.Center" Sortable="false" Filterable="false">
                 <Template Context="row">
                     <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Info" Size="ButtonSize.Small" Variant="Variant.Flat"
@@ -60,9 +79,18 @@ else
     private bool isLoading = true;
     private bool sadecOkuma = false;
 
+    private IList<ExportColumn<ItemKullaniciTip>> CiktiKolonlari() => new List<ExportColumn<ItemKullaniciTip>>
+    {
+        new() { Header = "ID",                Value = t => t.ID,    Align = ExportAlign.Right, Width = 0.6f },
+        new() { Header = "Kullanıcı Tipi Adı", Value = t => t.Ad,    Width = 2.2f },
+        new() { Header = "Aktif",             Value = t => t.Aktif, Align = ExportAlign.Center, Width = 0.7f },
+        new() { Header = "Varsayılan",        Value = t => t.Varsayilan, Align = ExportAlign.Center, Width = 0.8f },
+    };
+
     protected override async Task OnInitializedAsync()
     {
-        await YetkiSvc.EnsureFormsLoadedAsync();
+        await AuthState.InitializeAsync();
+        await YetkiSvc.EnsureReadyAsync();
         if (!YetkiSvc.ErişimVar("/kullanici-tipler"))
         {
             Nav.NavigateTo("/erisim-engeli", true);
@@ -106,7 +134,11 @@ else
         if (onay != true) return;
 
         int userId = AuthState.CurrentUser?.ID ?? 0;
-        var silItem = new ItemKullaniciTip { ID = item.ID, Ad = item.Ad, Aktif = item.Aktif, CreUser = item.CreUser, DelUser = userId };
+        var silItem = new ItemKullaniciTip
+        {
+            ID = item.ID, Ad = item.Ad, Aktif = item.Aktif, Varsayilan = item.Varsayilan,
+            CreUser = item.CreUser, DelUser = userId
+        };
         var result = await DataSvc.SetKullaniciTip(silItem);
         if (result.SonucKodu < 0)
             NotificationSvc.Notify(NotificationSeverity.Error, "Hata", result.SonucAciklama ?? "Silme işlemi başarısız.", 4000);

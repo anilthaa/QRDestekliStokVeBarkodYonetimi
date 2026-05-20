@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using QRCoder;
 using ZXing;
 using ZXing.Common;
@@ -7,6 +8,61 @@ namespace QRDestekliStokVeBarkodYonetimi.Services
 {
     public class QrService
     {
+        private static readonly Regex UrunPathRegex =
+            new(@"/urun/([^/?#]+)", RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+        /// <summary>
+        /// Herkese açık ürün detay sayfası URL'si üretir.
+        /// </summary>
+        public string? BuildUrunDetayUrl(string baseUri, string? barkodNo)
+        {
+            if (string.IsNullOrWhiteSpace(barkodNo) || string.IsNullOrWhiteSpace(baseUri))
+                return null;
+
+            var barkod = barkodNo.Trim();
+            var baseNorm = baseUri.TrimEnd('/') + "/";
+            return $"{baseNorm}urun/{Uri.EscapeDataString(barkod)}";
+        }
+
+        /// <summary>
+        /// QR veya manuel girişten barkod numarasını ayıklar (tam URL veya düz metin).
+        /// </summary>
+        public string? BarkodNoCikar(string? scanned)
+        {
+            if (string.IsNullOrWhiteSpace(scanned))
+                return null;
+
+            var s = scanned.Trim();
+
+            if (Uri.TryCreate(s, UriKind.Absolute, out var uri))
+            {
+                var fromPath = UrunSegmentindenCikar(uri.AbsolutePath);
+                if (fromPath is not null)
+                    return fromPath;
+            }
+
+            var match = UrunPathRegex.Match(s);
+            if (match.Success)
+                return Uri.UnescapeDataString(match.Groups[1].Value);
+
+            return s;
+        }
+
+        private static string? UrunSegmentindenCikar(string? path)
+        {
+            if (string.IsNullOrWhiteSpace(path))
+                return null;
+
+            var segments = path.Trim('/').Split('/', StringSplitOptions.RemoveEmptyEntries);
+            for (var i = 0; i < segments.Length - 1; i++)
+            {
+                if (string.Equals(segments[i], "urun", StringComparison.OrdinalIgnoreCase))
+                    return Uri.UnescapeDataString(segments[i + 1]);
+            }
+
+            return null;
+        }
+
         /// <summary>
         /// Verilen metinden QR kod üretir ve base64 PNG string olarak döner.
         /// Boş/null metin gelirse null döner.

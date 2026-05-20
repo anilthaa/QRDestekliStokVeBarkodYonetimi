@@ -1,0 +1,33 @@
+.public-page {
+    min-height: 100vh;
+    background: linear-gradient(160deg, #f0f4ff 0%, #e8eaf6 45%, #f5f7fa 100%);
+}
+
+.public-header {
+    padding: 1rem 1.25rem;
+    text-align: center;
+}
+
+.public-brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    color: #4338ca;
+    font-weight: 600;
+    font-size: 0.95rem;
+    text-decoration: none;
+}
+
+.public-brand:hover {
+    color: #3730a3;
+}
+
+.public-brand i {
+    font-size: 1.25rem;
+}
+
+.public-main {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 0 1rem 2.5rem;
+}

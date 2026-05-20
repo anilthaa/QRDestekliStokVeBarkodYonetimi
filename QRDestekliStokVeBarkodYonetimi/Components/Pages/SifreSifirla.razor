@@ -1,0 +1,73 @@
+@page "/sifre-sifirla"
+@layout QRDestekliStokVeBarkodYonetimi.Components.Layout.AuthLayout
+
+<PageTitle>Yeni şifre belirle</PageTitle>
+
+<div class="auth-card">
+    <div class="auth-card__brand">
+        <i class="fa-solid fa-lock" style="font-size:2.4rem;color:#1b6ec2;"></i>
+        <h1>Yeni şifre</h1>
+        <p>Hesabınız için yeni bir şifre seçin</p>
+    </div>
+
+    @if (string.IsNullOrWhiteSpace(Token))
+    {
+        @if (!string.IsNullOrEmpty(Error))
+        {
+            <div class="rz-alert rz-alert-danger" style="margin-bottom:0.75rem;">@Error</div>
+        }
+        else
+        {
+            <div class="rz-alert rz-alert-danger" style="margin-bottom:0.75rem;">
+                Geçerli bir sıfırlama bağlantısı yok. Lütfen e-postanızdaki bağlantıyı kullanın veya
+                <a href="/sifremi-unuttum" style="font-weight:600;">şifre sıfırlama</a> talebinde bulunun.
+            </div>
+        }
+        <div class="auth-card__footer">
+            <a href="/login">Giriş sayfasına dön</a>
+        </div>
+    }
+    else
+    {
+        <form method="post" action="/api/auth/reset-password" class="auth-form">
+            <input type="hidden" name="Token" value="@Token" />
+
+            <div class="auth-field">
+                <label class="rz-label" for="YeniSifre">Yeni şifre</label>
+                <input id="YeniSifre" name="YeniSifre" type="password" required minlength="6"
+                       placeholder="En az 6 karakter"
+                       class="rz-textbox"
+                       style="width:100%;" />
+            </div>
+
+            <div class="auth-field">
+                <label class="rz-label" for="YeniSifreTekrar">Yeni şifre (tekrar)</label>
+                <input id="YeniSifreTekrar" name="YeniSifreTekrar" type="password" required minlength="6"
+                       class="rz-textbox"
+                       style="width:100%;" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(Error))
+            {
+                <div class="rz-alert rz-alert-danger" style="margin-bottom:0.75rem;">@Error</div>
+            }
+
+            <button type="submit" class="rz-button rz-button-md rz-button-primary"
+                    style="width:100%; margin-top:0.25rem;">
+                <span class="rz-button-icon-left">
+                    <i class="fa-solid fa-check"></i>
+                </span>
+                <span class="rz-button-text">Şifreyi kaydet</span>
+            </button>
+        </form>
+
+        <div class="auth-card__footer">
+            <a href="/login">Giriş sayfasına dön</a>
+        </div>
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery] public string? Token { get; set; }
+    [SupplyParameterFromQuery] public string? Error { get; set; }
+}

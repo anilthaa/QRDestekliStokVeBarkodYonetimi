@@ -1,0 +1,63 @@
+@page "/hesap-onay"
+@layout QRDestekliStokVeBarkodYonetimi.Components.Layout.AuthLayout
+
+@* @rendermode bilerek YOK — onay işlemi /api/auth/confirm-account endpoint'inde tek seferde yapılır. *@
+
+<PageTitle>Hesap onayı</PageTitle>
+
+<div class="auth-card">
+    <div class="auth-card__brand">
+        <i class="fa-solid fa-user-check" style="font-size:2.4rem;color:#1b6ec2;"></i>
+        <h1>Hesap onayı</h1>
+        @if (Basarili)
+        {
+            <p>Hesabınız başarıyla onaylandı</p>
+        }
+        else if (!string.IsNullOrEmpty(Error))
+        {
+            <p>Onay işlemi tamamlanamadı</p>
+        }
+        else
+        {
+            <p>Hesap onay sonucu</p>
+        }
+    </div>
+
+    @if (Basarili)
+    {
+        <div class="rz-alert rz-alert-success" style="margin-bottom:0.75rem;">
+            Hesabınız onaylandı. Geçici şifreniz e-posta adresinize gönderildi.
+            Giriş yaptıktan sonra profil sayfasından şifrenizi değiştirmenizi öneririz.
+        </div>
+        <div class="auth-card__footer">
+            <a href="/login">Giriş yap</a>
+        </div>
+    }
+    else if (!string.IsNullOrEmpty(Error))
+    {
+        <div class="rz-alert rz-alert-danger" style="margin-bottom:0.75rem;">@Error</div>
+        <div class="auth-card__footer">
+            <a href="/login">Giriş sayfasına dön</a>
+        </div>
+    }
+    else
+    {
+        <div class="rz-alert rz-alert-danger" style="margin-bottom:0.75rem;">
+            Geçerli bir onay bağlantısı bulunamadı. Lütfen e-postanızdaki bağlantıyı kullanın
+            veya yöneticinizden yeni onay maili isteyin.
+        </div>
+        <div class="auth-card__footer">
+            <a href="/login">Giriş sayfasına dön</a>
+        </div>
+    }
+</div>
+
+@code {
+    [SupplyParameterFromQuery(Name = "success")]
+    public string? Success { get; set; }
+
+    [SupplyParameterFromQuery(Name = "error")]
+    public string? Error { get; set; }
+
+    private bool Basarili => Success == "1";
+}

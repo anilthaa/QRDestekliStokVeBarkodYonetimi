@@ -1,45 +1,77 @@
 @page "/login"
 @layout QRDestekliStokVeBarkodYonetimi.Components.Layout.AuthLayout
 
-@inject AuthStateService AuthState
-@inject NavigationManager Nav
-@inject NotificationService Notification
+@* @rendermode bilerek YOK — form-post için sayfanın static SSR olması gerekiyor.
+   Cookie auth: form /api/auth/login'e POST eder, endpoint SignInAsync çağırıp redirect'ler. *@
 
 <PageTitle>Giriş Yap</PageTitle>
 
 <div class="auth-card">
     <div class="auth-card__brand">
-        <RadzenIcon Icon="qr_code_2" Style="font-size:2.4rem;color:#1b6ec2" />
+        <i class="fa-solid fa-qrcode" style="font-size:2.4rem;color:#1b6ec2;"></i>
         <h1>QR Destekli Stok Yönetimi</h1>
         <p>Hesabınıza giriş yapın</p>
     </div>
 
-    <RadzenTemplateForm TItem="LoginModel" Data="@model" Submit="@((LoginModel m) => OnSubmitAsync(m))">
-        <div class="auth-field">
-            <RadzenLabel Text="E-posta" Component="Eposta" />
-            <RadzenTextBox @bind-Value="model.Eposta" Name="Eposta" Placeholder="@EpostaPh"
-                           Style="width:100%" Disabled="@isBusy" />
-            <RadzenRequiredValidator Component="Eposta" Text="E-posta zorunludur." Style="display:block" />
-            <RadzenEmailValidator Component="Eposta" Text="Geçerli bir e-posta girin." Style="display:block" />
-        </div>
-
-        <div class="auth-field">
-            <RadzenLabel Text="Şifre" Component="Sifre" />
-            <RadzenPassword @bind-Value="model.Sifre" Name="Sifre" Placeholder="••••••••"
-                            Style="width:100%" Disabled="@isBusy" />
-            <RadzenRequiredValidator Component="Sifre" Text="Şifre zorunludur." Style="display:block" />
-        </div>
-
-        @if (!string.IsNullOrEmpty(errorMessage))
+    <form method="post" action="/api/auth/login" class="auth-form">
+        @if (ReturnUrl is not null)
         {
-            <RadzenAlert AlertStyle="AlertStyle.Danger" ShowIcon="true" Variant="Variant.Flat"
-                         AllowClose="false" Style="margin-bottom:0.75rem">@errorMessage</RadzenAlert>
+            <input type="hidden" name="ReturnUrl" value="@ReturnUrl" />
         }
 
-        <RadzenButton ButtonType="ButtonType.Submit" Text="Giriş Yap"
-                      Icon="login" IsBusy="@isBusy" BusyText="Giriş yapılıyor..."
-                      Style="width:100%; margin-top:0.25rem" />
-    </RadzenTemplateForm>
+        @if (!string.IsNullOrEmpty(Registered))
+        {
+            <div class="rz-alert rz-alert-success" style="margin-bottom:0.75rem;">
+                Kayıt başarılı. Şimdi giriş yapabilirsiniz.
+            </div>
+        }
+
+        @if (!string.IsNullOrEmpty(Sifirlandi))
+        {
+            <div class="rz-alert rz-alert-success" style="margin-bottom:0.75rem;">
+                Şifreniz güncellendi. Yeni şifrenizle giriş yapabilirsiniz.
+            </div>
+        }
+
+        <div class="auth-field">
+            <label class="rz-label" for="Eposta">E-posta</label>
+            <input id="Eposta" name="Eposta" type="email" required
+                   placeholder="ornek@mail.com"
+                   class="rz-textbox"
+                   style="width:100%;" />
+        </div>
+
+        <div class="auth-field">
+            <div class="auth-label-row">
+                <label class="rz-label" for="Sifre" style="margin:0;">Şifre</label>
+                <a class="auth-forgot-link" href="/sifremi-unuttum">Şifremi unuttum</a>
+            </div>
+            <input id="Sifre" name="Sifre" type="password" required
+                   placeholder="••••••••"
+                   class="rz-textbox"
+                   style="width:100%;" />
+        </div>
+
+        <div class="auth-remember-row">
+            <label class="auth-checkbox">
+                <input type="checkbox" name="BeniHatirla" value="true" />
+                <span>Beni hatırla</span>
+            </label>
+        </div>
+
+        @if (!string.IsNullOrEmpty(Error))
+        {
+            <div class="rz-alert rz-alert-danger" style="margin-bottom:0.75rem;">@Error</div>
+        }
+
+        <button type="submit" class="rz-button rz-button-md rz-button-primary"
+                style="width:100%; margin-top:0.25rem;">
+            <span class="rz-button-icon-left">
+                <i class="fa-solid fa-right-to-bracket"></i>
+            </span>
+            <span class="rz-button-text">Giriş Yap</span>
+        </button>
+    </form>
 
     <div class="auth-card__footer">
         Hesabınız yok mu? <a href="/register">Kayıt olun</a>
@@ -47,48 +79,19 @@
 </div>
 
 @code {
-    private const string EpostaPh = "ornek@mail.com";
+    [SupplyParameterFromQuery] public string? Error { get; set; }
+    [SupplyParameterFromQuery] public string? ReturnUrl { get; set; }
+    [SupplyParameterFromQuery] public string? Registered { get; set; }
+    [SupplyParameterFromQuery] public string? Sifirlandi { get; set; }
 
-    private readonly LoginModel model = new();
-    private bool isBusy;
-    private string? errorMessage;
+    [CascadingParameter] public HttpContext? HttpContext { get; set; }
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override void OnInitialized()
     {
-        if (firstRender)
+        // Zaten cookie ile auth olmuş kullanıcıyı doğrudan ana sayfaya gönder.
+        if (HttpContext?.User?.Identity?.IsAuthenticated == true)
         {
-            await AuthState.InitializeAsync();
-            if (AuthState.IsAuthenticated)
-                Nav.NavigateTo("/", replace: true);
+            HttpContext.Response.Redirect(string.IsNullOrWhiteSpace(ReturnUrl) ? "/" : ReturnUrl);
         }
-    }
-
-    private async Task OnSubmitAsync(LoginModel m)
-    {
-        errorMessage = null;
-        isBusy = true;
-        try
-        {
-            var (ok, err) = await AuthState.LoginAsync(m.Eposta, m.Sifre);
-            if (!ok)
-            {
-                errorMessage = err;
-                return;
-            }
-
-            Notification.Notify(NotificationSeverity.Success, "Hoş geldiniz",
-                $"{AuthState.CurrentUser?.Ad} {AuthState.CurrentUser?.Soyad}", 3000);
-            Nav.NavigateTo("/", replace: true);
-        }
-        finally
-        {
-            isBusy = false;
-        }
-    }
-
-    private class LoginModel
-    {
-        public string Eposta { get; set; } = string.Empty;
-        public string Sifre { get; set; } = string.Empty;
     }
 }

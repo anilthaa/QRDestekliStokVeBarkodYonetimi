@@ -1,0 +1,51 @@
+@page "/sifremi-unuttum"
+@layout QRDestekliStokVeBarkodYonetimi.Components.Layout.AuthLayout
+
+<PageTitle>Şifremi unuttum</PageTitle>
+
+<div class="auth-card">
+    <div class="auth-card__brand">
+        <i class="fa-solid fa-key" style="font-size:2.4rem;color:#1b6ec2;"></i>
+        <h1>Şifre sıfırlama</h1>
+        <p>Kayıtlı e-posta adresinize sıfırlama bağlantısı gönderilir</p>
+    </div>
+
+    <form method="post" action="/api/auth/forgot-password" class="auth-form">
+        @if (!string.IsNullOrEmpty(Gonderildi))
+        {
+            <div class="rz-alert rz-alert-success" style="margin-bottom:0.75rem;">
+                E-posta adresiniz kayıtlıysa bir sıfırlama bağlantısı gönderdik. Gelen kutunuzu ve gerekiyorsa spam klasörünü kontrol edin.
+            </div>
+        }
+
+        <div class="auth-field">
+            <label class="rz-label" for="Eposta">E-posta</label>
+            <input id="Eposta" name="Eposta" type="email" required
+                   placeholder="ornek@mail.com"
+                   class="rz-textbox"
+                   style="width:100%;" />
+        </div>
+
+        @if (!string.IsNullOrEmpty(Error))
+        {
+            <div class="rz-alert rz-alert-danger" style="margin-bottom:0.75rem;">@Error</div>
+        }
+
+        <button type="submit" class="rz-button rz-button-md rz-button-primary"
+                style="width:100%; margin-top:0.25rem;">
+            <span class="rz-button-icon-left">
+                <i class="fa-solid fa-paper-plane"></i>
+            </span>
+            <span class="rz-button-text">Bağlantı gönder</span>
+        </button>
+    </form>
+
+    <div class="auth-card__footer">
+        <a href="/login">Giriş sayfasına dön</a>
+    </div>
+</div>
+
+@code {
+    [SupplyParameterFromQuery] public string? Gonderildi { get; set; }
+    [SupplyParameterFromQuery] public string? Error { get; set; }
+}

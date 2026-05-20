@@ -1,0 +1,89 @@
+@if (resimler.Count > 0)
+{
+    <div class="urun-resim-slayt @(Kompakt ? "kompakt" : "")">
+        <div class="urun-resim-slayt-slider">
+            @if (resimler.Count > 1)
+            {
+                <button type="button" class="urun-resim-slayt-btn prev"
+                        @onclick="OncekiResim" aria-label="Önceki resim">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+            }
+
+            <figure class="urun-resim-slayt-frame">
+                <img src="@resimler[aktifIndex]" alt="@($"{UrunAdi} — {aktifIndex + 1}")" />
+            </figure>
+
+            @if (resimler.Count > 1)
+            {
+                <button type="button" class="urun-resim-slayt-btn next"
+                        @onclick="SonrakiResim" aria-label="Sonraki resim">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+            }
+        </div>
+
+        @if (resimler.Count > 1)
+        {
+            <div class="urun-resim-slayt-footer">
+                <div class="urun-resim-slayt-dots">
+                    @for (var i = 0; i < resimler.Count; i++)
+                    {
+                        var idx = i;
+                        <button type="button"
+                                class="urun-resim-slayt-dot @(aktifIndex == idx ? "active" : "")"
+                                @onclick="@(() => ResimSec(idx))"
+                                aria-label="@($"Resim {idx + 1}")"></button>
+                    }
+                </div>
+                <span class="urun-resim-slayt-counter">@(aktifIndex + 1) / @resimler.Count</span>
+            </div>
+        }
+    </div>
+}
+else if (ResimGoster)
+{
+    <div class="urun-resim-slayt-empty @(Kompakt ? "kompakt" : "")">
+        <i class="fa-solid fa-image"></i>
+        <span>Ürün resmi yok</span>
+    </div>
+}
+
+@code {
+    [Parameter] public string? ResimYolu { get; set; }
+    [Parameter] public string UrunAdi { get; set; } = string.Empty;
+    [Parameter] public bool Kompakt { get; set; }
+    [Parameter] public bool ResimGoster { get; set; } = true;
+
+    private List<string> resimler = [];
+    private int aktifIndex;
+
+    protected override void OnParametersSet()
+    {
+        aktifIndex = 0;
+        resimler = string.IsNullOrWhiteSpace(ResimYolu)
+            ? []
+            : ResimYolu.Split(';', StringSplitOptions.RemoveEmptyEntries)
+                .Select(s => s.Trim())
+                .Where(s => s.Length > 0)
+                .ToList();
+    }
+
+    private void OncekiResim()
+    {
+        if (resimler.Count <= 1) return;
+        aktifIndex = aktifIndex == 0 ? resimler.Count - 1 : aktifIndex - 1;
+    }
+
+    private void SonrakiResim()
+    {
+        if (resimler.Count <= 1) return;
+        aktifIndex = aktifIndex >= resimler.Count - 1 ? 0 : aktifIndex + 1;
+    }
+
+    private void ResimSec(int index)
+    {
+        if (index >= 0 && index < resimler.Count)
+            aktifIndex = index;
+    }
+}

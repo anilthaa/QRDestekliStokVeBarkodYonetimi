@@ -2,10 +2,10 @@
 @layout QRDestekliStokVeBarkodYonetimi.Components.Layout.MainLayout
 @rendermode InteractiveServer
 
-@inject DataService DataSvc
-@inject AuthStateService AuthState
-@inject YetkiService YetkiSvc
-@inject NavigationManager Nav
+@inject DataService         DataSvc
+@inject AuthStateService    AuthState
+@inject YetkiService        YetkiSvc
+@inject NavigationManager   Nav
 @inject NotificationService NotifSvc
 
 <PageTitle>Kullanıcı Yetki Yönetimi</PageTitle>
@@ -18,8 +18,8 @@
 }
 else
 {
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1.5rem; flex-wrap:wrap; gap:0.5rem;">
-        <h4 style="margin:0;">
+    <div class="page-header page-header--lg">
+        <h4 class="page-header-title">
             <i class="fa-solid fa-user-shield" style="color:#1976d2; margin-right:0.5rem;"></i>
             @if (kullanici is not null)
             {
@@ -30,8 +30,10 @@ else
                 <span>Kullanıcı Yetki Yönetimi</span>
             }
         </h4>
-        <RadzenButton Text="Geri Dön" Icon="arrow_back" ButtonStyle="ButtonStyle.Light"
-                      Click="@(() => Nav.NavigateTo("/kullanicilar"))" />
+        <div class="page-header-actions">
+            <RadzenButton Text="Geri Dön" Icon="arrow_back" ButtonStyle="ButtonStyle.Light"
+                          Click="@(() => Nav.NavigateTo("/kullanicilar"))" />
+        </div>
     </div>
 
     @if (kullanici is null)
@@ -41,8 +43,17 @@ else
     else
     {
         <RadzenCard>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-                <h6 style="margin:0;">Form Yetkileri</h6>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem; flex-wrap:wrap; gap:0.5rem;">
+                <h6 style="margin:0;">
+                    Form Yetkileri
+                    @if (!string.IsNullOrEmpty(kullaniciTipAd))
+                    {
+                        <span style="font-size:0.78rem; font-weight:500; color:#7b1fa2; margin-left:0.6rem;">
+                            <i class="fa-solid fa-shield-halved" style="margin-right:0.25rem;"></i>
+                            Tip: @kullaniciTipAd
+                        </span>
+                    }
+                </h6>
                 @if (yukleniyor)
                 {
                     <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Small" />
@@ -50,28 +61,30 @@ else
             </div>
 
             <p style="font-size:0.82rem; color:#888; margin:0 0 1rem;">
-                <strong>Tip Yetkisi (Kalıtım):</strong> Kullanıcıya özel override kaldırılır; bu sayfanın yetkisi kullanıcı tipinden kalıtılır.<br />
-                <strong>Gizli:</strong> Kullanıcı, tip yetkisi Yazma olsa bile bu sayfayı göremez ve erişemez.<br />
-                <strong>Okuma / Yazma:</strong> Kullanıcıya özel yetki, tip yetkisini geçersiz kılar.
+                <strong>Gizli:</strong> Kullanıcı bu sayfayı göremez ve erişemez.&nbsp;
+                <strong>Okuma:</strong> Sayfa görüntülenebilir; ekleme/silme butonları gizlenir.&nbsp;
+                <strong>Yazma:</strong> Tam erişim — ekleme, düzenleme ve silme serbest.<br />
+                Sarı satırlar ve "● özel" rozeti, kullanıcıya özel override kaydı bulunduğunu gösterir.
+                Her dropdown'ın altındaki "Tip yetkisi" değeri, kullanıcının tipinden gelen taban yetkidir;
+                override kaydı yoksa o değer etkindir.
             </p>
 
             <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
                 <thead>
                     <tr style="background:#f5f5f5; font-weight:600;">
                         <th style="padding:0.5rem 0.75rem; text-align:left; border-bottom:2px solid #e0e0e0;">Form / Sayfa</th>
-                        <th style="padding:0.5rem; text-align:center; border-bottom:2px solid #e0e0e0; width:110px; color:#888;">Tip Yetkisi</th>
-                        <th style="padding:0.5rem; text-align:center; border-bottom:2px solid #e0e0e0; width:90px; color:#c62828;">Gizli</th>
-                        <th style="padding:0.5rem; text-align:center; border-bottom:2px solid #e0e0e0; width:90px; color:#1976d2;">Okuma</th>
-                        <th style="padding:0.5rem; text-align:center; border-bottom:2px solid #e0e0e0; width:90px; color:#2e7d32;">Yazma</th>
+                        <th style="padding:0.5rem; text-align:center; border-bottom:2px solid #e0e0e0; width:170px;">Yetki</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach (var f in tumFormlar)
                     {
-                        @* yetkiMap[f.ID] null → override yok, tip yetkisi geçerli *@
-                        var override_ = yetkiMap.TryGetValue(f.ID, out var ov) ? ov : null;
+                        var hasOverride = overrideMap.ContainsKey(f.ID);
+                        var etkinYetki  = EtkinYetki(f.ID);
+                        var tipTanimli  = tipYetkiMap.ContainsKey(f.ID);
+                        var tipYetki    = tipTanimli ? tipYetkiMap[f.ID] : YetkiTipi.Gizli;
 
-                        <tr style="border-bottom:1px solid #f0f0f0; @(override_.HasValue ? "background:#fffde7;" : "")">
+                        <tr style="border-bottom:1px solid #f0f0f0; @(hasOverride ? "background:#fffde7;" : "")">
                             <td style="padding:0.45rem 0.75rem;">
                                 @if (!string.IsNullOrWhiteSpace(f.Icon))
                                 {
@@ -82,34 +95,34 @@ else
                                 {
                                     <span style="font-size:0.75rem; color:#bbb; margin-left:0.4rem;">(alt)</span>
                                 }
-                                @if (override_.HasValue)
+                                @if (hasOverride)
                                 {
                                     <span style="font-size:0.72rem; color:#f57c00; margin-left:0.5rem; font-weight:600;">● özel</span>
                                 }
                             </td>
-                            @* Tip Yetkisine Dön (KalitimYok = -1) *@
                             <td style="text-align:center; padding:0.45rem;">
-                                <input type="radio" name="yetki_@f.ID"
-                                       checked="@(!override_.HasValue)"
-                                       @onchange="@(() => YetkiDegistir(f.ID, YetkiTipi.KalitimYok))" />
-                            </td>
-                            @* Gizli (0) *@
-                            <td style="text-align:center; padding:0.45rem;">
-                                <input type="radio" name="yetki_@f.ID"
-                                       checked="@(override_ == YetkiTipi.Gizli)"
-                                       @onchange="@(() => YetkiDegistir(f.ID, YetkiTipi.Gizli))" />
-                            </td>
-                            @* Okuma (1) *@
-                            <td style="text-align:center; padding:0.45rem;">
-                                <input type="radio" name="yetki_@f.ID"
-                                       checked="@(override_ == YetkiTipi.Okuma)"
-                                       @onchange="@(() => YetkiDegistir(f.ID, YetkiTipi.Okuma))" />
-                            </td>
-                            @* Yazma (2) *@
-                            <td style="text-align:center; padding:0.45rem;">
-                                <input type="radio" name="yetki_@f.ID"
-                                       checked="@(override_ == YetkiTipi.Yazma)"
-                                       @onchange="@(() => YetkiDegistir(f.ID, YetkiTipi.Yazma))" />
+                                <div style="display:inline-flex; flex-direction:column; align-items:center; gap:0.25rem;">
+                                    <RadzenDropDown TValue="int"
+                                                    Value="@etkinYetki"
+                                                    Data="@PermissionLevelOption.TipSecenekleri"
+                                                    ValueProperty="Deger"
+                                                    TextProperty="Etiket"
+                                                    Change="@(arg => YetkiDegistir(f.ID, (int)arg))"
+                                                    Style="width:150px;"
+                                                    Disabled="@yukleniyor" />
+
+                                    @* Kullanıcının tipinden gelen taban yetki bilgisi *@
+                                    <div style="font-size:0.72rem; color:#888; line-height:1;">
+                                        Tip yetkisi:
+                                        <span style="color:@YetkiRengi(tipYetki); font-weight:600;">
+                                            @YetkiTipi.Label(tipYetki)
+                                        </span>
+                                        @if (!tipTanimli)
+                                        {
+                                            <span style="color:#bbb;"> (tanımsız)</span>
+                                        }
+                                    </div>
+                                </div>
                             </td>
                         </tr>
                     }
@@ -125,15 +138,28 @@ else
     private bool authChecked = false;
     private bool yukleniyor  = false;
 
-    private ItemKullanicilar?   kullanici    = null;
-    private ItemForm[]          tumFormlar   = [];
+    private ItemKullanicilar? kullanici    = null;
+    private string?           kullaniciTipAd = null;
+    private ItemForm[]        tumFormlar   = [];
 
     /// <summary>
-    /// Form ID → kullanıcıya özel override yetki değeri.
-    /// null  = override yok, tip yetkisi kalıtılır.
-    /// 0/1/2 = Gizli / Okuma / Yazma override kaydı.
+    /// Form ID → kullanıcıya özel override yetki değeri (varsa).
+    /// Bu sözlükte bir form varsa "kullanıcıya özel kayıt mevcut" demektir;
+    /// değer 0/1/2 = Gizli / Okuma / Yazma override'ı.
     /// </summary>
-    private Dictionary<int, int?> yetkiMap = new();
+    private Dictionary<int, int> overrideMap = new();
+
+    /// <summary>Kullanıcının tipinden gelen taban yetkiler (Form ID → Yetki).</summary>
+    private Dictionary<int, int> tipYetkiMap = new();
+
+    /// <summary>Yetki seviyesine göre renk kodu döner (UI ipucu).</summary>
+    private static string YetkiRengi(int yetki) => yetki switch
+    {
+        YetkiTipi.Yazma => "#2e7d32",
+        YetkiTipi.Okuma => "#1976d2",
+        YetkiTipi.Gizli => "#c62828",
+        _               => "#888"
+    };
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -153,39 +179,64 @@ else
 
     private async Task LoadAsync()
     {
-        yukleniyor = true;
-        tumFormlar = await DataSvc.GetTumFormlar();
-        kullanici  = (await DataSvc.GetKullanici(KullaniciId)).FirstOrDefault();
+        yukleniyor     = true;
+        tumFormlar     = await DataSvc.GetTumFormlar();
+        kullanici      = (await DataSvc.GetKullanici(KullaniciId)).FirstOrDefault();
+        kullaniciTipAd = null;
+        overrideMap    = new();
+        tipYetkiMap    = new();
 
         if (kullanici is not null)
         {
-            // Yalnızca kullanıcıya özel override kayıtlarını yükle.
-            // Override yoksa map'te girdi olmaz → null (kalıtım).
-            var yetkiler = await DataSvc.GetKullaniciFormYetki(KullaniciId);
-            yetkiMap = yetkiler.ToDictionary(y => y.Form_ID, y => (int?)y.Yetki);
+            // Kullanıcıya özel override kayıtları
+            var overrides = await DataSvc.GetKullaniciFormYetki(KullaniciId);
+            overrideMap = overrides.ToDictionary(y => y.Form_ID, y => y.Yetki);
+
+            // Tip bazlı taban yetkiler ve tip adı (override yoksa bu değer etkindir)
+            if (kullanici.KullaniciTip_ID > 0)
+            {
+                var tipYetkiler = await DataSvc.GetKullaniciTipFormYetki(kullanici.KullaniciTip_ID);
+                tipYetkiMap = tipYetkiler.ToDictionary(y => y.Form_ID, y => y.Yetki);
+
+                var tip = (await DataSvc.GetKullaniciTip(kullanici.KullaniciTip_ID)).FirstOrDefault();
+                kullaniciTipAd = tip?.Ad;
+            }
         }
         yukleniyor = false;
     }
 
+    /// <summary>
+    /// Form için etkin yetkiyi hesaplar:
+    ///   1. Kullanıcıya özel override varsa → o değer.
+    ///   2. Yoksa → kullanıcı tipinin yetkisi.
+    ///   3. Hiçbiri yoksa → 0 (Gizli).
+    /// </summary>
+    private int EtkinYetki(int formId)
+    {
+        if (overrideMap.TryGetValue(formId, out var ov)) return ov;
+        return tipYetkiMap.TryGetValue(formId, out var t) ? t : YetkiTipi.Gizli;
+    }
+
     private async Task YetkiDegistir(int formId, int yeniYetki)
     {
+        // Aynı değer seçildiyse gereksiz DB yazımı yapma
+        if (overrideMap.TryGetValue(formId, out var mevcut) && mevcut == yeniYetki)
+            return;
+
         // UI state'i optimistik güncelle
-        if (yeniYetki == YetkiTipi.KalitimYok)
-            yetkiMap.Remove(formId);   // override kaldır → null (kalıtım)
-        else
-            yetkiMap[formId] = yeniYetki;
+        overrideMap[formId] = yeniYetki;
 
         try
         {
-            // yeniYetki = -1 → DataService kaydı soft-delete eder (tip yetkisine döner)
-            // yeniYetki >= 0 → override kaydı yazar (Gizli=0 dahil)
             await DataSvc.SetKullaniciFormYetki(
                 KullaniciId, formId, yeniYetki,
                 AuthState.CurrentUser?.ID ?? 1);
 
-            // Yetki haritası önbelleğini zorla yenile.
-            // Düzenlenen kullanıcı aktif kullanıcının kendisiyse NavMenu anında güncellenir.
-            await YetkiSvc.ForceReloadAsync(KullaniciId);
+            // YetkiService Scoped'tur ve oturum açan (admin) kullanıcıya aittir.
+            // Yalnızca düzenlenen kullanıcı kendimiz isek yetki haritasını yenile;
+            // aksi halde admin'in haritası başka birinin haritasıyla overwrite olur.
+            if (AuthState.CurrentUser?.ID == KullaniciId)
+                await YetkiSvc.ForceReloadAsync(KullaniciId);
 
             NotifSvc.Notify(new NotificationMessage
             {
@@ -196,7 +247,7 @@ else
         }
         catch (Exception ex)
         {
-            // Hata durumunda UI state'i geri al
+            // Hata durumunda UI state'ini DB ile yeniden senkronla
             await LoadAsync();
 
             NotifSvc.Notify(new NotificationMessage

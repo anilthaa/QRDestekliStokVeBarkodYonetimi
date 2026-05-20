@@ -1,92 +1,163 @@
-using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Components.Authorization;
 using QRDestekliStokVeBarkodYonetimi.Models;
 
 namespace QRDestekliStokVeBarkodYonetimi.Services
 {
     /// <summary>
-    /// UI tarafında oturum durumunu tutan, Login / Register / Logout işlemlerini
-    /// <see cref="DataService"/> üzerinden yürüten scoped servis.
+    /// UI tarafında oturum durumunu tutar. Login/Logout işlemleri artık HTTP
+    /// endpoint'leri (<c>/api/auth/login</c>, <c>/api/auth/logout</c>) üzerinden
+    /// yapıldığı için bu sınıfın görevi <see cref="InitializeAsync"/> sırasında
+    /// <see cref="CurrentUser"/>'ı öncelikle veritabanından (profil resmi vb. dahil),
+    /// olmadıysa cookie claim'lerinden yüklemektir.
     ///
-    /// Token yalnızca bellekte tutulur; uygulama yeniden açıldığında oturum sıfırlanır
-    /// ve kullanıcı tekrar giriş yapmak zorundadır.
+    /// Böylece URL'den direkt sayfa açılışlarında (yeni circuit, F5, yeni sekme)
+    /// auth state kaybolmaz; tarayıcı her isteğe HttpOnly cookie'yi taşır.
     /// </summary>
-    public class AuthStateService
+    public class AuthStateService : IAuthState
     {
+        private readonly AuthenticationStateProvider _authStateProvider;
         private readonly DataService _data;
-        private readonly JwtService _jwt;
 
         public ItemKullanicilar? CurrentUser { get; private set; }
-        public string? AccessToken { get; private set; }
-        public DateTime? AccessTokenExpiresUtc { get; private set; }
 
-        public bool IsAuthenticated => CurrentUser is not null && !string.IsNullOrEmpty(AccessToken);
+        public bool IsAuthenticated => CurrentUser is not null;
 
         public event Action? OnChange;
 
-        public AuthStateService(DataService data, JwtService jwt)
+        public AuthStateService(AuthenticationStateProvider authStateProvider, DataService data)
         {
+            _authStateProvider = authStateProvider;
             _data = data;
-            _jwt = jwt;
         }
 
         private void NotifyChanged() => OnChange?.Invoke();
 
-        /// <summary>
-        /// Oturum durumunu kontrol eder. Sadece bellek tabanlı; uygulama yeniden
-        /// açıldığında oturum sıfırlanmış olur ve kullanıcı login sayfasına yönlendirilir.
-        /// </summary>
-        public Task InitializeAsync()
-        {
-            return Task.CompletedTask;
-        }
+        /// <inheritdoc cref="IAuthState.NotifyStateChanged"/>
+        public void NotifyStateChanged() => NotifyChanged();
 
-        public async Task<(bool Success, string? Error)> LoginAsync(string eposta, string sifre)
-        {
-            var result = await _data.LoginKullanici(eposta, sifre);
-            if (result.Data is null)
-                return (false, string.IsNullOrEmpty(result.SonucAciklama) ? "Giriş başarısız." : result.SonucAciklama);
-
-            var token = _jwt.GenerateAccessToken(result.Data);
-
-            CurrentUser = result.Data;
-            AccessToken = token.Token;
-            AccessTokenExpiresUtc = token.ExpiresUtc;
-
-            NotifyChanged();
-            return (true, null);
-        }
-
-        public async Task<(bool Success, string? Error)> RegisterAsync(string ad, string soyad, string eposta, string sifre)
-        {
-            var result = await _data.RegisterKullanici(ad, soyad, eposta, sifre);
-            if (result.SonucKodu < 0 || result.Data <= 0)
-                return (false, string.IsNullOrEmpty(result.SonucAciklama) ? "Kayıt sırasında bir hata oluştu." : result.SonucAciklama);
-
-            return (true, null);
-        }
-
-        public Task LogoutAsync()
-        {
-            CurrentUser = null;
-            AccessToken = null;
-            AccessTokenExpiresUtc = null;
-            NotifyChanged();
-            return Task.CompletedTask;
-        }
-
-        private static DateTime? ReadExpiry(string token)
+    /// <summary>
+    /// Oturum durumunu senkronlar: önce veritabanından kullanıcı satırı (profil resmi,
+    /// aktiflik, güncelleme tarihi dahil); başarısızsa cookie claim'lerine düşer.
+    /// Sayfaların <c>OnInitializedAsync</c> başında çağrılır; aynı kullanıcı zaten
+    /// yüklüyse ek istek yapılmaz.
+    /// </summary>
+        public async Task InitializeAsync()
         {
             try
             {
-                var handler = new JwtSecurityTokenHandler();
-                if (!handler.CanReadToken(token)) return null;
-                var jwt = handler.ReadJwtToken(token);
-                return jwt.ValidTo == default ? null : jwt.ValidTo;
+                var state = await _authStateProvider.GetAuthenticationStateAsync();
+                var ident = state.User?.Identity;
+
+                // Auth değil → temizle
+                if (ident is null || !ident.IsAuthenticated)
+                {
+                    if (CurrentUser is not null)
+                    {
+                        CurrentUser = null;
+                        NotifyChanged();
+                    }
+                    return;
+                }
+
+                // Auth → claim'lerden ItemKullanicilar oluştur
+                var user = state.User!;
+                var idStr = user.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                            ?? user.FindFirst("sub")?.Value;
+                if (!int.TryParse(idStr, out var id) || id <= 0)
+                {
+                    // Geçersiz cookie içeriği — temizle
+                    if (CurrentUser is not null)
+                    {
+                        CurrentUser = null;
+                        NotifyChanged();
+                    }
+                    return;
+                }
+
+                var tipStr = user.FindFirst("KullaniciTip_ID")?.Value;
+                int.TryParse(tipStr, out var tip);
+
+                var ad = user.FindFirst("Ad")?.Value ?? string.Empty;
+                var soyad = user.FindFirst("Soyad")?.Value ?? string.Empty;
+                var eposta = user.FindFirst(ClaimTypes.Email)?.Value ?? string.Empty;
+
+                // Aynı kullanıcı zaten yüklü ise event tetikleme (gereksiz reload önler)
+                if (CurrentUser is not null && CurrentUser.ID == id)
+                    return;
+
+                ItemKullanicilar? fromDb = null;
+                try
+                {
+                    var rows = await _data.GetKullanici(id);
+                    fromDb = rows.FirstOrDefault();
+                }
+                catch
+                {
+                    fromDb = null;
+                }
+
+                if (fromDb is not null)
+                {
+                    fromDb.Sifre = string.Empty;
+                    CurrentUser = fromDb;
+                    NotifyChanged();
+                    return;
+                }
+
+                CurrentUser = new ItemKullanicilar
+                {
+                    ID = id,
+                    KullaniciTip_ID = tip,
+                    Ad = ad,
+                    Soyad = soyad,
+                    Eposta = eposta,
+                    Sifre = string.Empty,
+                    Aktif = true
+                };
+                NotifyChanged();
             }
             catch
             {
-                return null;
+                CurrentUser = null;
             }
+        }
+
+        /// <summary>
+        /// Eski API uyumluluğu için tutuldu — artık form-post ile <c>/api/auth/login</c>
+        /// kullanılmalıdır. Doğrudan çağrılırsa cookie set edilemediği için oturum
+        /// kalıcı olmaz; sadece bellek-içi geçici state oluşturur.
+        /// </summary>
+        [Obsolete("Form post /api/auth/login kullanın. Bu yöntem cookie set etmediği için yeni circuit'lerde state kaybedilir.")]
+        public Task<(bool Success, string? Error)> LoginAsync(string eposta, string sifre)
+        {
+            return Task.FromResult<(bool, string?)>(
+                (false, "Lütfen formu kullanarak giriş yapın."));
+        }
+
+        /// <summary>
+        /// Eski API uyumluluğu için tutuldu — artık form-post ile <c>/api/auth/register</c>
+        /// kullanılmalıdır.
+        /// </summary>
+        [Obsolete("Form post /api/auth/register kullanın.")]
+        public Task<(bool Success, string? Error)> RegisterAsync(string ad, string soyad, string eposta, string sifre)
+        {
+            return Task.FromResult<(bool, string?)>(
+                (false, "Lütfen formu kullanarak kayıt olun."));
+        }
+
+        /// <summary>
+        /// Eski API uyumluluğu için tutuldu — artık form-post ile <c>/api/auth/logout</c>
+        /// kullanılmalıdır.
+        /// </summary>
+        [Obsolete("Form post /api/auth/logout kullanın.")]
+        public Task LogoutAsync()
+        {
+            // Yine de bellek state'ini temizle ki UI hızlıca tepki versin.
+            // Asıl cookie temizliği endpoint tarafından yapılır.
+            CurrentUser = null;
+            NotifyChanged();
+            return Task.CompletedTask;
         }
     }
 }

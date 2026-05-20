@@ -7,12 +7,19 @@
 
 <PageTitle>Birimler</PageTitle>
 
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:1rem;">
-    <h3 style="margin:0;">Birim Listesi</h3>
-    <RadzenButton Text="Yeni Birim" Icon="add" ButtonStyle="ButtonStyle.Primary"
-                  Click="@OnYeniClick"
-                  Disabled="@sadecOkuma"
-                  Style="@(sadecOkuma ? "opacity:0.35;pointer-events:none;" : "")" />
+<div class="page-header">
+    <h3 class="page-header-title">Birim Listesi</h3>
+    <div class="page-header-actions">
+        <ExportButton TItem="ItemBirim"
+                      Items="@birimler"
+                      Title="Birim Listesi"
+                      FileName="birim-listesi"
+                      Columns="@CiktiKolonlari()" />
+        <RadzenButton Text="Yeni Birim" Icon="add" ButtonStyle="ButtonStyle.Primary"
+                      Click="@OnYeniClick"
+                      Disabled="@sadecOkuma"
+                      Style="@(sadecOkuma ? "opacity:0.35;pointer-events:none;" : "")" />
+    </div>
 </div>
 
 @if (isLoading)
@@ -73,9 +80,17 @@ else
     private bool isLoading = true;
     private bool sadecOkuma = false;
 
+    private IList<ExportColumn<ItemBirim>> CiktiKolonlari() => new List<ExportColumn<ItemBirim>>
+    {
+        new() { Header = "ID",        Value = b => b.ID,    Align = ExportAlign.Right, Width = 0.6f },
+        new() { Header = "Birim Adı", Value = b => b.Ad,    Width = 2f   },
+        new() { Header = "Aktif",     Value = b => b.Aktif, Align = ExportAlign.Center, Width = 0.7f },
+    };
+
     protected override async Task OnInitializedAsync()
     {
-        await YetkiSvc.EnsureFormsLoadedAsync();
+        await AuthState.InitializeAsync();
+        await YetkiSvc.EnsureReadyAsync();
         if (!YetkiSvc.ErişimVar("/birimler"))
         {
             Nav.NavigateTo("/erisim-engeli", true);

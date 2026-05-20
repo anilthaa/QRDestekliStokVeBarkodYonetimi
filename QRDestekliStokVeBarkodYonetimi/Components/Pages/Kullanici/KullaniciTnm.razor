@@ -1,15 +1,15 @@
 <RadzenTemplateForm TItem="ItemKullanicilar" Data="@model" Submit="@OnSubmitAsync">
 
-    <div class="rz-p-4" style="min-width:480px; display:flex; flex-direction:column; gap:1rem;">
+    <div class="form-shell form-shell--wide rz-p-4">
 
-        <div style="display:flex; gap:1rem;">
-            <div style="flex:1;">
+        <div class="form-row">
+            <div>
                 <RadzenLabel Text="Ad *" Component="Ad" />
                 <RadzenTextBox @bind-Value="model.Ad" Name="Ad" Placeholder="Ad giriniz"
                                Style="width:100%" Disabled="@isBusy" />
                 <RadzenRequiredValidator Component="Ad" Text="Ad zorunludur." Style="display:block" />
             </div>
-            <div style="flex:1;">
+            <div>
                 <RadzenLabel Text="Soyad *" Component="Soyad" />
                 <RadzenTextBox @bind-Value="model.Soyad" Name="Soyad" Placeholder="Soyad giriniz"
                                Style="width:100%" Disabled="@isBusy" />
@@ -25,17 +25,6 @@
         </div>
 
         <div>
-            <RadzenLabel Text="@(model.ID == 0 ? "Şifre *" : "Şifre (değiştirmek için doldurun)")" Component="Sifre" />
-            <RadzenPassword @bind-Value="model.Sifre" Name="Sifre"
-                            Placeholder="@(model.ID == 0 ? "En az 6 karakter" : "Boş bırakılırsa değişmez")"
-                            Style="width:100%" Disabled="@isBusy" />
-            @if (model.ID == 0)
-            {
-                <RadzenRequiredValidator Component="Sifre" Text="Şifre zorunludur." Style="display:block" />
-            }
-        </div>
-
-        <div>
             <RadzenLabel Text="Kullanıcı Tipi *" Component="KullaniciTip_ID" />
             <RadzenDropDown @bind-Value="model.KullaniciTip_ID" Name="KullaniciTip_ID"
                             Data="@kullaniciTipler" TextProperty="Ad" ValueProperty="ID"
@@ -44,10 +33,24 @@
             <RadzenRequiredValidator Component="KullaniciTip_ID" Text="Kullanıcı tipi zorunludur." Style="display:block" />
         </div>
 
-        <div style="display:flex; align-items:center; gap:0.5rem;">
-            <RadzenCheckBox @bind-Value="model.Aktif" Name="Aktif" Disabled="@isBusy" />
-            <RadzenLabel Text="Aktif" Component="Aktif" />
-        </div>
+        @if (model.ID == 0)
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" AllowClose="false">
+                Yeni kullanıcı <strong>pasif</strong> olarak kaydedilir. Kayıttan sonra listeden
+                <strong>Onay maili gönder</strong> ile hesap onay bağlantısı iletilir; kullanıcı onayladığında
+                geçici şifre e-postasına gönderilir.
+            </RadzenAlert>
+        }
+        else
+        {
+            <div style="display:flex; align-items:center; gap:0.5rem;">
+                <RadzenCheckBox @bind-Value="model.Aktif" Name="Aktif" Disabled="@isBusy" />
+                <RadzenLabel Text="Aktif" Component="Aktif" />
+            </div>
+            <div style="font-size:0.82rem; color:#666;">
+                Şifre, kullanıcı hesap onayını tamamladığında otomatik oluşturulup e-posta ile gönderilir.
+            </div>
+        }
 
         @if (!string.IsNullOrEmpty(errorMessage))
         {
@@ -55,7 +58,7 @@
                          AllowClose="false">@errorMessage</RadzenAlert>
         }
 
-        <div style="display:flex; justify-content:flex-end; gap:0.5rem; margin-top:0.5rem;">
+        <div class="form-actions">
             <RadzenButton ButtonStyle="ButtonStyle.Light" Text="İptal" Icon="cancel"
                           Click="@OnCancel" Disabled="@isBusy" />
             <RadzenButton ButtonType="ButtonType.Submit" Text="Kaydet" Icon="save"
@@ -69,7 +72,7 @@
 @code {
     [Parameter] public ItemKullanicilar? Item { get; set; }
 
-    private ItemKullanicilar model = new() { Aktif = true };
+    private ItemKullanicilar model = new() { Aktif = false };
     private bool isBusy;
     private string? errorMessage;
 
@@ -91,8 +94,9 @@
                 Ad              = Item.Ad,
                 Soyad           = Item.Soyad,
                 Eposta          = Item.Eposta,
-                Sifre           = string.Empty,   // güvenlik: şifreyi forma taşımıyoruz
+                Sifre           = string.Empty,
                 Aktif           = Item.Aktif,
+                ProfilResmi     = Item.ProfilResmi,
                 CreUser         = Item.CreUser,
                 CreDate         = Item.CreDate,
                 UpdUser         = Item.UpdUser,
@@ -112,12 +116,20 @@
             int userId = AuthState.CurrentUser?.ID ?? 0;
 
             if (model.ID == 0)
+            {
                 model.CreUser = userId;
+                model.Aktif = false;
+                model.Sifre = string.Empty;
+            }
             else
+            {
                 model.UpdUser = userId;
+                model.Sifre = string.Empty;
+            }
 
             model.DelUser = 0;
 
+            var yeniKayit = model.ID == 0;
             var result = await DataSvc.SetKullanici(model);
 
             if (result.SonucKodu < 0)
@@ -127,7 +139,9 @@
             }
 
             NotificationSvc.Notify(NotificationSeverity.Success, "Başarılı",
-                model.ID == 0 ? "Kullanıcı eklendi." : "Kullanıcı güncellendi.", 3000);
+                yeniKayit
+                    ? "Kullanıcı pasif olarak eklendi. Onay maili göndermek için listedeki mail düğmesini kullanın."
+                    : "Kullanıcı güncellendi.", 4000);
 
             DialogSvc.Close(true);
         }
