@@ -4,6 +4,7 @@
 
 @inject DataService         DataSvc
 @inject AuthStateService    AuthState
+@inject YetkiService        YetkiSvc
 @inject NavigationManager   Nav
 @inject NotificationService NotifSvc
 
@@ -55,6 +56,13 @@ else
                 Kullanıcı bazlı override varsa o önceliğe sahiptir.
             </p>
 
+            @if (!yazmaYetkisi)
+            {
+                <RadzenAlert AlertStyle="AlertStyle.Info" ShowIcon="true" Style="margin-bottom:1rem;">
+                    Bu sayfada yalnızca görüntüleme yetkiniz var; yetki değişikliği yapamazsınız.
+                </RadzenAlert>
+            }
+
             <table style="width:100%; border-collapse:collapse; font-size:0.9rem;">
                 <thead>
                     <tr style="background:#f5f5f5; font-weight:600;">
@@ -87,7 +95,7 @@ else
                                                 TextProperty="Etiket"
                                                 Change="@(arg => YetkiDegistir(f.ID, (int)arg))"
                                                 Style="width:150px;"
-                                                Disabled="@yukleniyor" />
+                                                Disabled="@(yukleniyor || !yazmaYetkisi)" />
                             </td>
                         </tr>
                     }
@@ -102,25 +110,29 @@ else
 
     private bool authChecked = false;
     private bool yukleniyor  = false;
+    private bool yazmaYetkisi = false;
 
     private ItemKullaniciTip?    kullaniciTip;
     private ItemForm[]           tumFormlar = [];
     private Dictionary<int, int> yetkiMap   = new();
 
-    protected override async Task OnAfterRenderAsync(bool firstRender)
+    protected override async Task OnInitializedAsync()
     {
-        if (firstRender)
+        await AuthState.InitializeAsync();
+        if (!AuthState.IsAuthenticated)
         {
-            await AuthState.InitializeAsync();
-            if (!AuthState.IsAuthenticated)
-            {
-                Nav.NavigateTo("/login", replace: true);
-                return;
-            }
-            authChecked = true;
-            await LoadAsync();
-            StateHasChanged();
+            Nav.NavigateTo("/login", replace: true);
+            return;
         }
+        await YetkiSvc.EnsureReadyAsync();
+        if (!YetkiSvc.ErişimVar("/kullanici-tip-yetki"))
+        {
+            Nav.NavigateTo("/erisim-engeli", true);
+            return;
+        }
+        yazmaYetkisi = YetkiSvc.HasYazma("/kullanici-tip-yetki");
+        authChecked = true;
+        await LoadAsync();
     }
 
     private async Task LoadAsync()
@@ -140,6 +152,8 @@ else
 
     private async Task YetkiDegistir(int formId, int yeniYetki)
     {
+        if (!yazmaYetkisi) return;
+
         // Aynı değer seçildiyse gereksiz DB yazımı yapma
         if (yetkiMap.TryGetValue(formId, out var mevcut) && mevcut == yeniYetki)
             return;

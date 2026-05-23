@@ -34,7 +34,7 @@
 else
 {
     <RadzenDataGrid Data="@kullanicilar" TItem="ItemKullanicilar" AllowSorting="true"
-                    AllowFiltering="true" FilterMode="FilterMode.SimpleWithMenu"
+                    AllowFiltering="true" FilterMode="FilterMode.Simple"
                     AllowPaging="true" PageSize="15"
                     EmptyText="Kayıt bulunamadı."
                     ColumnWidth="200px">
@@ -84,7 +84,9 @@ else
                                   Style="@("margin-right:4px;" + (sadecOkuma ? "opacity:0.35;pointer-events:none;" : ""))" title="Düzenle" />
                     <RadzenButton Icon="shield" ButtonStyle="ButtonStyle.Success" Size="ButtonSize.Small" Variant="Variant.Flat"
                                   Click="@(() => Nav.NavigateTo($"/kullanici-yetki/{row.ID}"))"
-                                  title="Yetki Yönetimi" style="margin-right:4px;" />
+                                  Disabled="@(!yetkiSayfasiErisim)"
+                                  Style="@("margin-right:4px;" + (!yetkiSayfasiErisim ? "opacity:0.35;pointer-events:none;" : ""))"
+                                  title="Yetki Yönetimi" />
                     <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" Variant="Variant.Flat"
                                   Click="@(() => OnSilClick(row))" Disabled="@sadecOkuma"
                                   Style="@(sadecOkuma ? "opacity:0.35;pointer-events:none;" : "")" title="Sil" />
@@ -99,6 +101,7 @@ else
     private ItemKullaniciTip[] kullaniciTipler = [];
     private bool isLoading = true;
     private bool sadecOkuma = false;
+    private bool yetkiSayfasiErisim = false;
     private int? onayMailiGonderiliyorId;
     private string siteBaseUri = string.Empty;
 
@@ -122,6 +125,7 @@ else
             return;
         }
         sadecOkuma = YetkiSvc.SadecOkuma("/kullanicilar");
+        yetkiSayfasiErisim = YetkiSvc.ErişimVar("/kullanici-yetki");
         siteBaseUri = Nav.BaseUri.TrimEnd('/');
         Nav.LocationChanged += OnLocationChanged;
         await LoadAsync();
@@ -194,7 +198,7 @@ else
     {
         if (sadecOkuma) return;
         var onay = await DialogSvc.Confirm(
-            $"<b>{item.Ad} {item.Soyad}</b> kullanıcısını silmek istediğinizden emin misiniz?", "Kullanıcı Sil",
+            DialogFragments.Html($"{DialogFragments.B($"{item.Ad} {item.Soyad}")} kullanıcısını silmek istediğinizden emin misiniz?"), "Kullanıcı Sil",
             new ConfirmOptions { OkButtonText = "Evet, Sil", CancelButtonText = "İptal" });
         if (onay != true) return;
 

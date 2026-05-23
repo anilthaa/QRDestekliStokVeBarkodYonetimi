@@ -34,15 +34,12 @@
 
         <div class="auth-field">
             <label class="rz-label" for="Sifre">Şifre</label>
-            <input id="Sifre" name="Sifre" type="password" required minlength="6"
-                   placeholder="En az 6 karakter"
-                   class="rz-textbox" style="width:100%;" />
+            <AuthPasswordInput Id="Sifre" Name="Sifre" Placeholder="En az 6 karakter" MinLength="6" />
         </div>
 
         <div class="auth-field">
             <label class="rz-label" for="SifreTekrar">Şifre (Tekrar)</label>
-            <input id="SifreTekrar" name="SifreTekrar" type="password" required minlength="6"
-                   class="rz-textbox" style="width:100%;" />
+            <AuthPasswordInput Id="SifreTekrar" Name="SifreTekrar" MinLength="6" />
         </div>
 
         @if (!string.IsNullOrEmpty(Error))

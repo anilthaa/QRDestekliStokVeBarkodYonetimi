@@ -32,7 +32,7 @@
 else
 {
     <RadzenDataGrid Data="@birimler" TItem="ItemBirim" AllowSorting="true"
-                    AllowFiltering="true" FilterMode="FilterMode.SimpleWithMenu"
+                    AllowFiltering="true" FilterMode="FilterMode.Simple"
                     AllowPaging="true" PageSize="15"
                     EmptyText="Kayıt bulunamadı."
                     ColumnWidth="200px">
@@ -129,7 +129,7 @@ else
     {
         if (sadecOkuma) return;
         var onay = await DialogSvc.Confirm(
-            $"<b>{item.Ad}</b> birimini silmek istediğinizden emin misiniz?", "Birim Sil",
+            DialogFragments.Html($"{DialogFragments.B(item.Ad)} birimini silmek istediğinizden emin misiniz?"), "Birim Sil",
             new ConfirmOptions { OkButtonText = "Evet, Sil", CancelButtonText = "İptal" });
         if (onay != true) return;
 
