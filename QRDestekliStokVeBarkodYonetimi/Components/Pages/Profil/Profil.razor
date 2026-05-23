@@ -221,26 +221,26 @@ else
 
                         <div>
                             <RadzenLabel Text="Mevcut Şifre *" Component="EskiSifre" />
-                            <RadzenPassword @bind-Value="sifreForm.EskiSifre" Name="EskiSifre"
-                                            Placeholder="Mevcut şifreniz" Style="width:100%;"
-                                            Disabled="@sifreAlanlariKilitli" />
+                            <TogglePasswordField @bind-Value="sifreForm.EskiSifre" Name="EskiSifre"
+                                                 Placeholder="Mevcut şifreniz"
+                                                 Disabled="@sifreAlanlariKilitli" />
                             <RadzenRequiredValidator Component="EskiSifre" Text="Mevcut şifre zorunludur." Style="display:block;" />
                         </div>
 
                         <div>
                             <RadzenLabel Text="Yeni Şifre *" Component="YeniSifre" />
-                            <RadzenPassword @bind-Value="sifreForm.YeniSifre" Name="YeniSifre"
-                                            Placeholder="En az 6 karakter" Style="width:100%;"
-                                            Disabled="@sifreAlanlariKilitli" />
+                            <TogglePasswordField @bind-Value="sifreForm.YeniSifre" Name="YeniSifre"
+                                                 Placeholder="En az 6 karakter"
+                                                 Disabled="@sifreAlanlariKilitli" />
                             <RadzenRequiredValidator Component="YeniSifre" Text="Yeni şifre zorunludur." Style="display:block;" />
                             <RadzenLengthValidator Component="YeniSifre" Min="6" Text="Şifre en az 6 karakter olmalıdır." Style="display:block;" />
                         </div>
 
                         <div>
                             <RadzenLabel Text="Yeni Şifre (Tekrar) *" Component="YeniSifreTekrar" />
-                            <RadzenPassword @bind-Value="sifreForm.YeniSifreTekrar" Name="YeniSifreTekrar"
-                                            Placeholder="Şifreyi tekrar girin" Style="width:100%;"
-                                            Disabled="@sifreAlanlariKilitli" />
+                            <TogglePasswordField @bind-Value="sifreForm.YeniSifreTekrar" Name="YeniSifreTekrar"
+                                                 Placeholder="Şifreyi tekrar girin"
+                                                 Disabled="@sifreAlanlariKilitli" />
                             <RadzenRequiredValidator Component="YeniSifreTekrar" Text="Tekrar şifre zorunludur." Style="display:block;" />
                             <RadzenCompareValidator Component="YeniSifreTekrar" Value="@sifreForm.YeniSifre"
                                                     Text="Şifreler eşleşmiyor." Style="display:block;" />
@@ -481,9 +481,10 @@ else
 
         // 1. onay kutucuğu — kullanıcı maillerin nereye gideceğini bilsin
         var onay = await DialogSvc.Confirm(
-            $"Doğrulama kodu <b>{yeni}</b> adresine,<br/>" +
-            $"bilgilendirme maili ise <b>{eski}</b> adresine gönderilecek.<br/><br/>" +
-            $"Devam edilsin mi?",
+            DialogFragments.Html(
+                $"Doğrulama kodu {DialogFragments.B(yeni)} adresine,<br/>" +
+                $"bilgilendirme maili ise {DialogFragments.B(eski)} adresine gönderilecek.<br/><br/>" +
+                "Devam edilsin mi?"),
             "Doğrulama Kodu Gönder",
             new ConfirmOptions
             {
@@ -549,9 +550,10 @@ else
                 : "<i>(Mevcut adresinize bilgilendirme maili gönderilemedi, ama doğrulama akışına devam edebilirsiniz.)</i>";
 
             await DialogSvc.Alert(
-                $"Doğrulama kodu <b>{yeni}</b> adresine başarıyla gönderildi.<br/>" +
-                $"Lütfen e-posta kutunuzu kontrol edin ve gelen 6 haneli kodu aşağıdaki kutuya girin.<br/><br/>" +
-                bilgilendirmeNotu,
+                DialogFragments.Html(
+                    $"Doğrulama kodu {DialogFragments.B(yeni)} adresine başarıyla gönderildi.<br/>" +
+                    "Lütfen e-posta kutunuzu kontrol edin ve gelen 6 haneli kodu aşağıdaki kutuya girin.<br/><br/>" +
+                    bilgilendirmeNotu),
                 "Mail Başarıyla Gönderildi",
                 new AlertOptions { OkButtonText = "Tamam" });
         }
@@ -655,7 +657,8 @@ else
             return;
 
         var onay = await DialogSvc.Confirm(
-            $"Doğrulama kodu, hesabınızda kayıtlı <b>{(AuthState.CurrentUser.Eposta ?? "").Trim()}</b> adresine gönderilecektir.<br/><br/>Devam edilsin mi?",
+            DialogFragments.Html(
+                $"Doğrulama kodu, hesabınızda kayıtlı {DialogFragments.B((AuthState.CurrentUser.Eposta ?? "").Trim())} adresine gönderilecektir.<br/><br/>Devam edilsin mi?"),
             "Şifre değişikliği doğrulama",
             new ConfirmOptions
             {
@@ -688,8 +691,9 @@ else
             sifreDogrulamaHata = string.Empty;
 
             await DialogSvc.Alert(
-                $"Doğrulama kodu <b>{bekleyenSifreEposta}</b> adresine gönderildi.<br/>" +
-                "Lütfen e-postanızdaki 6 haneli kodu aşağıya girin.",
+                DialogFragments.Html(
+                    $"Doğrulama kodu {DialogFragments.B(bekleyenSifreEposta)} adresine gönderildi.<br/>" +
+                    "Lütfen e-postanızdaki 6 haneli kodu aşağıya girin."),
                 "Mail gönderildi",
                 new AlertOptions { OkButtonText = "Tamam" });
         }

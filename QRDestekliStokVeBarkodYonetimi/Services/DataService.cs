@@ -932,6 +932,8 @@ namespace QRDestekliStokVeBarkodYonetimi.Services
         /// </summary>
         public async Task SetKullaniciFormYetki(int kullaniciId, int formId, int yetki, int islemKullanici)
         {
+            await EnsureFormYazmaYetkisiAsync(islemKullanici, "/kullanici-yetki");
+
             var mevcutId = await SQLExecuteScalar<int?>(@"
                 SELECT ""ID"" FROM ""KullaniciDetay""
                 WHERE  ""Kullanici_ID"" = @KullaniciId
@@ -990,6 +992,8 @@ namespace QRDestekliStokVeBarkodYonetimi.Services
         /// </summary>
         public async Task SetKullaniciTipFormYetki(int kullaniciTipId, int formId, int yetki, int islemKullanici)
         {
+            await EnsureFormYazmaYetkisiAsync(islemKullanici, "/kullanici-tip-yetki");
+
             var mevcutId = await SQLExecuteScalar<int?>(@"
                 SELECT ""ID"" FROM ""KullaniciTipDetay""
                 WHERE ""KullaniciTip_ID"" = @TipId AND ""Form_ID"" = @FormId AND ""DelUser"" IS NULL
@@ -1015,6 +1019,26 @@ namespace QRDestekliStokVeBarkodYonetimi.Services
                                    VALUES (@TipId, @FormId, @Yetki, @Cre, now())",
                     new { TipId = kullaniciTipId, FormId = formId, Yetki = yetki, Cre = islemKullanici });
             }
+        }
+
+        private async Task EnsureFormYazmaYetkisiAsync(int islemKullanici, string sayfaUrl)
+        {
+            var formId = await SQLExecuteScalar<int?>(@"
+                SELECT ""ID"" FROM ""Form""
+                WHERE ""DelUser"" IS NULL AND LOWER(""SayfaURL"") = LOWER(@Url)
+                LIMIT 1",
+                new { Url = sayfaUrl });
+
+            if (!formId.HasValue)
+                throw new UnauthorizedAccessException("Yetki formu bulunamadı.");
+
+            var kullanici = (await GetKullanici(islemKullanici)).FirstOrDefault();
+            if (kullanici is null)
+                throw new UnauthorizedAccessException("İşlem yapan kullanıcı bulunamadı.");
+
+            var yetki = await GetUserFormYetkiAsync(islemKullanici, kullanici.KullaniciTip_ID, formId.Value);
+            if (yetki < YetkiTipi.Yazma)
+                throw new UnauthorizedAccessException("Bu işlem için yazma yetkiniz yok.");
         }
 
         #endregion

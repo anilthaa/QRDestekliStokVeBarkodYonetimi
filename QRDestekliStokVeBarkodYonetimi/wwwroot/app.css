@@ -172,6 +172,69 @@ h1:focus {
     flex-wrap: wrap;
 }
 
+/* ── Şifre göster/gizle ─────────────────────────────────────── */
+.password-field {
+    position: relative;
+    width: 100%;
+}
+
+.password-field input {
+    width: 100%;
+    padding-right: 2.5rem !important;
+    box-sizing: border-box;
+}
+
+.password-toggle-btn {
+    position: absolute;
+    right: 0.35rem;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: none;
+    background: transparent;
+    color: #64748b;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.password-toggle-btn:hover:not(:disabled) {
+    color: #1b6ec2;
+    background: rgba(27, 110, 194, 0.08);
+}
+
+.password-toggle-btn:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+/* ── DataGrid filtre operatör toggle ─────────────────────────── */
+.rz-grid-table .rz-cell-filter-content > .rz-filter-button {
+    display: none;
+}
+
+.rz-date-filter .rz-listbox {
+    display: none !important;
+}
+
+.rz-grid-date-filter {
+    width: auto !important;
+}
+
+/* DataGrid numeric filtre spinner okları */
+.rz-grid-table .rz-cell-filter-content .rz-spinner-button {
+    display: none !important;
+}
+
+.rz-grid-table .rz-cell-filter-content .rz-numeric {
+    padding-right: 0;
+}
+
 @media (max-width: 640px) {
     .content {
         padding-left: 1rem !important;

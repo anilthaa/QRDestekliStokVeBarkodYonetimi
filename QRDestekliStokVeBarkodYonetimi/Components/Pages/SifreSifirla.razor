@@ -34,17 +34,12 @@
 
             <div class="auth-field">
                 <label class="rz-label" for="YeniSifre">Yeni şifre</label>
-                <input id="YeniSifre" name="YeniSifre" type="password" required minlength="6"
-                       placeholder="En az 6 karakter"
-                       class="rz-textbox"
-                       style="width:100%;" />
+                <AuthPasswordInput Id="YeniSifre" Name="YeniSifre" Placeholder="En az 6 karakter" MinLength="6" />
             </div>
 
             <div class="auth-field">
                 <label class="rz-label" for="YeniSifreTekrar">Yeni şifre (tekrar)</label>
-                <input id="YeniSifreTekrar" name="YeniSifreTekrar" type="password" required minlength="6"
-                       class="rz-textbox"
-                       style="width:100%;" />
+                <AuthPasswordInput Id="YeniSifreTekrar" Name="YeniSifreTekrar" MinLength="6" />
             </div>
 
             @if (!string.IsNullOrEmpty(Error))

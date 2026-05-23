@@ -32,7 +32,7 @@
 else
 {
     <RadzenDataGrid Data="@tipler" TItem="ItemKullaniciTip" AllowSorting="true"
-                    AllowFiltering="true" FilterMode="FilterMode.SimpleWithMenu"
+                    AllowFiltering="true" FilterMode="FilterMode.Simple"
                     AllowPaging="true" PageSize="15"
                     EmptyText="Kayıt bulunamadı."
                     ColumnWidth="200px">
@@ -64,7 +64,9 @@ else
                                   Style="@("margin-right:4px;" + (sadecOkuma ? "opacity:0.35;pointer-events:none;" : ""))" title="Düzenle" />
                     <RadzenButton Icon="shield" ButtonStyle="ButtonStyle.Success" Size="ButtonSize.Small" Variant="Variant.Flat"
                                   Click="@(() => Nav.NavigateTo($"/kullanici-tip-yetki/{row.ID}"))"
-                                  title="Yetki Yönetimi" style="margin-right:4px;" />
+                                  Disabled="@(!yetkiSayfasiErisim)"
+                                  Style="@("margin-right:4px;" + (!yetkiSayfasiErisim ? "opacity:0.35;pointer-events:none;" : ""))"
+                                  title="Yetki Yönetimi" />
                     <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" Variant="Variant.Flat"
                                   Click="@(() => OnSilClick(row))" Disabled="@sadecOkuma"
                                   Style="@(sadecOkuma ? "opacity:0.35;pointer-events:none;" : "")" title="Sil" />
@@ -78,6 +80,7 @@ else
     private ItemKullaniciTip[] tipler = [];
     private bool isLoading = true;
     private bool sadecOkuma = false;
+    private bool yetkiSayfasiErisim = false;
 
     private IList<ExportColumn<ItemKullaniciTip>> CiktiKolonlari() => new List<ExportColumn<ItemKullaniciTip>>
     {
@@ -97,6 +100,7 @@ else
             return;
         }
         sadecOkuma = YetkiSvc.SadecOkuma("/kullanici-tipler");
+        yetkiSayfasiErisim = YetkiSvc.ErişimVar("/kullanici-tip-yetki");
         await LoadAsync();
     }
 
@@ -129,7 +133,7 @@ else
     {
         if (sadecOkuma) return;
         var onay = await DialogSvc.Confirm(
-            $"<b>{item.Ad}</b> kullanıcı tipini silmek istediğinizden emin misiniz?", "Kullanıcı Tipi Sil",
+            DialogFragments.Html($"{DialogFragments.B(item.Ad)} kullanıcı tipini silmek istediğinizden emin misiniz?"), "Kullanıcı Tipi Sil",
             new ConfirmOptions { OkButtonText = "Evet, Sil", CancelButtonText = "İptal" });
         if (onay != true) return;
 

@@ -10,6 +10,44 @@
     min-width: 0;
 }
 
+/* Dashboard tablolarında başlık ve hücreler kesilmesin */
+.dashboard-detail-panel ::deep .rz-grid-table {
+    min-width: 100%;
+}
+
+.dashboard-detail-panel ::deep .rz-grid-table thead th {
+    white-space: normal;
+    line-height: 1.25;
+    vertical-align: bottom;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+}
+
+.dashboard-detail-panel ::deep .rz-grid-table tbody td {
+    white-space: nowrap;
+}
+
+.dashboard-detail-panel ::deep .rz-data-grid-data {
+    overflow-x: auto;
+}
+
+.dashboard-hareket-scroll {
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    border-radius: 6px;
+    scrollbar-gutter: stable;
+}
+
+.dashboard-hareket-scroll ::deep .rz-grid-table {
+    min-width: 430px;
+}
+
+.dashboard-hareket-scroll ::deep .rz-grid-table tbody td {
+    white-space: nowrap;
+}
+
 @media (min-width: 992px) {
     .dashboard-detail-grid.two-col {
         grid-template-columns: 1fr 1fr;

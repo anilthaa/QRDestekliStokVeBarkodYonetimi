@@ -32,12 +32,12 @@
 else
 {
     <RadzenDataGrid Data="@urunler" TItem="ItemUrun" AllowSorting="true"
-                    AllowFiltering="true" FilterMode="FilterMode.SimpleWithMenu"
+                    AllowFiltering="true" FilterMode="FilterMode.Simple"
                     AllowPaging="true" PageSize="15"
                     EmptyText="Kayıt bulunamadı."
                     ColumnWidth="200px">
         <Columns>
-            <RadzenDataGridColumn TItem="ItemUrun" Property="ID" Title="ID" Width="70px" Frozen="true" />
+            <RadzenDataGridColumn TItem="ItemUrun" Property="ID" Title="ID" Width="120px" Frozen="true" />
             <RadzenDataGridColumn TItem="ItemUrun" Property="UrunKodu" Title="Ürün Kodu" MinWidth="120px" />
             <RadzenDataGridColumn TItem="ItemUrun" Property="Ad" Title="Ürün Adı" MinWidth="180px" />
             <RadzenDataGridColumn TItem="ItemUrun" Property="BarkodNo" Title="Barkod No" MinWidth="140px" />
@@ -161,7 +161,7 @@ else
     {
         if (sadecOkuma) return;
         var onay = await DialogSvc.Confirm(
-            $"<b>{item.Ad}</b> ürününü silmek istediğinizden emin misiniz?", "Ürün Sil",
+            DialogFragments.Html($"{DialogFragments.B(item.Ad)} ürününü silmek istediğinizden emin misiniz?"), "Ürün Sil",
             new ConfirmOptions { OkButtonText = "Evet, Sil", CancelButtonText = "İptal" });
         if (onay != true) return;
 

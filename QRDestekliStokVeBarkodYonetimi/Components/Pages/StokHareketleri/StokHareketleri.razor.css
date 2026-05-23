@@ -1,0 +1,61 @@
+.stok-hareket-stats {
+    display: flex;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.stok-hareket-stat-card {
+    flex: 1 1 160px;
+    min-width: 160px;
+}
+
+.stok-hareket-stat-card ::deep .rz-card {
+    padding: 1rem 1.5rem;
+    text-align: center;
+    height: 100%;
+    box-sizing: border-box;
+}
+
+.stok-hareket-stat-card--giris ::deep .rz-card {
+    border-left: 4px solid #2e7d32;
+}
+
+.stok-hareket-stat-card--cikis ::deep .rz-card {
+    border-left: 4px solid #c62828;
+}
+
+.stok-hareket-stat-label {
+    font-size: 0.8rem;
+    color: #666;
+}
+
+.stok-hareket-stat-value {
+    font-size: 1.6rem;
+    font-weight: 600;
+}
+
+.stok-hareket-stat-value--giris {
+    color: #2e7d32;
+}
+
+.stok-hareket-stat-value--cikis {
+    color: #c62828;
+}
+
+@media (max-width: 640px) {
+    .stok-hareket-stats {
+        flex-direction: column;
+        gap: 0.75rem;
+    }
+
+    .stok-hareket-stat-card {
+        flex: 1 1 auto;
+        width: 100%;
+        min-width: unset;
+    }
+
+    .stok-hareket-stat-card ::deep .rz-card {
+        width: 100%;
+    }
+}
