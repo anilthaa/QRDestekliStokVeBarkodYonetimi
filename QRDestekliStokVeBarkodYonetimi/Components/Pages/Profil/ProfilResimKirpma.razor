@@ -1,0 +1,125 @@
+@implements IAsyncDisposable
+@inject ProfilResimKirpState KirpState
+
+<div class="profil-kirpma">
+    <p class="profil-kirpma-hint">
+        Görünecek alanı sürükleyerek veya yakınlaştırarak ayarlayın. Profil ve menüde daire içinde gösterilir.
+    </p>
+
+    <div class="profil-kirpma-stage">
+        <img id="@imgElementId"
+             src="@ImageDataUrl"
+             alt="Profil önizleme"
+             class="profil-kirpma-img" />
+    </div>
+
+    @if (!string.IsNullOrEmpty(hata))
+    {
+        <RadzenAlert AlertStyle="AlertStyle.Danger" Variant="Variant.Flat" AllowClose="false"
+                    Style="margin-top:0.75rem;">@hata</RadzenAlert>
+    }
+
+    <div class="profil-kirpma-actions">
+        <RadzenButton Text="İptal" Icon="close" ButtonStyle="ButtonStyle.Light"
+                      Click="@Iptal" Disabled="@kaydediliyor" />
+        <RadzenButton Text="Kaydet" Icon="check" ButtonStyle="ButtonStyle.Primary"
+                      Click="@KaydetAsync" IsBusy="@kaydediliyor" BusyText="Kaydediliyor…"
+                      Disabled="@kaydediliyor" />
+    </div>
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string ImageDataUrl { get; set; } = string.Empty;
+
+    private readonly string imgElementId = $"profil-kirp-{Guid.NewGuid():N}";
+    private bool cropperHazir;
+    private bool kaydediliyor;
+    private string? hata;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || cropperHazir || string.IsNullOrEmpty(ImageDataUrl))
+            return;
+
+        try
+        {
+            await JS.InvokeVoidAsync("ProfilResimKirp.baslat", imgElementId);
+            cropperHazir = true;
+        }
+        catch (Exception ex)
+        {
+            hata = "Kırpma aracı yüklenemedi: " + ex.Message;
+            StateHasChanged();
+        }
+    }
+
+    private void Iptal()
+    {
+        KirpState.Temizle();
+        DialogSvc.Close(null);
+    }
+
+    private async Task KaydetAsync()
+    {
+        hata = null;
+        kaydediliyor = true;
+        await InvokeAsync(StateHasChanged);
+        try
+        {
+            var dataUrl = await JS.InvokeAsync<string?>("ProfilResimKirp.kirp");
+            if (string.IsNullOrWhiteSpace(dataUrl))
+            {
+                hata = "Kırpılmış görsel oluşturulamadı. Lütfen tekrar deneyin.";
+                return;
+            }
+
+            var bytes = DataUrlBaytlarinaCevir(dataUrl);
+            if (bytes is null || bytes.Length == 0)
+            {
+                hata = "Görsel verisi okunamadı.";
+                return;
+            }
+
+            KirpState.KirpilmisJpegAyarla(bytes);
+            DialogSvc.Close(true);
+        }
+        catch (Exception ex)
+        {
+            hata = "Kayıt hazırlanırken hata: " + ex.Message;
+        }
+        finally
+        {
+            kaydediliyor = false;
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    private static byte[]? DataUrlBaytlarinaCevir(string dataUrl)
+    {
+        var comma = dataUrl.IndexOf(',');
+        if (comma < 0)
+            return null;
+
+        try
+        {
+            return Convert.FromBase64String(dataUrl[(comma + 1)..]);
+        }
+        catch
+        {
+            return null;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("ProfilResimKirp.temizle");
+        }
+        catch
+        {
+            // diyalog kapanırken JS erişimi kesilebilir
+        }
+    }
+}

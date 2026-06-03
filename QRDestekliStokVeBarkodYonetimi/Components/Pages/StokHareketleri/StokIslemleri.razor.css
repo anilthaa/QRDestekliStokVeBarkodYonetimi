@@ -1,0 +1,66 @@
+.stok-islem-aciklama {
+    margin: 0 0 1.5rem;
+    color: var(--rz-text-secondary-color);
+    font-size: 0.95rem;
+}
+
+.stok-islem-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 1.25rem;
+    max-width: 720px;
+}
+
+.stok-islem-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 1.5rem;
+    border: 2px solid var(--rz-base-300);
+    border-radius: 12px;
+    background: var(--rz-base-background-color);
+    cursor: pointer;
+    text-align: left;
+    transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+
+.stok-islem-card:hover,
+.stok-islem-card:focus-visible {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.1);
+    outline: none;
+}
+
+.stok-islem-card--giris:hover,
+.stok-islem-card--giris:focus-visible {
+    border-color: #2e7d32;
+}
+
+.stok-islem-card--cikis:hover,
+.stok-islem-card--cikis:focus-visible {
+    border-color: #c62828;
+}
+
+.stok-islem-card-icon {
+    font-size: 2rem;
+}
+
+.stok-islem-card--giris .stok-islem-card-icon {
+    color: #2e7d32;
+}
+
+.stok-islem-card--cikis .stok-islem-card-icon {
+    color: #c62828;
+}
+
+.stok-islem-card-title {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--rz-text-color);
+}
+
+.stok-islem-card-desc {
+    font-size: 0.88rem;
+    color: var(--rz-text-secondary-color);
+}

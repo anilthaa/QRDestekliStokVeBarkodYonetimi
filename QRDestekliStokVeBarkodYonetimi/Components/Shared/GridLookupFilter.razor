@@ -1,0 +1,23 @@
+<RadzenDropDown Value="@Value"
+                ValueChanged="@OnValueChanged"
+                Data="@Data"
+                TextProperty="@TextProperty"
+                ValueProperty="@ValueProperty"
+                TValue="int?"
+                AllowClear="true"
+                Placeholder="@Placeholder"
+                Style="width:100%;" />
+
+@code {
+    [Parameter] public int? Value { get; set; }
+    [Parameter] public EventCallback<int?> ValueChanged { get; set; }
+    [Parameter] public IEnumerable<object>? Data { get; set; }
+    [Parameter] public string TextProperty { get; set; } = "Ad";
+    [Parameter] public string ValueProperty { get; set; } = "ID";
+    [Parameter] public string Placeholder { get; set; } = "Tümü";
+
+    private async Task OnValueChanged(int? value)
+    {
+        await ValueChanged.InvokeAsync(value);
+    }
+}

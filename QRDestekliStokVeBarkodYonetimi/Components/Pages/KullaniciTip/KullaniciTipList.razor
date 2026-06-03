@@ -31,19 +31,27 @@
 }
 else
 {
-    <RadzenDataGrid Data="@tipler" TItem="ItemKullaniciTip" AllowSorting="true"
+    <RadzenDataGrid Data="@filtreliTipler" TItem="ItemKullaniciTip" AllowSorting="true"
                     AllowFiltering="true" FilterMode="FilterMode.Simple"
+                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
                     AllowPaging="true" PageSize="15"
                     EmptyText="Kayıt bulunamadı."
                     ColumnWidth="200px">
         <Columns>
-            <RadzenDataGridColumn TItem="ItemKullaniciTip" Property="ID" Title="ID" Width="70px" Frozen="true" />
+            <RadzenDataGridColumn TItem="ItemKullaniciTip" Property="ID" Title="ID" Width="70px" Frozen="true">
+                <FilterTemplate>
+                    <GridTextFilter @bind-Value="@idFiltre" />
+                </FilterTemplate>
+            </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="ItemKullaniciTip" Property="Ad" Title="Kullanıcı Tipi Adı" MinWidth="200px" />
             <RadzenDataGridColumn TItem="ItemKullaniciTip" Property="Aktif" Title="Aktif" Width="90px" TextAlign="TextAlign.Center">
                 <Template Context="row">
                     <RadzenIcon Icon="@(row.Aktif == true ? "check_circle" : "cancel")"
                                 Style="@(row.Aktif == true ? "color:#2e7d32" : "color:#c62828")" />
                 </Template>
+                <FilterTemplate>
+                    <GridBoolFilter @bind-Value="@aktifFiltre" />
+                </FilterTemplate>
             </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="ItemKullaniciTip" Property="Varsayilan" Title="Varsayılan" Width="110px" TextAlign="TextAlign.Center">
                 <Template Context="row">
@@ -56,6 +64,9 @@ else
                         <span style="color:var(--rz-text-secondary-color); font-size:0.85rem;">—</span>
                     }
                 </Template>
+                <FilterTemplate>
+                    <GridBoolFilter @bind-Value="@varsayilanFiltre" />
+                </FilterTemplate>
             </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="ItemKullaniciTip" Title="İşlemler" Width="160px" TextAlign="TextAlign.Center" Sortable="false" Filterable="false">
                 <Template Context="row">
@@ -81,6 +92,14 @@ else
     private bool isLoading = true;
     private bool sadecOkuma = false;
     private bool yetkiSayfasiErisim = false;
+    private string? idFiltre;
+    private bool? aktifFiltre;
+    private bool? varsayilanFiltre;
+
+    private ItemKullaniciTip[] filtreliTipler => tipler.Where(t =>
+        GridFilterHelper.Eslesir(t.ID, idFiltre) &&
+        GridFilterHelper.BoolEslesir(t.Aktif, aktifFiltre) &&
+        GridFilterHelper.BoolEslesir(t.Varsayilan, varsayilanFiltre)).ToArray();
 
     private IList<ExportColumn<ItemKullaniciTip>> CiktiKolonlari() => new List<ExportColumn<ItemKullaniciTip>>
     {

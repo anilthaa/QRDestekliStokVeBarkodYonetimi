@@ -1,0 +1,51 @@
+<div class="grid-bool-filter"
+     role="button"
+     tabindex="0"
+     title="Filtre: @DurumMetni (tıklayarak değiştir)"
+     @onclick="CycleAsync"
+     @onkeydown="OnKeyDown">
+    <span class="grid-bool-filter-box @DurumSinifi" aria-hidden="true">
+        @if (Value == true)
+        {
+            <RadzenIcon Icon="check_box" />
+        }
+        else if (Value == false)
+        {
+            <RadzenIcon Icon="indeterminate_check_box" />
+        }
+        else
+        {
+            <RadzenIcon Icon="check_box_outline_blank" />
+        }
+    </span>
+    <span class="grid-bool-filter-label">@DurumMetni</span>
+</div>
+
+@code {
+    [Parameter] public bool? Value { get; set; }
+    [Parameter] public EventCallback<bool?> ValueChanged { get; set; }
+
+    private string DurumMetni =>
+        Value == true ? "Evet" :
+        Value == false ? "Hayır" :
+        "Tümü";
+
+    private string DurumSinifi =>
+        Value == true ? "grid-bool-filter-box--evet" :
+        Value == false ? "grid-bool-filter-box--hayir" :
+        "grid-bool-filter-box--tumu";
+
+    private async Task CycleAsync()
+    {
+        var next = Value is null ? true : Value == true ? false : (bool?)null;
+        await ValueChanged.InvokeAsync(next);
+    }
+
+    private async Task OnKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key is "Enter" or " ")
+        {
+            await CycleAsync();
+        }
+    }
+}

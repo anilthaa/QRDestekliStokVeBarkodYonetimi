@@ -1,10 +1,19 @@
 @page "/login"
 @layout QRDestekliStokVeBarkodYonetimi.Components.Layout.AuthLayout
-
-@* @rendermode bilerek YOK — form-post için sayfanın static SSR olması gerekiyor.
-   Cookie auth: form /api/auth/login'e POST eder, endpoint SignInAsync çağırıp redirect'ler. *@
+@rendermode InteractiveServer
+@using System.Net.Mail
 
 <PageTitle>Giriş Yap</PageTitle>
+
+@* Cookie yalnızca tam HTTP POST ile set edilir (Blazor circuit içinde SignInAsync çalışmaz). *@
+<form id="auth-login-form" method="post" action="/api/auth/login" style="display:none;" aria-hidden="true">
+    <input type="hidden" name="Eposta" value="" />
+    <input type="hidden" name="Sifre" value="" />
+    @if (!string.IsNullOrEmpty(ReturnUrl))
+    {
+        <input type="hidden" name="ReturnUrl" value="@ReturnUrl" />
+    }
+</form>
 
 <div class="auth-card">
     <div class="auth-card__brand">
@@ -13,12 +22,7 @@
         <p>Hesabınıza giriş yapın</p>
     </div>
 
-    <form method="post" action="/api/auth/login" class="auth-form">
-        @if (ReturnUrl is not null)
-        {
-            <input type="hidden" name="ReturnUrl" value="@ReturnUrl" />
-        }
-
+    <div class="auth-form">
         @if (!string.IsNullOrEmpty(Registered))
         {
             <div class="rz-alert rz-alert-success" style="margin-bottom:0.75rem;">
@@ -34,41 +38,36 @@
         }
 
         <div class="auth-field">
-            <label class="rz-label" for="Eposta">E-posta</label>
-            <input id="Eposta" name="Eposta" type="email" required
-                   placeholder="ornek@mail.com"
-                   class="rz-textbox"
-                   style="width:100%;" />
+            <RadzenLabel Text="E-posta" Component="Eposta" />
+            <RadzenTextBox @bind-Value="model.Eposta" Name="Eposta"
+                           Placeholder="ornek@mail.com"
+                           Style="width:100%;" Disabled="@girisIsBusy" />
         </div>
 
         <div class="auth-field">
             <div class="auth-label-row">
-                <label class="rz-label" for="Sifre" style="margin:0;">Şifre</label>
+                <RadzenLabel Text="Şifre" Component="Sifre" Style="margin:0;" />
                 <a class="auth-forgot-link" href="/sifremi-unuttum">Şifremi unuttum</a>
             </div>
-            <AuthPasswordInput Id="Sifre" Name="Sifre" Placeholder="••••••••" />
+            <TogglePasswordField @bind-Value="model.Sifre" Name="Sifre"
+                                 Placeholder="••••••••" Disabled="@girisIsBusy" />
         </div>
 
-        <div class="auth-remember-row">
-            <label class="auth-checkbox">
-                <input type="checkbox" name="BeniHatirla" value="true" />
-                <span>Beni hatırla</span>
-            </label>
+        <div class="auth-remember-row" style="display:flex; align-items:center; gap:0.5rem;">
+            <RadzenCheckBox @bind-Value="model.BeniHatirla" Name="BeniHatirla" Disabled="@girisIsBusy" />
+            <RadzenLabel Text="Beni hatırla" Component="BeniHatirla" Style="margin:0; cursor:pointer;" />
         </div>
 
-        @if (!string.IsNullOrEmpty(Error))
+        @if (!string.IsNullOrEmpty(girisHata))
         {
-            <div class="rz-alert rz-alert-danger" style="margin-bottom:0.75rem;">@Error</div>
+            <RadzenAlert AlertStyle="AlertStyle.Danger" Variant="Variant.Flat" AllowClose="false"
+                        Style="margin-bottom:0.75rem;">@girisHata</RadzenAlert>
         }
 
-        <button type="submit" class="rz-button rz-button-md rz-button-primary"
-                style="width:100%; margin-top:0.25rem;">
-            <span class="rz-button-icon-left">
-                <i class="fa-solid fa-right-to-bracket"></i>
-            </span>
-            <span class="rz-button-text">Giriş Yap</span>
-        </button>
-    </form>
+        <RadzenButton Text="Giriş Yap" Icon="login" ButtonStyle="ButtonStyle.Primary"
+                      Click="@GirisYapAsync" IsBusy="@girisIsBusy" BusyText="Giriş yapılıyor…"
+                      Disabled="@girisIsBusy" Style="width:100%; margin-top:0.25rem;" />
+    </div>
 
     <div class="auth-card__footer">
         Hesabınız yok mu? <a href="/register">Kayıt olun</a>
@@ -76,6 +75,13 @@
 </div>
 
 @code {
+    private sealed class LoginModel
+    {
+        public string Eposta { get; set; } = string.Empty;
+        public string Sifre { get; set; } = string.Empty;
+        public bool BeniHatirla { get; set; }
+    }
+
     [SupplyParameterFromQuery] public string? Error { get; set; }
     [SupplyParameterFromQuery] public string? ReturnUrl { get; set; }
     [SupplyParameterFromQuery] public string? Registered { get; set; }
@@ -83,12 +89,67 @@
 
     [CascadingParameter] public HttpContext? HttpContext { get; set; }
 
+    private LoginModel model = new();
+    private string girisHata = string.Empty;
+    private bool girisIsBusy;
+
     protected override void OnInitialized()
     {
-        // Zaten cookie ile auth olmuş kullanıcıyı doğrudan ana sayfaya gönder.
         if (HttpContext?.User?.Identity?.IsAuthenticated == true)
         {
-            HttpContext.Response.Redirect(string.IsNullOrWhiteSpace(ReturnUrl) ? "/" : ReturnUrl);
+            var hedef = KullaniciCookieSignInService.GuvenliReturnUrl(ReturnUrl);
+            NavigationManager.NavigateTo(hedef, forceLoad: true);
+        }
+    }
+
+    protected override void OnParametersSet()
+    {
+        if (!string.IsNullOrEmpty(Error))
+            girisHata = Error;
+    }
+
+    private async Task GirisYapAsync()
+    {
+        girisHata = string.Empty;
+
+        if (string.IsNullOrWhiteSpace(model.Eposta) || string.IsNullOrWhiteSpace(model.Sifre))
+        {
+            girisHata = "E-posta ve şifre zorunludur.";
+            return;
+        }
+
+        var eposta = model.Eposta.Trim();
+        if (!MailAddress.TryCreate(eposta, out _))
+        {
+            girisHata = "Geçerli bir e-posta giriniz.";
+            return;
+        }
+
+        girisIsBusy = true;
+        var postSubmitted = false;
+        try
+        {
+            var result = await DataSvc.LoginKullanici(eposta, model.Sifre);
+            if (result.Data is null)
+            {
+                girisHata = string.IsNullOrEmpty(result.SonucAciklama)
+                    ? "Giriş başarısız."
+                    : result.SonucAciklama;
+                return;
+            }
+
+            var hedef = KullaniciCookieSignInService.GuvenliReturnUrl(ReturnUrl);
+            await JS.InvokeVoidAsync("AuthLogin.post", eposta, model.Sifre, model.BeniHatirla, hedef == "/" ? "" : hedef);
+            postSubmitted = true;
+        }
+        catch (Exception ex)
+        {
+            girisHata = "Giriş sırasında beklenmeyen bir hata oluştu: " + ex.Message;
+        }
+        finally
+        {
+            if (!postSubmitted)
+                girisIsBusy = false;
         }
     }
 }

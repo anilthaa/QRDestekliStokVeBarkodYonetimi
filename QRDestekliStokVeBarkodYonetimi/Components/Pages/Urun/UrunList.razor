@@ -31,13 +31,18 @@
 }
 else
 {
-    <RadzenDataGrid Data="@urunler" TItem="ItemUrun" AllowSorting="true"
+    <RadzenDataGrid Data="@filtreliUrunler" TItem="ItemUrun" AllowSorting="true"
                     AllowFiltering="true" FilterMode="FilterMode.Simple"
+                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
                     AllowPaging="true" PageSize="15"
                     EmptyText="Kayıt bulunamadı."
                     ColumnWidth="200px">
         <Columns>
-            <RadzenDataGridColumn TItem="ItemUrun" Property="ID" Title="ID" Width="120px" Frozen="true" />
+            <RadzenDataGridColumn TItem="ItemUrun" Property="ID" Title="ID" Width="120px" Frozen="true">
+                <FilterTemplate>
+                    <GridTextFilter @bind-Value="@idFiltre" />
+                </FilterTemplate>
+            </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="ItemUrun" Property="UrunKodu" Title="Ürün Kodu" MinWidth="120px" />
             <RadzenDataGridColumn TItem="ItemUrun" Property="Ad" Title="Ürün Adı" MinWidth="180px" />
             <RadzenDataGridColumn TItem="ItemUrun" Property="BarkodNo" Title="Barkod No" MinWidth="140px" />
@@ -45,18 +50,31 @@ else
                 <Template Context="row">
                     @(kategoriler.FirstOrDefault(k => k.ID == row.Kategori_ID)?.Ad ?? "-")
                 </Template>
+                <FilterTemplate>
+                    <GridLookupFilter @bind-Value="@kategoriFiltreId" Data="@kategoriler" />
+                </FilterTemplate>
             </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="ItemUrun" Property="Birim_ID" Title="Birim" Width="100px">
                 <Template Context="row">
                     @(birimler.FirstOrDefault(b => b.ID == row.Birim_ID)?.Ad ?? "-")
                 </Template>
+                <FilterTemplate>
+                    <GridLookupFilter @bind-Value="@birimFiltreId" Data="@birimler" />
+                </FilterTemplate>
             </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="ItemUrun" Property="Stok" Title="Stok" Width="90px" TextAlign="TextAlign.Right">
                 <Template Context="row">
                     <span style="@(row.Stok <= row.KritikStokSeviyesi ? "color:#c62828; font-weight:600;" : "")">@row.Stok</span>
                 </Template>
+                <FilterTemplate>
+                    <GridTextFilter @bind-Value="@stokFiltre" />
+                </FilterTemplate>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="ItemUrun" Property="KritikStokSeviyesi" Title="Kritik Stok" Width="120px" TextAlign="TextAlign.Right" />
+            <RadzenDataGridColumn TItem="ItemUrun" Property="KritikStokSeviyesi" Title="Kritik Stok" Width="120px" TextAlign="TextAlign.Right">
+                <FilterTemplate>
+                    <GridTextFilter @bind-Value="@kritikStokFiltre" />
+                </FilterTemplate>
+            </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="ItemUrun" Property="Aciklama" Title="Açıklama" MinWidth="200px" />
             <RadzenDataGridColumn TItem="ItemUrun" Title="İşlemler" Width="200px" TextAlign="TextAlign.Center" Sortable="false" Filterable="false">
                 <Template Context="row">
@@ -82,6 +100,18 @@ else
     private ItemBirim[] birimler = [];
     private bool isLoading = true;
     private bool sadecOkuma = false;
+    private string? idFiltre;
+    private int? kategoriFiltreId;
+    private int? birimFiltreId;
+    private string? stokFiltre;
+    private string? kritikStokFiltre;
+
+    private ItemUrun[] filtreliUrunler => urunler.Where(u =>
+        GridFilterHelper.Eslesir(u.ID, idFiltre) &&
+        GridFilterHelper.IdEslesir(u.Kategori_ID, kategoriFiltreId) &&
+        GridFilterHelper.IdEslesir(u.Birim_ID, birimFiltreId) &&
+        GridFilterHelper.Eslesir(u.Stok, stokFiltre) &&
+        GridFilterHelper.Eslesir(u.KritikStokSeviyesi, kritikStokFiltre)).ToArray();
 
     private IList<ExportColumn<ItemUrun>> CiktiKolonlari() => new List<ExportColumn<ItemUrun>>
     {

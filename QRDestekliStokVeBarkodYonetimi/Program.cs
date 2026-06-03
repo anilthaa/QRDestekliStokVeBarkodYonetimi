@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Dapper;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Components.Server;
 using QRDestekliStokVeBarkodYonetimi.Components;
@@ -16,7 +17,11 @@ QuestPDF.Settings.License = LicenseType.Community;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddRazorComponents()
-    .AddInteractiveServerComponents();
+    .AddInteractiveServerComponents()
+    .AddHubOptions(options =>
+    {
+        options.MaximumReceiveMessageSize = 4 * 1024 * 1024;
+    });
 
 builder.Services.AddRadzenComponents();
 builder.Services.AddScoped<ThemeService>();
@@ -47,6 +52,7 @@ builder.Services.AddScoped<EmailService>();
 builder.Services.AddSingleton<EpostaDogrulamaService>();
 builder.Services.AddSingleton<SifreSifirlamaTokenService>();
 builder.Services.AddSingleton<KullaniciHesapOnayTokenService>();
+builder.Services.AddSingleton<RequestBaseUrlHelper>();
 
 builder.Services.AddScoped<AuthStateService>();
 builder.Services.AddScoped<IAuthState>(sp => sp.GetRequiredService<AuthStateService>());
@@ -54,9 +60,12 @@ builder.Services.AddScoped<IAuthState>(sp => sp.GetRequiredService<AuthStateServ
 builder.Services.AddScoped<IYetkiDataAccess>(sp => sp.GetRequiredService<DataService>());
 builder.Services.AddScoped<YetkiService>();
 builder.Services.AddSingleton<QrService>();
+builder.Services.AddSingleton<ProfilResimIslemci>();
+builder.Services.AddScoped<ProfilResimKirpState>();
 builder.Services.AddScoped<ExportService>();
 
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<KullaniciCookieSignInService>();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddScoped<AuthenticationStateProvider, ServerAuthenticationStateProvider>();
 
@@ -87,6 +96,18 @@ builder.Services
 builder.Services.AddAuthorization();
 
 var app = builder.Build();
+
+var forwardedHeadersOptions = new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost
+};
+if (app.Environment.IsDevelopment())
+{
+    forwardedHeadersOptions.KnownNetworks.Clear();
+    forwardedHeadersOptions.KnownProxies.Clear();
+}
+
+app.UseForwardedHeaders(forwardedHeadersOptions);
 
 if (!app.Environment.IsDevelopment())
 {
@@ -124,12 +145,13 @@ app.MapRazorComponents<App>()
     .AddInteractiveServerRenderMode();
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Auth endpoint'leri — Login.razor / Register.razor / NavMenu logout form'ları
-// buralara HTML form-post yapar. Cookie burada SignInAsync ile set edilir.
+// Auth endpoint'leri — Login.razor interactive; Register/NavMenu logout form-post.
+// Cookie KullaniciCookieSignInService ile set edilir.
 // ─────────────────────────────────────────────────────────────────────────────
 app.MapPost("/api/auth/login", async (
         HttpContext ctx,
-        DataService data) =>
+        DataService data,
+        KullaniciCookieSignInService cookieSignIn) =>
     {
         var form = await ctx.Request.ReadFormAsync();
         var eposta = form["Eposta"].ToString();
@@ -145,28 +167,8 @@ app.MapPost("/api/auth/login", async (
             return Results.Redirect("/login?error=" + Uri.EscapeDataString(
                 string.IsNullOrEmpty(result.SonucAciklama) ? "Giriş başarısız." : result.SonucAciklama));
 
-        var user = result.Data;
-        var claims = new List<Claim>
-        {
-            new(ClaimTypes.NameIdentifier, user.ID.ToString()),
-            new(ClaimTypes.Name,           $"{user.Ad} {user.Soyad}".Trim()),
-            new(ClaimTypes.Email,          user.Eposta ?? string.Empty),
-            new("KullaniciTip_ID",         user.KullaniciTip_ID.ToString()),
-            new("Ad",                      user.Ad ?? string.Empty),
-            new("Soyad",                   user.Soyad ?? string.Empty)
-        };
-
-        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-        var principal = new ClaimsPrincipal(identity);
-        var authProps = new AuthenticationProperties { IsPersistent = beniHatirla };
-        if (beniHatirla)
-            authProps.ExpiresUtc = DateTimeOffset.UtcNow.AddDays(30);
-        await ctx.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, principal, authProps);
-
-        var hedef = string.IsNullOrWhiteSpace(returnUrl) ? "/" : returnUrl;
-        // Açık redirect koruması: yalnız aynı origin'e izin ver
-        if (!Uri.IsWellFormedUriString(hedef, UriKind.Relative)) hedef = "/";
-        return Results.Redirect(hedef);
+        await cookieSignIn.SignInAsync(result.Data, beniHatirla);
+        return Results.Redirect(KullaniciCookieSignInService.GuvenliReturnUrl(returnUrl));
     })
     .DisableAntiforgery();
 
@@ -213,10 +215,12 @@ app.MapPost("/api/auth/forgot-password", async (
         HttpContext ctx,
         DataService data,
         EmailService email,
-        SifreSifirlamaTokenService tokenSvc) =>
+        SifreSifirlamaTokenService tokenSvc,
+        RequestBaseUrlHelper baseUrlHelper) =>
     {
         var form = await ctx.Request.ReadFormAsync();
         var eposta = form["Eposta"].ToString().Trim();
+        var siteOrigin = form["SiteOrigin"].ToString();
 
         if (!string.IsNullOrWhiteSpace(eposta))
         {
@@ -224,8 +228,9 @@ app.MapPost("/api/auth/forgot-password", async (
             if (user is not null && user.Aktif != false && !string.IsNullOrWhiteSpace(user.Eposta))
             {
                 var token = tokenSvc.OlusturKaydet(user.ID);
+                var baseUrl = baseUrlHelper.GetBaseUrl(ctx, siteOrigin);
                 var link =
-                    $"{ctx.Request.Scheme}://{ctx.Request.Host}/sifre-sifirla?token={Uri.EscapeDataString(token)}";
+                    $"{baseUrl}/sifre-sifirla?token={Uri.EscapeDataString(token)}";
                 var html =
                     "<p>Merhaba,</p>" +
                     "<p>Şifre sıfırlama talebinde bulundunuz. Aşağıdaki bağlantıya tıklayarak yeni şifrenizi " +

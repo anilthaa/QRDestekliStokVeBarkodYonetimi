@@ -1,0 +1,64 @@
+.stok-tarama-card {
+    margin-bottom: 1rem;
+    padding: 1rem;
+}
+
+.stok-tarama-mod-sec {
+    width: 100%;
+    margin-bottom: 0.75rem;
+}
+
+.stok-tarama-aciklama {
+    font-size: 0.85rem;
+    color: #555;
+    margin-bottom: 0.5rem;
+}
+
+.stok-tarama-barkod-satir {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.stok-tarama-kamera {
+    width: 100%;
+    max-width: 480px;
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.stok-tarama-kamera video {
+    object-fit: contain !important;
+    width: 100% !important;
+    max-height: min(60vh, 400px);
+}
+
+.stok-tarama-dosya-satir {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.stok-tarama-dosya-input {
+    position: absolute;
+    width: 0.1px;
+    height: 0.1px;
+    opacity: 0;
+    overflow: hidden;
+    z-index: -1;
+}
+
+.stok-tarama-dosya-label {
+    cursor: pointer;
+    display: inline-block;
+}
+
+.stok-tarama-dosya-label--disabled {
+    cursor: not-allowed;
+    opacity: 0.65;
+}
+
+.stok-tarama-dosya-adi {
+    font-size: 0.82rem;
+    color: #666;
+    margin-top: 0.5rem;
+}

@@ -60,14 +60,16 @@ else
                 }
             </div>
 
-            <p style="font-size:0.82rem; color:#888; margin:0 0 1rem;">
-                <strong>Gizli:</strong> Kullanıcı bu sayfayı göremez ve erişemez.&nbsp;
-                <strong>Okuma:</strong> Sayfa görüntülenebilir; ekleme/silme butonları gizlenir.&nbsp;
-                <strong>Yazma:</strong> Tam erişim — ekleme, düzenleme ve silme serbest.<br />
-                Sarı satırlar ve "● özel" rozeti, kullanıcıya özel override kaydı bulunduğunu gösterir.
-                Her dropdown'ın altındaki "Tip yetkisi" değeri, kullanıcının tipinden gelen taban yetkidir;
-                override kaydı yoksa o değer etkindir.
-            </p>
+            <div class="yetki-bilgi" style="font-size:0.82rem; color:#888; margin:0 0 1rem; display:flex; flex-direction:column; gap:0.35rem;">
+                <div><strong>Gizli:</strong> Kullanıcı bu sayfayı göremez ve erişemez.</div>
+                <div><strong>Okuma:</strong> Sayfa görüntülenebilir; ekleme/silme butonları gizlenir.</div>
+                <div><strong>Yazma:</strong> Tam erişim — ekleme, düzenleme ve silme serbest.</div>
+                <p style="margin:0.25rem 0 0;">
+                    Sarı satırlar ve "● özel" rozeti, kullanıcıya özel override kaydı bulunduğunu gösterir.
+                    Her dropdown'ın altındaki "Tip yetkisi" değeri, kullanıcının tipinden gelen taban yetkidir;
+                    override kaydı yoksa o değer etkindir.
+                </p>
+            </div>
 
             @if (!yazmaYetkisi)
             {

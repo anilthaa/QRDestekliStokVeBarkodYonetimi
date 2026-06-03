@@ -33,13 +33,18 @@
 }
 else
 {
-    <RadzenDataGrid Data="@kullanicilar" TItem="ItemKullanicilar" AllowSorting="true"
+    <RadzenDataGrid Data="@filtreliKullanicilar" TItem="ItemKullanicilar" AllowSorting="true"
                     AllowFiltering="true" FilterMode="FilterMode.Simple"
+                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
                     AllowPaging="true" PageSize="15"
                     EmptyText="Kayıt bulunamadı."
                     ColumnWidth="200px">
         <Columns>
-            <RadzenDataGridColumn TItem="ItemKullanicilar" Property="ID" Title="ID" Width="70px" Frozen="true" />
+            <RadzenDataGridColumn TItem="ItemKullanicilar" Property="ID" Title="ID" Width="70px" Frozen="true">
+                <FilterTemplate>
+                    <GridTextFilter @bind-Value="@idFiltre" />
+                </FilterTemplate>
+            </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="ItemKullanicilar" Title="" Width="64px" Frozen="true"
                                   Sortable="false" Filterable="false" TextAlign="TextAlign.Center">
                 <Template Context="row">
@@ -62,12 +67,18 @@ else
                 <Template Context="row">
                     @(kullaniciTipler.FirstOrDefault(k => k.ID == row.KullaniciTip_ID)?.Ad ?? "-")
                 </Template>
+                <FilterTemplate>
+                    <GridLookupFilter @bind-Value="@kullaniciTipFiltreId" Data="@kullaniciTipler" />
+                </FilterTemplate>
             </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="ItemKullanicilar" Property="Aktif" Title="Aktif" Width="90px" TextAlign="TextAlign.Center">
                 <Template Context="row">
                     <RadzenIcon Icon="@(row.Aktif == true ? "check_circle" : "cancel")"
                                 Style="@(row.Aktif == true ? "color:#2e7d32" : "color:#c62828")" />
                 </Template>
+                <FilterTemplate>
+                    <GridBoolFilter @bind-Value="@aktifFiltre" />
+                </FilterTemplate>
             </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="ItemKullanicilar" Title="İşlemler" Width="210px" TextAlign="TextAlign.Center" Sortable="false" Filterable="false">
                 <Template Context="row">
@@ -104,6 +115,14 @@ else
     private bool yetkiSayfasiErisim = false;
     private int? onayMailiGonderiliyorId;
     private string siteBaseUri = string.Empty;
+    private string? idFiltre;
+    private int? kullaniciTipFiltreId;
+    private bool? aktifFiltre;
+
+    private ItemKullanicilar[] filtreliKullanicilar => kullanicilar.Where(k =>
+        GridFilterHelper.Eslesir(k.ID, idFiltre) &&
+        GridFilterHelper.IdEslesir(k.KullaniciTip_ID, kullaniciTipFiltreId) &&
+        GridFilterHelper.BoolEslesir(k.Aktif, aktifFiltre)).ToArray();
 
     private IList<ExportColumn<ItemKullanicilar>> CiktiKolonlari() => new List<ExportColumn<ItemKullanicilar>>
     {
