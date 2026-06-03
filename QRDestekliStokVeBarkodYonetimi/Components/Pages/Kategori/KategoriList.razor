@@ -31,15 +31,20 @@
 }
 else
 {
-    <RadzenDataGrid Data="@kategoriler" TItem="ItemKategori" AllowSorting="true"
+    <RadzenDataGrid Data="@filtreliKategoriler" TItem="ItemKategori" AllowSorting="true"
                     AllowFiltering="true" FilterMode="FilterMode.Simple"
+                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
                     AllowPaging="true" PageSize="15"
                     EmptyText="Kayıt bulunamadı."
                     ColumnWidth="200px">
         <Columns>
 
             <RadzenDataGridColumn TItem="ItemKategori" Property="ID" Title="ID"
-                                  Width="70px" Frozen="true" />
+                                  Width="70px" Frozen="true">
+                <FilterTemplate>
+                    <GridTextFilter @bind-Value="@idFiltre" />
+                </FilterTemplate>
+            </RadzenDataGridColumn>
 
             <RadzenDataGridColumn TItem="ItemKategori" Property="Ad" Title="Kategori Adı"
                                   MinWidth="160px" />
@@ -70,6 +75,9 @@ else
                     <RadzenIcon Icon="@(row.Aktif ? "check_circle" : "cancel")"
                                 Style="@(row.Aktif ? "color:#2e7d32" : "color:#c62828")" />
                 </Template>
+                <FilterTemplate>
+                    <GridBoolFilter @bind-Value="@aktifFiltre" />
+                </FilterTemplate>
             </RadzenDataGridColumn>
 
             <RadzenDataGridColumn TItem="ItemKategori" Title="İşlemler"
@@ -99,6 +107,12 @@ else
     private ItemKategori[] kategoriler = [];
     private bool isLoading = true;
     private bool sadecOkuma = false;
+    private string? idFiltre;
+    private bool? aktifFiltre;
+
+    private ItemKategori[] filtreliKategoriler => kategoriler.Where(k =>
+        GridFilterHelper.Eslesir(k.ID, idFiltre) &&
+        GridFilterHelper.BoolEslesir(k.Aktif, aktifFiltre)).ToArray();
 
     private IList<ExportColumn<ItemKategori>> CiktiKolonlari() => new List<ExportColumn<ItemKategori>>
     {

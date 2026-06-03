@@ -8,6 +8,8 @@
 @attribute [Authorize]
 @inject EmailService EmailSvc
 @inject EpostaDogrulamaService DogrulamaSvc
+@inject ProfilResimIslemci ProfilResimIslemci
+@inject ProfilResimKirpState KirpState
 
 <PageTitle>Profilim</PageTitle>
 
@@ -32,12 +34,10 @@ else
         <RadzenCard class="profil-hero"
                     Style="background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%); color:#fff; padding:2rem;">
             <div style="display:flex; align-items:center; gap:1.5rem; flex-wrap:wrap;">
-                <div style="width:80px; height:80px; border-radius:50%; background:rgba(255,255,255,0.2); border:3px solid rgba(255,255,255,0.5);
-                    display:flex; align-items:center; justify-content:center; font-size:2rem; font-weight:700; flex-shrink:0; overflow:hidden;">
+                <div class="profil-avatar profil-avatar--hero">
                     @if (!string.IsNullOrWhiteSpace(kullanici.ProfilResmi))
                     {
-                        <img src="@($"{kullanici.ProfilResmi}?v={kullanici.UpdDate?.Ticks ?? kullanici.ID}")" alt=""
-                             style="width:100%;height:100%;object-fit:cover;" />
+                        <img src="@($"{kullanici.ProfilResmi}?v={kullanici.UpdDate?.Ticks ?? kullanici.ID}")" alt="" />
                     }
                     else
                     {
@@ -71,7 +71,8 @@ else
                             background:var(--rz-base-background-color); border:1px solid var(--rz-base-300);">
                     <RadzenLabel Text="Profil resmi" style="display:block; margin-bottom:0.35rem;" />
                     <div style="display:flex; flex-wrap:wrap; align-items:center; gap:0.75rem;">
-                        <InputFile id="profilResimDosya" OnChange="@OnProfilResmiSecildi" accept="image/jpeg,image/png,image/webp,image/gif"
+                        <InputFile @key="profilResimInputKey" id="profilResimDosya" OnChange="@OnProfilResmiSecildi"
+                                   accept="image/jpeg,image/png,image/webp,image/gif"
                                    disabled="@profilResmiYukleniyor" style="display:none;" />
                         <label for="profilResimDosya" class="rz-button rz-button-sm rz-button-secondary"
                                style="margin:0; cursor:pointer;">
@@ -85,7 +86,7 @@ else
                         }
                     </div>
                     <span style="font-size:0.8rem; color:var(--rz-text-secondary-color); display:block; margin-top:0.35rem;">
-                        JPEG, PNG, WebP veya GIF; en fazla 2 MB.
+                        JPEG, PNG, WebP veya GIF; en fazla 2 MB. Resim seçildikten sonra kırpma penceresinde görünen alanı ayarlayın.
                     </span>
                     @if (!string.IsNullOrEmpty(profilResmiHata))
                     {
@@ -221,29 +222,38 @@ else
 
                         <div>
                             <RadzenLabel Text="Mevcut Şifre *" Component="EskiSifre" />
-                            <TogglePasswordField @bind-Value="sifreForm.EskiSifre" Name="EskiSifre"
+                            <TogglePasswordField @bind-Value="sifreForm.EskiSifre" @bind-Value:after="OnSifreFormDegisti"
+                                                 Name="EskiSifre"
                                                  Placeholder="Mevcut şifreniz"
                                                  Disabled="@sifreAlanlariKilitli" />
-                            <RadzenRequiredValidator Component="EskiSifre" Text="Mevcut şifre zorunludur." Style="display:block;" />
+                            @if (!string.IsNullOrEmpty(eskiSifreAlanHata))
+                            {
+                                <span class="profil-field-error">@eskiSifreAlanHata</span>
+                            }
                         </div>
 
                         <div>
                             <RadzenLabel Text="Yeni Şifre *" Component="YeniSifre" />
-                            <TogglePasswordField @bind-Value="sifreForm.YeniSifre" Name="YeniSifre"
+                            <TogglePasswordField @bind-Value="sifreForm.YeniSifre" @bind-Value:after="OnSifreFormDegisti"
+                                                 Name="YeniSifre"
                                                  Placeholder="En az 6 karakter"
                                                  Disabled="@sifreAlanlariKilitli" />
-                            <RadzenRequiredValidator Component="YeniSifre" Text="Yeni şifre zorunludur." Style="display:block;" />
-                            <RadzenLengthValidator Component="YeniSifre" Min="6" Text="Şifre en az 6 karakter olmalıdır." Style="display:block;" />
+                            @if (!string.IsNullOrEmpty(yeniSifreAlanHata))
+                            {
+                                <span class="profil-field-error">@yeniSifreAlanHata</span>
+                            }
                         </div>
 
                         <div>
                             <RadzenLabel Text="Yeni Şifre (Tekrar) *" Component="YeniSifreTekrar" />
-                            <TogglePasswordField @bind-Value="sifreForm.YeniSifreTekrar" Name="YeniSifreTekrar"
+                            <TogglePasswordField @bind-Value="sifreForm.YeniSifreTekrar" @bind-Value:after="OnSifreFormDegisti"
+                                                 Name="YeniSifreTekrar"
                                                  Placeholder="Şifreyi tekrar girin"
                                                  Disabled="@sifreAlanlariKilitli" />
-                            <RadzenRequiredValidator Component="YeniSifreTekrar" Text="Tekrar şifre zorunludur." Style="display:block;" />
-                            <RadzenCompareValidator Component="YeniSifreTekrar" Value="@sifreForm.YeniSifre"
-                                                    Text="Şifreler eşleşmiyor." Style="display:block;" />
+                            @if (!string.IsNullOrEmpty(yeniSifreTekrarAlanHata))
+                            {
+                                <span class="profil-field-error">@yeniSifreTekrarAlanHata</span>
+                            }
                         </div>
 
                         @if (sifreKodGonderildi)
@@ -292,6 +302,7 @@ else
                             <div class="form-actions" style="margin-top:auto;">
                                 <RadzenButton ButtonType="ButtonType.Submit" Text="Doğrulama kodu gönder" Icon="mail"
                                               ButtonStyle="ButtonStyle.Primary"
+                                              Disabled="@(!SifreDegisimFormuGecerli || sifreIsBusy)"
                                               IsBusy="@sifreIsBusy" BusyText="Gönderiliyor…" />
                             </div>
                         }
@@ -326,6 +337,7 @@ else
     private string sifreHata = string.Empty;
     private string profilResmiHata = string.Empty;
     private bool profilResmiYukleniyor = false;
+    private int profilResimInputKey;
 
     // ── E-posta doğrulama akışı state ───────────────────────────────────────
     private bool kodGonderiliyor = false;
@@ -343,6 +355,112 @@ else
     private string sifreDogrulamaHata = string.Empty;
 
     private bool sifreAlanlariKilitli => sifreIsBusy || sifreDogrulaniyor || sifreKodGonderildi;
+
+    private string? eskiSifreAlanHata;
+    private string? yeniSifreAlanHata;
+    private string? yeniSifreTekrarAlanHata;
+    private bool sifreFormEtkilesildi;
+    private bool? eskiSifreDogrulandi;
+    private CancellationTokenSource? eskiSifreDogrulamaCts;
+
+    private bool SifreDegisimFormuGecerli =>
+        eskiSifreDogrulandi == true &&
+        !string.IsNullOrWhiteSpace(sifreForm.EskiSifre) &&
+        !string.IsNullOrWhiteSpace(sifreForm.YeniSifre) &&
+        sifreForm.YeniSifre.Length >= 6 &&
+        !string.IsNullOrWhiteSpace(sifreForm.YeniSifreTekrar) &&
+        string.Equals(sifreForm.YeniSifre, sifreForm.YeniSifreTekrar, StringComparison.Ordinal) &&
+        string.IsNullOrEmpty(eskiSifreAlanHata) &&
+        string.IsNullOrEmpty(yeniSifreAlanHata) &&
+        string.IsNullOrEmpty(yeniSifreTekrarAlanHata);
+
+    private async Task OnSifreFormDegisti()
+    {
+        sifreFormEtkilesildi = true;
+        GuncelleSifreAlanHatalari();
+        await DebouncedEskiSifreDogrulaAsync();
+    }
+
+    private void GuncelleSifreAlanHatalari()
+    {
+        if (!sifreFormEtkilesildi)
+        {
+            eskiSifreAlanHata = null;
+            yeniSifreAlanHata = null;
+            yeniSifreTekrarAlanHata = null;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(sifreForm.EskiSifre))
+            eskiSifreAlanHata = "Mevcut şifre zorunludur.";
+        else if (eskiSifreDogrulandi == false)
+            eskiSifreAlanHata = "Mevcut şifre hatalı.";
+        else
+            eskiSifreAlanHata = null;
+
+        if (string.IsNullOrWhiteSpace(sifreForm.YeniSifre))
+            yeniSifreAlanHata = "Yeni şifre zorunludur.";
+        else if (sifreForm.YeniSifre.Length < 6)
+            yeniSifreAlanHata = "Şifre en az 6 karakter olmalıdır.";
+        else
+            yeniSifreAlanHata = null;
+
+        if (string.IsNullOrWhiteSpace(sifreForm.YeniSifreTekrar))
+            yeniSifreTekrarAlanHata = "Tekrar şifre zorunludur.";
+        else if (!string.Equals(sifreForm.YeniSifre, sifreForm.YeniSifreTekrar, StringComparison.Ordinal))
+            yeniSifreTekrarAlanHata = "Şifreler eşleşmiyor.";
+        else
+            yeniSifreTekrarAlanHata = null;
+    }
+
+    private async Task DebouncedEskiSifreDogrulaAsync()
+    {
+        eskiSifreDogrulamaCts?.Cancel();
+        eskiSifreDogrulamaCts?.Dispose();
+        var cts = new CancellationTokenSource();
+        eskiSifreDogrulamaCts = cts;
+
+        try
+        {
+            await Task.Delay(400, cts.Token);
+        }
+        catch (TaskCanceledException)
+        {
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(sifreForm.EskiSifre))
+        {
+            eskiSifreDogrulandi = null;
+            GuncelleSifreAlanHatalari();
+            await InvokeAsync(StateHasChanged);
+            return;
+        }
+
+        var hash = kullanici?.Sifre;
+        if (string.IsNullOrEmpty(hash) && AuthState.CurrentUser is not null)
+        {
+            var liste = await DataSvc.GetKullanici(AuthState.CurrentUser.ID);
+            kullanici = liste.FirstOrDefault() ?? kullanici;
+            hash = kullanici?.Sifre;
+        }
+
+        eskiSifreDogrulandi = !string.IsNullOrEmpty(hash) &&
+                              PasswordHasher.Verify(sifreForm.EskiSifre, hash);
+
+        GuncelleSifreAlanHatalari();
+        await InvokeAsync(StateHasChanged);
+    }
+
+    private void TemizleSifreAlanHatalari()
+    {
+        eskiSifreAlanHata = null;
+        yeniSifreAlanHata = null;
+        yeniSifreTekrarAlanHata = null;
+        sifreFormEtkilesildi = false;
+        eskiSifreDogrulandi = null;
+        eskiSifreDogrulamaCts?.Cancel();
+    }
 
     private static readonly Regex EpostaRegex =
         new(@"^[^@\s]+@[^@\s]+\.[^@\s]+$", RegexOptions.Compiled);
@@ -656,6 +774,11 @@ else
         if (AuthState.CurrentUser is null || sifreKodGonderildi)
             return;
 
+        sifreFormEtkilesildi = true;
+        GuncelleSifreAlanHatalari();
+        if (!SifreDegisimFormuGecerli)
+            return;
+
         var onay = await DialogSvc.Confirm(
             DialogFragments.Html(
                 $"Doğrulama kodu, hesabınızda kayıtlı {DialogFragments.B((AuthState.CurrentUser.Eposta ?? "").Trim())} adresine gönderilecektir.<br/><br/>Devam edilsin mi?"),
@@ -681,7 +804,19 @@ else
 
             if (sonuc.SonucKodu < 0)
             {
-                sifreHata = sonuc.SonucAciklama ?? "Kod gönderilemedi.";
+                var mesaj = sonuc.SonucAciklama ?? "Kod gönderilemedi.";
+                if (mesaj.Contains("Mevcut şifre", StringComparison.OrdinalIgnoreCase))
+                {
+                    eskiSifreDogrulandi = false;
+                    eskiSifreAlanHata = mesaj;
+                    sifreHata = string.Empty;
+                }
+                else
+                {
+                    sifreHata = mesaj;
+                }
+
+                GuncelleSifreAlanHatalari();
                 return;
             }
 
@@ -741,6 +876,7 @@ else
             sifreDogrulamaKodu = string.Empty;
             sifreDogrulamaHata = string.Empty;
             sifreForm = new SifreModel();
+            TemizleSifreAlanHatalari();
 
             AuthState.NotifyStateChanged();
             NotificationSvc.Notify(NotificationSeverity.Success, "Başarılı",
@@ -767,6 +903,7 @@ else
         sifreDogrulamaKodu = string.Empty;
         sifreDogrulamaHata = string.Empty;
         sifreHata = string.Empty;
+        GuncelleSifreAlanHatalari();
     }
 
     // ── Yardımcı ────────────────────────────────────────────────────────────
@@ -793,15 +930,6 @@ else
         }
     }
 
-    private static string? MimeToUzanti(string? mime) => mime switch
-    {
-        "image/jpeg" => "jpg",
-        "image/png" => "png",
-        "image/webp" => "webp",
-        "image/gif" => "gif",
-        _ => null
-    };
-
     private async Task OnProfilResmiSecildi(InputFileChangeEventArgs e)
     {
         profilResmiHata = string.Empty;
@@ -809,6 +937,8 @@ else
 
         var file = e.File;
         if (file is null) return;
+
+        profilResimInputKey++;
 
         if (file.Size > ProfilResmiMaxBoyut)
         {
@@ -822,8 +952,41 @@ else
             return;
         }
 
-        var uzanti = MimeToUzanti(file.ContentType);
-        if (uzanti is null) return;
+        try
+        {
+            KirpState.Temizle();
+            await using var upload = file.OpenReadStream(ProfilResmiMaxBoyut);
+            var mime = string.IsNullOrWhiteSpace(file.ContentType) ? "image/jpeg" : file.ContentType;
+            var dataUrl = await ProfilResimIslemci.OnizlemeDataUrlOlusturAsync(upload, mime);
+
+            var result = await DialogSvc.OpenAsync<ProfilResimKirpma>(
+                "Profil resmini düzenle",
+                new Dictionary<string, object?> { { "ImageDataUrl", dataUrl } },
+                new DialogOptions
+                {
+                    Width = "min(520px, 96vw)",
+                    Resizable = false,
+                    Draggable = true,
+                    CloseDialogOnOverlayClick = false
+                });
+
+            if (result is true)
+            {
+                var jpegBytes = KirpState.KirpilmisJpegAl();
+                if (jpegBytes is { Length: > 0 })
+                    await ProfilResmiKaydetAsync(jpegBytes);
+            }
+        }
+        catch (Exception ex)
+        {
+            profilResmiHata = $"Yükleme başarısız: {ex.Message}";
+        }
+    }
+
+    private async Task ProfilResmiKaydetAsync(byte[] jpegBytes)
+    {
+        profilResmiHata = string.Empty;
+        if (kullanici is null || AuthState.CurrentUser is null) return;
 
         profilResmiYukleniyor = true;
         try
@@ -832,13 +995,10 @@ else
             Directory.CreateDirectory(profilDizin);
             ProfilResmiDosyalariniSil(kullanici.ID);
 
-            var relatif = $"/uploads/profiles/{kullanici.ID}.{uzanti}";
-            var dosyaYolu = Path.Combine(profilDizin, $"{kullanici.ID}.{uzanti}");
-            await using (var fs = File.Create(dosyaYolu))
-            {
-                await using var stream = file.OpenReadStream(ProfilResmiMaxBoyut);
-                await stream.CopyToAsync(fs);
-            }
+            var relatif = $"/uploads/profiles/{kullanici.ID}.jpg";
+            var dosyaYolu = Path.Combine(profilDizin, $"{kullanici.ID}.jpg");
+            await using var stream = new MemoryStream(jpegBytes);
+            await ProfilResimIslemci.ProfilJpegKaydetAsync(stream, dosyaYolu);
 
             kullanici.ProfilResmi = relatif;
             kullanici.Sifre = string.Empty;
@@ -875,6 +1035,12 @@ else
         profilResmiHata = string.Empty;
         if (kullanici is null || AuthState.CurrentUser is null) return;
         if (string.IsNullOrWhiteSpace(kullanici.ProfilResmi)) return;
+
+        var onay = await DialogSvc.Confirm(
+            "Profil fotoğrafınız kaldırılacak. Devam etmek istiyor musunuz?",
+            "Profil resmini kaldır",
+            new ConfirmOptions { OkButtonText = "Evet, Kaldır", CancelButtonText = "İptal" });
+        if (onay != true) return;
 
         profilResmiYukleniyor = true;
         try

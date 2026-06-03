@@ -1,0 +1,37 @@
+.profil-kirpma {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    min-width: 280px;
+    max-width: 100%;
+}
+
+.profil-kirpma-hint {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--rz-text-secondary-color, #64748b);
+    line-height: 1.45;
+}
+
+.profil-kirpma-stage {
+    width: 100%;
+    max-height: min(60vh, 420px);
+    overflow: hidden;
+    background: var(--rz-base-200, #f1f5f9);
+    border-radius: 8px;
+    border: 1px solid var(--rz-base-300, #e2e8f0);
+}
+
+.profil-kirpma-img {
+    display: block;
+    max-width: 100%;
+    max-height: min(60vh, 420px);
+}
+
+.profil-kirpma-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-top: 0.25rem;
+}

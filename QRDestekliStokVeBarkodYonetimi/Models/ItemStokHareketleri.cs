@@ -10,5 +10,7 @@
         // JOIN ile doldurulan görüntüleme alanları
         public string? UrunAd { get; set; }
         public string? UrunKodu { get; set; }
+        public string? ResimYolu { get; set; }
+        public string? BarkodNo { get; set; }
     }
 }

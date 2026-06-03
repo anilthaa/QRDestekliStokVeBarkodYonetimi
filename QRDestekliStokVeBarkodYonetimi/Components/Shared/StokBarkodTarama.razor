@@ -1,0 +1,217 @@
+@implements IAsyncDisposable
+
+<RadzenCard class="stok-tarama-card">
+    <RadzenSelectBar @bind-Value="@taramaModu" TValue="string" Change="@OnModDegisti" class="stok-tarama-mod-sec">
+        <Items>
+            <RadzenSelectBarItem Text="Barkod" Value="@ModBarkod" Icon="qr_code_2" />
+            <RadzenSelectBarItem Text="Dosya" Value="@ModDosya" Icon="upload_file" />
+            <RadzenSelectBarItem Text="Kamera" Value="@ModKamera" Icon="camera_alt" />
+        </Items>
+    </RadzenSelectBar>
+
+    @if (taramaModu == ModBarkod)
+    {
+        <div class="stok-tarama-aciklama">
+            <i class="fa-solid fa-barcode"></i> Barkod numarasını girin veya barkod okuyucu ile okutun
+        </div>
+        <div class="stok-tarama-barkod-satir">
+            <RadzenTextBox Value="@ManuelBarkod" ValueChanged="@OnManuelBarkodChanged"
+                           Placeholder="Barkod numarası..." Style="flex:1;" @onkeydown="@ManuelBarkodKeyDown" />
+            <RadzenButton Text="Ara" Icon="search" ButtonStyle="@AraButtonStyle"
+                          Click="@AraTikla" />
+        </div>
+    }
+    else if (taramaModu == ModDosya)
+    {
+        <div class="stok-tarama-aciklama">
+            <i class="fa-solid fa-image"></i> QR veya barkod içeren PNG, JPEG, SVG, WebP veya GIF dosyası seçin.
+            Ürün listesinden indirdiğiniz <strong>barkod_… .png</strong> dosyasını doğrudan kullanabilirsiniz.
+        </div>
+        <div class="stok-tarama-dosya-satir">
+            <InputFile id="@dosyaInputId" OnChange="@OnDosyaSecildi"
+                       accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml,.jpg,.jpeg,.png,.webp,.gif,.svg"
+                       class="stok-tarama-dosya-input"
+                       disabled="@dosyaYukleniyor" />
+            <label for="@dosyaInputId" class="stok-tarama-dosya-label @(dosyaYukleniyor ? "stok-tarama-dosya-label--disabled" : "")">
+                <RadzenButton Text="@(dosyaYukleniyor ? "Okunuyor..." : "Görsel Seç")"
+                              Icon="folder_open" ButtonStyle="@AraButtonStyle"
+                              Disabled="@dosyaYukleniyor" Style="pointer-events:none;" />
+            </label>
+        </div>
+        @if (!string.IsNullOrWhiteSpace(secilenDosyaAdi))
+        {
+            <div class="stok-tarama-dosya-adi">
+                <i class="fa-solid fa-file-image"></i> @secilenDosyaAdi
+            </div>
+        }
+        @if (!string.IsNullOrWhiteSpace(dosyaHata))
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Danger" Style="margin-top:0.5rem;">@dosyaHata</RadzenAlert>
+        }
+    }
+    else
+    {
+        <div class="stok-tarama-aciklama">
+            <i class="fa-solid fa-camera"></i> Ürün barkodunu kameraya gösterin.
+            Görüntü çok yakınsa <strong>Dosya</strong> sekmesinden barkod görseli yükleyebilirsiniz.
+        </div>
+        @if (!kameraAcik)
+        {
+            <RadzenButton Text="Kamerayı Aç" Icon="camera_alt" ButtonStyle="@AraButtonStyle"
+                          Click="@KameraAc" Style="width:100%;" />
+        }
+        else
+        {
+            <div id="@ReaderElementId" class="stok-tarama-kamera"></div>
+            <RadzenButton Text="Kamerayı Kapat" Icon="camera_alt" ButtonStyle="ButtonStyle.Secondary"
+                          Click="@KameraKapat" Style="width:100%; margin-top:0.5rem;" />
+        }
+        @if (!string.IsNullOrWhiteSpace(kameraHata))
+        {
+            <RadzenAlert AlertStyle="AlertStyle.Danger" Style="margin-top:0.5rem;">@kameraHata</RadzenAlert>
+        }
+    }
+</RadzenCard>
+
+@code {
+    private const string ModBarkod = "barkod";
+    private const string ModDosya = "dosya";
+    private const string ModKamera = "kamera";
+    private const long DosyaMaxBoyut = 5 * 1024 * 1024;
+
+    private readonly string dosyaInputId = $"stok-dosya-{Guid.NewGuid():N}";
+
+    [Parameter, EditorRequired]
+    public string ReaderElementId { get; set; } = "barkod-reader";
+
+    [Parameter]
+    public ButtonStyle AraButtonStyle { get; set; } = ButtonStyle.Primary;
+
+    [Parameter]
+    public EventCallback<string> BarkodBulundu { get; set; }
+
+    [Parameter]
+    public string ManuelBarkod { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> ManuelBarkodChanged { get; set; }
+
+    private string taramaModu = ModBarkod;
+    private bool kameraAcik;
+    private string? kameraHata;
+    private string? dosyaHata;
+    private string? secilenDosyaAdi;
+    private bool dosyaYukleniyor;
+    private DotNetObjectReference<StokBarkodTarama>? dotnetRef;
+
+    private async Task OnModDegisti()
+    {
+        dosyaHata = null;
+        if (taramaModu != ModKamera && kameraAcik)
+            await KameraKapat();
+    }
+
+    private Task OnManuelBarkodChanged(string value) => ManuelBarkodChanged.InvokeAsync(value);
+
+    private async Task AraTikla()
+    {
+        if (!string.IsNullOrWhiteSpace(ManuelBarkod))
+            await BarkodBulundu.InvokeAsync(ManuelBarkod);
+    }
+
+    private async Task ManuelBarkodKeyDown(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+            await AraTikla();
+    }
+
+    private async Task OnDosyaSecildi(InputFileChangeEventArgs e)
+    {
+        dosyaHata = null;
+        secilenDosyaAdi = null;
+
+        var file = e.File;
+        if (file is null)
+            return;
+
+        secilenDosyaAdi = file.Name;
+
+        if (file.Size > DosyaMaxBoyut)
+        {
+            dosyaHata = "Dosya en fazla 5 MB olabilir.";
+            return;
+        }
+
+        dosyaYukleniyor = true;
+        try
+        {
+            await using var upload = file.OpenReadStream(DosyaMaxBoyut);
+            using var ms = new MemoryStream();
+            await upload.CopyToAsync(ms);
+            var bytes = ms.ToArray();
+
+            if (!QrService.GorselDosyaIzinliMi(bytes, file.ContentType, file.Name))
+            {
+                dosyaHata = "Yalnızca JPEG, PNG, WebP, GIF veya SVG yükleyebilirsiniz.";
+                return;
+            }
+
+            var metin = QrSvc.GoruntudenMetinOku(bytes, file.ContentType, file.Name);
+            if (string.IsNullOrWhiteSpace(metin))
+            {
+                dosyaHata = "Görselde barkod veya QR kod bulunamadı.";
+                return;
+            }
+
+            await BarkodBulundu.InvokeAsync(metin);
+        }
+        catch
+        {
+            dosyaHata = "Görsel okunamadı. Lütfen başka bir dosya deneyin.";
+        }
+        finally
+        {
+            dosyaYukleniyor = false;
+        }
+    }
+
+    private async Task KameraAc()
+    {
+        kameraHata = null;
+        kameraAcik = true;
+        StateHasChanged();
+        await Task.Delay(300);
+        dotnetRef?.Dispose();
+        dotnetRef = DotNetObjectReference.Create(this);
+        await JS.InvokeVoidAsync("BarkodTarayici.baslat", ReaderElementId, dotnetRef);
+    }
+
+    private async Task KameraKapat()
+    {
+        await JS.InvokeVoidAsync("BarkodTarayici.durdur");
+        kameraAcik = false;
+        kameraHata = null;
+    }
+
+    [JSInvokable]
+    public async Task OnBarkodOkundu(string barkod)
+    {
+        await KameraKapat();
+        await BarkodBulundu.InvokeAsync(barkod);
+        await InvokeAsync(StateHasChanged);
+    }
+
+    [JSInvokable]
+    public Task OnKameraHata(string hata)
+    {
+        kameraHata = "Kamera açılamadı: " + hata;
+        kameraAcik = false;
+        return InvokeAsync(StateHasChanged);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try { await JS.InvokeVoidAsync("BarkodTarayici.durdur"); } catch { }
+        dotnetRef?.Dispose();
+    }
+}

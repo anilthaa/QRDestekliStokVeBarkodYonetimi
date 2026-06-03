@@ -31,15 +31,20 @@
 }
 else
 {
-    <RadzenDataGrid Data="@birimler" TItem="ItemBirim" AllowSorting="true"
+    <RadzenDataGrid Data="@filtreliBirimler" TItem="ItemBirim" AllowSorting="true"
                     AllowFiltering="true" FilterMode="FilterMode.Simple"
+                    FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
                     AllowPaging="true" PageSize="15"
                     EmptyText="Kayıt bulunamadı."
                     ColumnWidth="200px">
         <Columns>
 
             <RadzenDataGridColumn TItem="ItemBirim" Property="ID" Title="ID"
-                                  Width="70px" Frozen="true" />
+                                  Width="70px" Frozen="true">
+                <FilterTemplate>
+                    <GridTextFilter @bind-Value="@idFiltre" />
+                </FilterTemplate>
+            </RadzenDataGridColumn>
 
             <RadzenDataGridColumn TItem="ItemBirim" Property="Ad" Title="Birim Adı"
                                   MinWidth="200px" />
@@ -50,6 +55,9 @@ else
                     <RadzenIcon Icon="@(row.Aktif ? "check_circle" : "cancel")"
                                 Style="@(row.Aktif ? "color:#2e7d32" : "color:#c62828")" />
                 </Template>
+                <FilterTemplate>
+                    <GridBoolFilter @bind-Value="@aktifFiltre" />
+                </FilterTemplate>
             </RadzenDataGridColumn>
 
             <RadzenDataGridColumn TItem="ItemBirim" Title="İşlemler"
@@ -79,6 +87,12 @@ else
     private ItemBirim[] birimler = [];
     private bool isLoading = true;
     private bool sadecOkuma = false;
+    private string? idFiltre;
+    private bool? aktifFiltre;
+
+    private ItemBirim[] filtreliBirimler => birimler.Where(b =>
+        GridFilterHelper.Eslesir(b.ID, idFiltre) &&
+        GridFilterHelper.BoolEslesir(b.Aktif, aktifFiltre)).ToArray();
 
     private IList<ExportColumn<ItemBirim>> CiktiKolonlari() => new List<ExportColumn<ItemBirim>>
     {

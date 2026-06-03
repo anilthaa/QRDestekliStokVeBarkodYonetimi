@@ -181,15 +181,10 @@
         @if (canStokGiris || canStokCikis || canUrun || canStokHareketleri)
         {
             <div style="display:flex; gap:0.75rem; flex-wrap:wrap; margin-bottom:2.5rem; margin-top:2.5rem;">
-                @if (canStokGiris)
+                @if (canStokGiris || canStokCikis)
                 {
-                    <RadzenButton Text="Stok Giriş" Icon="add_circle" ButtonStyle="ButtonStyle.Success"
-                                  Click='@(() => Nav.NavigateTo("/stok-giris"))' />
-                }
-                @if (canStokCikis)
-                {
-                    <RadzenButton Text="Stok Çıkış" Icon="remove_circle" ButtonStyle="ButtonStyle.Danger"
-                                  Click='@(() => Nav.NavigateTo("/stok-cikis"))' />
+                    <RadzenButton Text="Stok İşlemleri" Icon="inventory" ButtonStyle="ButtonStyle.Success"
+                                  Click='@(() => Nav.NavigateTo("/stok-islemleri"))' />
                 }
                 @if (canUrun)
                 {

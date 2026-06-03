@@ -1,7 +1,6 @@
 @page "/stok-cikis"
 @layout QRDestekliStokVeBarkodYonetimi.Components.Layout.MainLayout
 @rendermode InteractiveServer
-@implements IAsyncDisposable
 
 @inject YetkiService YetkiSvc
 @inject NavigationManager Nav
@@ -12,43 +11,10 @@
     <i class="fa-solid fa-arrow-up-from-bracket" style="color:#c62828;"></i> Stok Çıkış
 </h3>
 
-@if (isMobil)
-{
-    <RadzenCard Style="margin-bottom:1rem; padding:1rem;">
-        <div style="font-size:0.85rem; color:#555; margin-bottom:0.5rem;">
-            <i class="fa-solid fa-camera"></i> Ürün barkodunu kameraya gösterin
-        </div>
-        @if (!kameraAcik)
-        {
-            <RadzenButton Text="Kamerayı Aç" Icon="camera_alt" ButtonStyle="ButtonStyle.Danger"
-                          Click="@KameraAc" Style="width:100%;" />
-        }
-        else
-        {
-            <div id="barkod-reader-cikis" style="width:100%; border-radius:8px; overflow:hidden;"></div>
-            <RadzenButton Text="Kamerayı Kapat" Icon="camera_alt" ButtonStyle="ButtonStyle.Secondary"
-                          Click="@KameraKapat" Style="width:100%; margin-top:0.5rem;" />
-        }
-        @if (!string.IsNullOrWhiteSpace(kameraHata))
-        {
-            <RadzenAlert AlertStyle="AlertStyle.Danger" Style="margin-top:0.5rem;">@kameraHata</RadzenAlert>
-        }
-    </RadzenCard>
-}
-else
-{
-    <RadzenCard Style="margin-bottom:1rem; padding:1rem;">
-        <div style="font-size:0.85rem; color:#555; margin-bottom:0.5rem;">
-            <i class="fa-solid fa-barcode"></i> Barkod numarasını girin veya barkod okuyucu ile okutun
-        </div>
-        <div style="display:flex; gap:0.5rem;">
-            <RadzenTextBox @bind-Value="manuelBarkod" Placeholder="Barkod numarası..."
-                           Style="flex:1;" @onkeydown="@ManuelBarkodKeyDown" />
-            <RadzenButton Text="Ara" Icon="search" ButtonStyle="ButtonStyle.Danger"
-                          Click="@(() => BarkodAra(manuelBarkod))" />
-        </div>
-    </RadzenCard>
-}
+<StokBarkodTarama ReaderElementId="barkod-reader-cikis"
+                  AraButtonStyle="ButtonStyle.Danger"
+                  @bind-ManuelBarkod="manuelBarkod"
+                  BarkodBulundu="BarkodAra" />
 
 @if (bulunanUrun != null)
 {
@@ -129,9 +95,6 @@ else if (aramaTamamlandi)
 }
 
 @code {
-    private bool isMobil = false;
-    private bool kameraAcik = false;
-    private string? kameraHata;
     private string manuelBarkod = string.Empty;
 
     private ItemUrun? bulunanUrun;
@@ -142,7 +105,6 @@ else if (aramaTamamlandi)
     private bool islemDevam = false;
 
     private List<string> sonIslemler = new();
-    private DotNetObjectReference<StokCikis>? dotnetRef;
     private bool sadecOkuma = false;
 
     protected override async Task OnInitializedAsync()
@@ -155,54 +117,6 @@ else if (aramaTamamlandi)
             return;
         }
         sadecOkuma = YetkiSvc.SadecOkuma("/stok-cikis");
-    }
-
-    protected override async Task OnAfterRenderAsync(bool firstRender)
-    {
-        if (firstRender)
-        {
-            isMobil = await JS.InvokeAsync<bool>("BarkodTarayici.isMobile");
-            StateHasChanged();
-        }
-    }
-
-    private async Task KameraAc()
-    {
-        kameraHata = null;
-        kameraAcik = true;
-        StateHasChanged();
-        await Task.Delay(300);
-        dotnetRef = DotNetObjectReference.Create(this);
-        await JS.InvokeVoidAsync("BarkodTarayici.baslat", "barkod-reader-cikis", dotnetRef);
-    }
-
-    private async Task KameraKapat()
-    {
-        await JS.InvokeVoidAsync("BarkodTarayici.durdur");
-        kameraAcik = false;
-    }
-
-    [JSInvokable]
-    public async Task OnBarkodOkundu(string barkod)
-    {
-        await JS.InvokeVoidAsync("BarkodTarayici.durdur");
-        kameraAcik = false;
-        await BarkodAra(barkod);
-        await InvokeAsync(StateHasChanged);
-    }
-
-    [JSInvokable]
-    public Task OnKameraHata(string hata)
-    {
-        kameraHata = "Kamera açılamadı: " + hata;
-        kameraAcik = false;
-        return InvokeAsync(StateHasChanged);
-    }
-
-    private async Task ManuelBarkodKeyDown(KeyboardEventArgs e)
-    {
-        if (e.Key == "Enter")
-            await BarkodAra(manuelBarkod);
     }
 
     private async Task BarkodAra(string barkod)
@@ -259,10 +173,4 @@ else if (aramaTamamlandi)
 
     private static string BirimMetni(string? birim) =>
         string.IsNullOrWhiteSpace(birim) ? "adet" : birim.Trim().ToLowerInvariant();
-
-    public async ValueTask DisposeAsync()
-    {
-        try { await JS.InvokeVoidAsync("BarkodTarayici.durdur"); } catch { }
-        dotnetRef?.Dispose();
-    }
 }

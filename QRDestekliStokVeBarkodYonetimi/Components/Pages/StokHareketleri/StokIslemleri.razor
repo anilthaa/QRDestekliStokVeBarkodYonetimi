@@ -1,0 +1,52 @@
+@page "/stok-islemleri"
+@layout QRDestekliStokVeBarkodYonetimi.Components.Layout.MainLayout
+@rendermode InteractiveServer
+
+@inject YetkiService YetkiSvc
+@inject NavigationManager Nav
+
+<PageTitle>Stok İşlemleri</PageTitle>
+
+<div class="page-header">
+    <h3 class="page-header-title">Stok İşlemleri</h3>
+</div>
+
+<p class="stok-islem-aciklama">Yapmak istediğiniz işlemi seçin.</p>
+
+<div class="stok-islem-grid">
+    @if (canGiris)
+    {
+        <button type="button" class="stok-islem-card stok-islem-card--giris" @onclick="GirisSayfasinaGit">
+            <i class="fa-solid fa-arrow-down-to-bracket stok-islem-card-icon"></i>
+            <span class="stok-islem-card-title">Stok Giriş</span>
+            <span class="stok-islem-card-desc">Ürün stok miktarını artırın</span>
+        </button>
+    }
+    @if (canCikis)
+    {
+        <button type="button" class="stok-islem-card stok-islem-card--cikis" @onclick="CikisSayfasinaGit">
+            <i class="fa-solid fa-arrow-up-from-bracket stok-islem-card-icon"></i>
+            <span class="stok-islem-card-title">Stok Çıkış</span>
+            <span class="stok-islem-card-desc">Ürün stok miktarını azaltın</span>
+        </button>
+    }
+</div>
+
+@code {
+    private bool canGiris;
+    private bool canCikis;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await YetkiSvc.EnsureReadyAsync();
+        canGiris = YetkiSvc.ErişimVar("/stok-giris");
+        canCikis = YetkiSvc.ErişimVar("/stok-cikis");
+
+        if (!canGiris && !canCikis)
+            Nav.NavigateTo("/erisim-engeli", true);
+    }
+
+    private void GirisSayfasinaGit() => Nav.NavigateTo("/stok-giris");
+
+    private void CikisSayfasinaGit() => Nav.NavigateTo("/stok-cikis");
+}

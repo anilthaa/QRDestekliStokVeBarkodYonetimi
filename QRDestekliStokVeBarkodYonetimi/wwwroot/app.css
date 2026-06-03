@@ -226,15 +226,6 @@ h1:focus {
     width: auto !important;
 }
 
-/* DataGrid numeric filtre spinner okları */
-.rz-grid-table .rz-cell-filter-content .rz-spinner-button {
-    display: none !important;
-}
-
-.rz-grid-table .rz-cell-filter-content .rz-numeric {
-    padding-right: 0;
-}
-
 @media (max-width: 640px) {
     .content {
         padding-left: 1rem !important;

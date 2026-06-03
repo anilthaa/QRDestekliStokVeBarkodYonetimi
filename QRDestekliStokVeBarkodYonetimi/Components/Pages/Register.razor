@@ -1,7 +1,6 @@
 @page "/register"
 @layout QRDestekliStokVeBarkodYonetimi.Components.Layout.AuthLayout
-
-@* @rendermode bilerek YOK — form-post için static SSR. *@
+@rendermode InteractiveServer
 
 <PageTitle>Kayıt Ol</PageTitle>
 
@@ -12,49 +11,49 @@
         <p>Stok yönetim paneline erişmek için kaydolun</p>
     </div>
 
-    <form method="post" action="/api/auth/register" class="auth-form">
+    <div class="auth-form">
         <div class="auth-row" style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
             <div class="auth-field">
-                <label class="rz-label" for="Ad">Ad</label>
-                <input id="Ad" name="Ad" type="text" required class="rz-textbox" style="width:100%;" />
+                <RadzenLabel Text="Ad" Component="Ad" />
+                <RadzenTextBox @bind-Value="model.Ad" Name="Ad" Style="width:100%;" Disabled="@kayitIsBusy" />
             </div>
 
             <div class="auth-field">
-                <label class="rz-label" for="Soyad">Soyad</label>
-                <input id="Soyad" name="Soyad" type="text" required class="rz-textbox" style="width:100%;" />
+                <RadzenLabel Text="Soyad" Component="Soyad" />
+                <RadzenTextBox @bind-Value="model.Soyad" Name="Soyad" Style="width:100%;" Disabled="@kayitIsBusy" />
             </div>
         </div>
 
         <div class="auth-field">
-            <label class="rz-label" for="Eposta">E-posta</label>
-            <input id="Eposta" name="Eposta" type="email" required
-                   placeholder="ornek@mail.com"
-                   class="rz-textbox" style="width:100%;" />
+            <RadzenLabel Text="E-posta" Component="Eposta" />
+            <RadzenTextBox @bind-Value="model.Eposta" Name="Eposta"
+                           Placeholder="ornek@mail.com"
+                           Style="width:100%;" Disabled="@kayitIsBusy" />
         </div>
 
         <div class="auth-field">
-            <label class="rz-label" for="Sifre">Şifre</label>
-            <AuthPasswordInput Id="Sifre" Name="Sifre" Placeholder="En az 6 karakter" MinLength="6" />
+            <RadzenLabel Text="Şifre" Component="Sifre" />
+            <RadzenPassword @bind-Value="model.Sifre" Name="Sifre"
+                            Placeholder="En az 6 karakter"
+                            Style="width:100%;" Disabled="@kayitIsBusy" />
         </div>
 
         <div class="auth-field">
-            <label class="rz-label" for="SifreTekrar">Şifre (Tekrar)</label>
-            <AuthPasswordInput Id="SifreTekrar" Name="SifreTekrar" MinLength="6" />
+            <RadzenLabel Text="Şifre (Tekrar)" Component="SifreTekrar" />
+            <RadzenPassword @bind-Value="model.SifreTekrar" Name="SifreTekrar"
+                            Style="width:100%;" Disabled="@kayitIsBusy" />
         </div>
 
-        @if (!string.IsNullOrEmpty(Error))
+        @if (!string.IsNullOrEmpty(kayitHata))
         {
-            <div class="rz-alert rz-alert-danger" style="margin-bottom:0.75rem;">@Error</div>
+            <RadzenAlert AlertStyle="AlertStyle.Danger" Variant="Variant.Flat" AllowClose="false"
+                        Style="margin-bottom:0.75rem;">@kayitHata</RadzenAlert>
         }
 
-        <button type="submit" class="rz-button rz-button-md rz-button-primary"
-                style="width:100%; margin-top:0.25rem;">
-            <span class="rz-button-icon-left">
-                <i class="fa-solid fa-user-check"></i>
-            </span>
-            <span class="rz-button-text">Kayıt Ol</span>
-        </button>
-    </form>
+        <RadzenButton Text="Kayıt Ol" Icon="person_add" ButtonStyle="ButtonStyle.Primary"
+                      Click="@KayitOlAsync" IsBusy="@kayitIsBusy" BusyText="Kaydediliyor…"
+                      Disabled="@kayitIsBusy" Style="width:100%; margin-top:0.25rem;" />
+    </div>
 
     <div class="auth-card__footer">
         Zaten hesabınız var mı? <a href="/login">Giriş yapın</a>
@@ -62,5 +61,72 @@
 </div>
 
 @code {
+    private sealed class RegisterModel
+    {
+        public string Ad { get; set; } = string.Empty;
+        public string Soyad { get; set; } = string.Empty;
+        public string Eposta { get; set; } = string.Empty;
+        public string Sifre { get; set; } = string.Empty;
+        public string SifreTekrar { get; set; } = string.Empty;
+    }
+
     [SupplyParameterFromQuery] public string? Error { get; set; }
+
+    private RegisterModel model = new();
+    private string kayitHata = string.Empty;
+    private bool kayitIsBusy;
+
+    protected override void OnParametersSet()
+    {
+        if (!string.IsNullOrEmpty(Error))
+            kayitHata = Error;
+    }
+
+    private async Task KayitOlAsync()
+    {
+        kayitHata = string.Empty;
+
+        var hata =
+            string.IsNullOrWhiteSpace(model.Ad) ? "Ad zorunludur." :
+            string.IsNullOrWhiteSpace(model.Soyad) ? "Soyad zorunludur." :
+            string.IsNullOrWhiteSpace(model.Eposta) ? "E-posta zorunludur." :
+            string.IsNullOrWhiteSpace(model.Sifre) ? "Şifre zorunludur." :
+            model.Sifre.Length < 6 ? "Şifre en az 6 karakter olmalıdır." :
+            model.Sifre != model.SifreTekrar ? "Şifreler eşleşmiyor." :
+            null;
+
+        if (hata is not null)
+        {
+            kayitHata = hata;
+            return;
+        }
+
+        kayitIsBusy = true;
+        try
+        {
+            var sonuc = await DataSvc.RegisterKullanici(
+                model.Ad.Trim(),
+                model.Soyad.Trim(),
+                model.Eposta.Trim(),
+                model.Sifre);
+
+            if (sonuc.SonucKodu < 0 || sonuc.Data <= 0)
+            {
+                kayitHata = string.IsNullOrEmpty(sonuc.SonucAciklama)
+                    ? "Kayıt sırasında bir hata oluştu."
+                    : sonuc.SonucAciklama;
+                return;
+            }
+
+            NavigationManager.NavigateTo("/login?registered=1");
+        }
+        catch (Exception ex)
+        {
+            kayitHata = "Kayıt sırasında beklenmeyen bir hata oluştu: " + ex.Message;
+        }
+        finally
+        {
+            kayitIsBusy = false;
+        }
+    }
 }

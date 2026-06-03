@@ -1,21 +1,39 @@
 <div class="rz-p-4" style="display:flex; flex-direction:column; align-items:center; gap:1rem; min-width:360px;">
 
-    @if (!string.IsNullOrEmpty(svgContent))
+    @if (!string.IsNullOrEmpty(pngBase64))
     {
         <div style="text-align:center;">
             <p style="margin:0 0 0.25rem 0; color:#555; font-size:0.85rem;">Barkod No: <strong>@BarkodNo</strong></p>
             <p style="margin:0 0 1rem 0; color:#555; font-size:0.85rem;">Ürün: <strong>@UrunAdi</strong></p>
         </div>
 
-        <div style="background:#fff; border:1px solid #e0e0e0; border-radius:8px; padding:12px; width:100%;">
-            @((MarkupString)svgContent)
+        <div style="background:#fff; border:1px solid #e0e0e0; border-radius:8px; padding:12px; width:100%; text-align:center;">
+            <img src="data:image/png;base64,@pngBase64" alt="Barkod" style="max-width:100%; height:auto;" />
         </div>
 
-        <a href="data:image/svg+xml;base64,@svgBase64"
-           download="@($"barkod_{BarkodNo}.svg")"
-           style="text-decoration:none;">
-            <RadzenButton Text="SVG İndir" Icon="download" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small" />
-        </a>
+        <div style="display:flex; flex-wrap:wrap; gap:0.5rem; justify-content:center; width:100%;">
+            <a href="data:image/png;base64,@pngBase64"
+               download="@($"barkod_{BarkodNo}.png")"
+               style="text-decoration:none;">
+                <RadzenButton Text="PNG İndir" Icon="download" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small" />
+            </a>
+            @if (!string.IsNullOrEmpty(jpegBase64))
+            {
+                <a href="data:image/jpeg;base64,@jpegBase64"
+                   download="@($"barkod_{BarkodNo}.jpg")"
+                   style="text-decoration:none;">
+                    <RadzenButton Text="JPEG İndir" Icon="download" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small" />
+                </a>
+            }
+            @if (!string.IsNullOrEmpty(svgBase64))
+            {
+                <a href="data:image/svg+xml;base64,@svgBase64"
+                   download="@($"barkod_{BarkodNo}.svg")"
+                   style="text-decoration:none;">
+                    <RadzenButton Text="SVG İndir" Icon="download" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small" />
+                </a>
+            }
+        </div>
     }
     else
     {
@@ -33,14 +51,14 @@
     [Parameter] public string? BarkodNo { get; set; }
     [Parameter] public string? UrunAdi { get; set; }
 
-    private string? svgContent;
+    private string? pngBase64;
+    private string? jpegBase64;
     private string? svgBase64;
 
     protected override void OnParametersSet()
     {
-        svgBase64  = QrSvc.GenerateBarcodeBase64(BarkodNo);
-        svgContent = svgBase64 is not null
-            ? System.Text.Encoding.UTF8.GetString(Convert.FromBase64String(svgBase64))
-            : null;
+        pngBase64 = QrSvc.GenerateBarcodePngBase64(BarkodNo);
+        jpegBase64 = QrSvc.GenerateBarcodeJpegBase64(BarkodNo);
+        svgBase64 = QrSvc.GenerateBarcodeSvgBase64(BarkodNo);
     }
 }

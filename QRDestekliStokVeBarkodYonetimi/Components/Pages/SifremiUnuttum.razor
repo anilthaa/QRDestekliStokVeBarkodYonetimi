@@ -11,6 +11,7 @@
     </div>
 
     <form method="post" action="/api/auth/forgot-password" class="auth-form">
+        <input type="hidden" name="SiteOrigin" id="site-origin" value="" />
         @if (!string.IsNullOrEmpty(Gonderildi))
         {
             <div class="rz-alert rz-alert-success" style="margin-bottom:0.75rem;">
@@ -44,6 +45,16 @@
         <a href="/login">Giriş sayfasına dön</a>
     </div>
 </div>
+
+<script>
+    (function () {
+        var el = document.getElementById('site-origin');
+        if (el) el.value = window.location.origin;
+        document.querySelector('.auth-form')?.addEventListener('submit', function () {
+            if (el) el.value = window.location.origin;
+        });
+    })();
+</script>
 
 @code {
     [SupplyParameterFromQuery] public string? Gonderildi { get; set; }

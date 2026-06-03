@@ -138,7 +138,7 @@ namespace QRDestekliStokVeBarkodYonetimi.Services
             return (await SQLQueryAsync<ItemStokHareketleri>($@"
                 SELECT sh.""ID"", sh.""Urun_ID"", sh.""HareketTipi"", sh.""Miktar"", sh.""Not"",
                        sh.""CreUser"", sh.""CreDate"", sh.""UpdUser"", sh.""UpdDate"", sh.""DelUser"", sh.""DelDate"",
-                       u.""Ad"" AS ""UrunAd"", u.""UrunKodu""
+                       u.""Ad"" AS ""UrunAd"", u.""UrunKodu"", u.""ResimYolu"", u.""BarkodNo""
                 FROM ""StokHareketleri"" sh
                 LEFT JOIN ""Urunler"" u ON u.""ID"" = sh.""Urun_ID""
                 WHERE sh.""DelUser"" IS NULL
@@ -301,7 +301,7 @@ namespace QRDestekliStokVeBarkodYonetimi.Services
             return (await SQLQueryAsync<ItemStokHareketleri>($@"
                 SELECT sh.""ID"", sh.""Urun_ID"", sh.""HareketTipi"", sh.""Miktar"", sh.""Not"",
                        sh.""CreUser"", sh.""CreDate"", sh.""UpdUser"", sh.""UpdDate"", sh.""DelUser"", sh.""DelDate"",
-                       u.""Ad"" AS ""UrunAd"", u.""UrunKodu""
+                       u.""Ad"" AS ""UrunAd"", u.""UrunKodu"", u.""ResimYolu"", u.""BarkodNo""
                 FROM ""StokHareketleri"" sh
                 LEFT JOIN ""Urunler"" u ON u.""ID"" = sh.""Urun_ID""
                 WHERE sh.""DelUser"" IS NULL
