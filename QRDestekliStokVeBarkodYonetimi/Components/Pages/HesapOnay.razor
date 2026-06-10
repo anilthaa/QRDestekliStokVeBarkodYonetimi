@@ -6,43 +6,29 @@
 <PageTitle>Hesap onayı</PageTitle>
 
 <div class="auth-card">
-    <div class="auth-card__brand">
-        <i class="fa-solid fa-user-check" style="font-size:2.4rem;color:#1b6ec2;"></i>
-        <h1>Hesap onayı</h1>
-        @if (Basarili)
-        {
-            <p>Hesabınız başarıyla onaylandı</p>
-        }
-        else if (!string.IsNullOrEmpty(Error))
-        {
-            <p>Onay işlemi tamamlanamadı</p>
-        }
-        else
-        {
-            <p>Hesap onay sonucu</p>
-        }
-    </div>
+    <AuthCardHeader Title="Hesap onayı"
+                    Subtitle="@AltBaslik" />
 
     @if (Basarili)
     {
-        <div class="rz-alert rz-alert-success" style="margin-bottom:0.75rem;">
+        <div class="auth-message auth-message--success">
             Hesabınız onaylandı. Geçici şifreniz e-posta adresinize gönderildi.
             Giriş yaptıktan sonra profil sayfasından şifrenizi değiştirmenizi öneririz.
         </div>
-        <div class="auth-card__footer">
-            <a href="/login">Giriş yap</a>
-        </div>
+        <a href="/login" class="auth-btn-primary" style="text-decoration:none;">
+            <i class="fa-solid fa-power-off"></i> GİRİŞ YAP
+        </a>
     }
     else if (!string.IsNullOrEmpty(Error))
     {
-        <div class="rz-alert rz-alert-danger" style="margin-bottom:0.75rem;">@Error</div>
+        <div class="auth-message auth-message--danger">@Error</div>
         <div class="auth-card__footer">
             <a href="/login">Giriş sayfasına dön</a>
         </div>
     }
     else
     {
-        <div class="rz-alert rz-alert-danger" style="margin-bottom:0.75rem;">
+        <div class="auth-message auth-message--danger">
             Geçerli bir onay bağlantısı bulunamadı. Lütfen e-postanızdaki bağlantıyı kullanın
             veya yöneticinizden yeni onay maili isteyin.
         </div>
@@ -59,5 +45,11 @@
     [SupplyParameterFromQuery(Name = "error")]
     public string? Error { get; set; }
 
-    private bool Basarili => Success == "1";
+    private bool Basarili => string.Equals(Success, "1", StringComparison.Ordinal);
+
+    private string AltBaslik => Basarili
+        ? "Hesabınız başarıyla onaylandı"
+        : !string.IsNullOrEmpty(Error)
+            ? "Onay işlemi tamamlanamadı"
+            : "Hesap onay sonucu";
 }

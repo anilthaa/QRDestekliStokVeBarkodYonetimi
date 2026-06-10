@@ -16,23 +16,20 @@
 </form>
 
 <div class="auth-card">
-    <div class="auth-card__brand">
-        <i class="fa-solid fa-qrcode" style="font-size:2.4rem;color:#1b6ec2;"></i>
-        <h1>QR Destekli Stok Yönetimi</h1>
-        <p>Hesabınıza giriş yapın</p>
-    </div>
+    <AuthCardHeader Title="QR Destekli Stok Yönetimi"
+                    Subtitle="Hesabınıza giriş yapın" />
 
     <div class="auth-form">
         @if (!string.IsNullOrEmpty(Registered))
         {
-            <div class="rz-alert rz-alert-success" style="margin-bottom:0.75rem;">
+            <div class="auth-message auth-message--success">
                 Kayıt başarılı. Şimdi giriş yapabilirsiniz.
             </div>
         }
 
         @if (!string.IsNullOrEmpty(Sifirlandi))
         {
-            <div class="rz-alert rz-alert-success" style="margin-bottom:0.75rem;">
+            <div class="auth-message auth-message--success">
                 Şifreniz güncellendi. Yeni şifrenizle giriş yapabilirsiniz.
             </div>
         }
@@ -64,9 +61,10 @@
                         Style="margin-bottom:0.75rem;">@girisHata</RadzenAlert>
         }
 
-        <RadzenButton Text="Giriş Yap" Icon="login" ButtonStyle="ButtonStyle.Primary"
-                      Click="@GirisYapAsync" IsBusy="@girisIsBusy" BusyText="Giriş yapılıyor…"
-                      Disabled="@girisIsBusy" Style="width:100%; margin-top:0.25rem;" />
+        <RadzenButton Click="@GirisYapAsync" IsBusy="@girisIsBusy" BusyText="Giriş yapılıyor…"
+                      Disabled="@girisIsBusy" class="auth-btn-primary">
+            <i class="fa-solid fa-power-off"></i> GİRİŞ YAP
+        </RadzenButton>
     </div>
 
     <div class="auth-card__footer">

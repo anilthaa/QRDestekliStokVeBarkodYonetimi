@@ -106,6 +106,13 @@ namespace QRDestekliStokVeBarkodYonetimi.Services
 
         public async Task<DataResult<int>> SetUrun(ItemUrun item)
         {
+            if (item.DelUser.Equals(0))
+            {
+                var metinHata = UrunMetinDogrulama.IlkHata(item);
+                if (metinHata is not null)
+                    return new() { SonucKodu = -1, SonucAciklama = metinHata };
+            }
+
             if (item.ID.Equals(0) && item.DelUser.Equals(0))
             {
                 item.ID = await SQLExecuteScalar<int>(@"INSERT INTO ""Urunler"" (""UrunKodu"", ""Kategori_ID"", ""BarkodNo"", ""ResimYolu"", ""Ad"", ""Aciklama"", ""Birim_ID"", ""Stok"", ""KritikStokSeviyesi"", ""CreUser"", ""CreDate"")
@@ -344,6 +351,20 @@ namespace QRDestekliStokVeBarkodYonetimi.Services
             }
             else if (!item.ID.Equals(0) && !item.DelUser.Equals(0))
             {
+                var bagliKullanici = await SQLExecuteScalar<int>(
+                    @"SELECT COUNT(*) FROM ""Kullanicilar""
+                      WHERE ""KullaniciTip_ID"" = @TipId AND ""DelUser"" IS NULL",
+                    new { TipId = item.ID });
+
+                if (bagliKullanici > 0)
+                    return new()
+                    {
+                        SonucKodu = -1,
+                        SonucAciklama = bagliKullanici == 1
+                            ? "Bu kullanıcı tipine bağlı 1 kullanıcı bulunmaktadır. Silmeden önce kullanıcının tipini değiştirin veya kullanıcıyı silin."
+                            : $"Bu kullanıcı tipine bağlı {bagliKullanici} kullanıcı bulunmaktadır. Silmeden önce bu kullanıcıların tipini değiştirin veya kullanıcıları silin."
+                    };
+
                 await SQLExecute(@"UPDATE ""KullaniciTip""
                      SET ""DelUser"" = @DelUser, ""DelDate"" = now()
                      WHERE ""ID"" = @ID", item);

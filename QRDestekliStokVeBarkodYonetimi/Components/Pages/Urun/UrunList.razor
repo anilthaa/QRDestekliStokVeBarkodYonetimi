@@ -2,6 +2,8 @@
 @layout QRDestekliStokVeBarkodYonetimi.Components.Layout.MainLayout
 @rendermode InteractiveServer
 
+@implements IDisposable
+
 @inject YetkiService YetkiSvc
 @inject NavigationManager Nav
 
@@ -31,17 +33,38 @@
 }
 else
 {
-    <RadzenDataGrid Data="@filtreliUrunler" TItem="ItemUrun" AllowSorting="true"
+    <RadzenDataGrid @ref="gridRef" Data="@filtreliUrunler" TItem="ItemUrun" AllowSorting="true"
                     AllowFiltering="true" FilterMode="FilterMode.Simple"
                     FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
                     AllowPaging="true" PageSize="15"
                     EmptyText="Kayıt bulunamadı."
                     ColumnWidth="200px">
         <Columns>
-            <RadzenDataGridColumn TItem="ItemUrun" Property="ID" Title="ID" Width="120px" Frozen="true">
-                <FilterTemplate>
-                    <GridTextFilter @bind-Value="@idFiltre" />
-                </FilterTemplate>
+            <RadzenDataGridColumn TItem="ItemUrun" Property="ID" Title="Sıra" Width="@GridSiraYardimci.KolonGenisligi" MinWidth="@GridSiraYardimci.KolonGenisligi"
+                                  Frozen="true" Filterable="false"
+                                  SortComparer="@GridSiraYardimci.SiralamaIndeksiComparer(filtreliUrunler)"
+                                  TextAlign="TextAlign.Center" CssClass="grid-sira-kolon">
+                <Template Context="row">
+                    @GridSiraYardimci.ListeSirasi(filtreliUrunler, row)
+                </Template>
+            </RadzenDataGridColumn>
+            <RadzenDataGridColumn TItem="ItemUrun" Title="Resim" Width="72px" TextAlign="TextAlign.Center"
+                                  Sortable="false" Filterable="false">
+                <Template Context="row">
+                    @{
+                        var thumb = UrunResimYardimci.IlkResimYolu(row.ResimYolu);
+                    }
+                    @if (!string.IsNullOrEmpty(thumb))
+                    {
+                        <img src="@thumb" alt="@row.Ad" class="urun-list-thumb" />
+                    }
+                    else
+                    {
+                        <div class="urun-list-thumb--empty" title="Ürün resmi yok">
+                            <i class="fa-solid fa-image"></i>
+                        </div>
+                    }
+                </Template>
             </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="ItemUrun" Property="UrunKodu" Title="Ürün Kodu" MinWidth="120px" />
             <RadzenDataGridColumn TItem="ItemUrun" Property="Ad" Title="Ürün Adı" MinWidth="180px" />
@@ -76,18 +99,10 @@ else
                 </FilterTemplate>
             </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="ItemUrun" Property="Aciklama" Title="Açıklama" MinWidth="200px" />
-            <RadzenDataGridColumn TItem="ItemUrun" Title="İşlemler" Width="200px" TextAlign="TextAlign.Center" Sortable="false" Filterable="false">
+            <RadzenDataGridColumn TItem="ItemUrun" Title="" Width="48px" TextAlign="TextAlign.Center"
+                                  Sortable="false" Filterable="false">
                 <Template Context="row">
-                    <RadzenButton Icon="qr_code" ButtonStyle="ButtonStyle.Success" Size="ButtonSize.Small" Variant="Variant.Flat"
-                                  Click="@(() => OnQrClick(row))" title="QR Kodu Göster" style="margin-right:4px;" />
-                    <RadzenButton Icon="barcode_reader" ButtonStyle="ButtonStyle.Warning" Size="ButtonSize.Small" Variant="Variant.Flat"
-                                  Click="@(() => OnBarkodClick(row))" title="Barkodu Göster" style="margin-right:4px;" />
-                    <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Info" Size="ButtonSize.Small" Variant="Variant.Flat"
-                                  Click="@(() => OnDuzenleClick(row))" Disabled="@sadecOkuma"
-                                  Style="@("margin-right:4px;" + (sadecOkuma ? "opacity:0.35;pointer-events:none;" : ""))" title="Düzenle" />
-                    <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" Variant="Variant.Flat"
-                                  Click="@(() => OnSilClick(row))" Disabled="@sadecOkuma"
-                                  Style="@(sadecOkuma ? "opacity:0.35;pointer-events:none;" : "")" title="Sil" />
+                    <GridIslemMenuButonu Click="@(e => IslemlerMenuAc(e, row))" />
                 </Template>
             </RadzenDataGridColumn>
         </Columns>
@@ -95,27 +110,30 @@ else
 }
 
 @code {
+    private RadzenDataGrid<ItemUrun>? gridRef;
     private ItemUrun[] urunler = [];
     private ItemKategori[] kategoriler = [];
     private ItemBirim[] birimler = [];
     private bool isLoading = true;
     private bool sadecOkuma = false;
-    private string? idFiltre;
     private int? kategoriFiltreId;
     private int? birimFiltreId;
     private string? stokFiltre;
     private string? kritikStokFiltre;
+    private ItemUrun? menuSatir;
 
     private ItemUrun[] filtreliUrunler => urunler.Where(u =>
-        GridFilterHelper.Eslesir(u.ID, idFiltre) &&
         GridFilterHelper.IdEslesir(u.Kategori_ID, kategoriFiltreId) &&
         GridFilterHelper.IdEslesir(u.Birim_ID, birimFiltreId) &&
         GridFilterHelper.Eslesir(u.Stok, stokFiltre) &&
         GridFilterHelper.Eslesir(u.KritikStokSeviyesi, kritikStokFiltre)).ToArray();
 
-    private IList<ExportColumn<ItemUrun>> CiktiKolonlari() => new List<ExportColumn<ItemUrun>>
+    private IList<ExportColumn<ItemUrun>> CiktiKolonlari()
     {
-        new() { Header = "ID",          Value = u => u.ID,          Align = ExportAlign.Right, Width = 0.6f },
+        var liste = urunler.ToList();
+        return new List<ExportColumn<ItemUrun>>
+    {
+        new() { Header = "Sıra",        Value = u => GridSiraYardimci.ExportSirasi(liste, u), Align = ExportAlign.Right, Width = 0.6f },
         new() { Header = "Ürün Kodu",   Value = u => u.UrunKodu,    Width = 1.2f },
         new() { Header = "Ürün Adı",    Value = u => u.Ad,          Width = 2f   },
         new() { Header = "Barkod No",   Value = u => u.BarkodNo,    Width = 1.4f },
@@ -125,6 +143,7 @@ else
         new() { Header = "Kritik Stok", Value = u => u.KritikStokSeviyesi, Format = "N0", Align = ExportAlign.Right, Width = 0.9f },
         new() { Header = "Açıklama",    Value = u => u.Aciklama,    Width = 2f   },
     };
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -136,23 +155,34 @@ else
             return;
         }
         sadecOkuma = YetkiSvc.SadecOkuma("/urunler");
+        Nav.LocationChanged += OnLocationChanged;
         await LoadAsync();
     }
 
-    private async Task LoadAsync()
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        isLoading = true;
+        var path = new Uri(e.Location).AbsolutePath.TrimEnd('/');
+        if (string.Equals(path, "/urunler", StringComparison.OrdinalIgnoreCase))
+            _ = InvokeAsync(() => LoadAsync(tamSpinner: false));
+    }
+
+    public void Dispose()
+        => Nav.LocationChanged -= OnLocationChanged;
+
+    private async Task LoadAsync(bool tamSpinner = true)
+    {
+        if (tamSpinner) isLoading = true;
         try
         {
-            var urunTask     = DataSvc.GetUrun();
-            var kategoriTask = DataSvc.GetKategori();
-            var birimTask    = DataSvc.GetBirim();
-            await Task.WhenAll(urunTask, kategoriTask, birimTask);
-            urunler     = urunTask.Result;
-            kategoriler = kategoriTask.Result;
-            birimler    = birimTask.Result;
+            urunler     = await DataSvc.GetUrun();
+            kategoriler = await DataSvc.GetKategori();
+            birimler    = await DataSvc.GetBirim();
         }
-        finally { isLoading = false; }
+        finally { if (tamSpinner) isLoading = false; }
+
+        await InvokeAsync(StateHasChanged);
+        if (gridRef is not null)
+            await gridRef.Reload();
     }
 
     private async Task OnYeniClick()
@@ -161,7 +191,50 @@ else
         var result = await DialogSvc.OpenAsync<UrunTnm>("Yeni Ürün",
             new Dictionary<string, object?> { { "Item", new ItemUrun { Stok = 0, KritikStokSeviyesi = 0 } } },
             new DialogOptions { Width = "620px", Resizable = false, Draggable = true, CloseDialogOnOverlayClick = false });
-        if (result is true) await LoadAsync();
+        if (result is bool kaydedildi && kaydedildi)
+            await LoadAsync(tamSpinner: false);
+    }
+
+    private void IslemlerMenuAc(MouseEventArgs args, ItemUrun row)
+    {
+        menuSatir = row;
+        ContextMenuSvc.Open(args,
+            new List<ContextMenuItem>
+            {
+                new() { Text = "QR Kodu Göster", Icon = "qr_code", Value = "qr" },
+                new() { Text = "Barkodu Göster", Icon = "barcode_reader", Value = "barkod" },
+                new() { Text = "Düzenle", Icon = "edit", Value = "duzenle", Disabled = sadecOkuma },
+                new() { Text = "Sil", Icon = "delete", Value = "sil", Disabled = sadecOkuma }
+            },
+            OnIslemMenuSecildi);
+    }
+
+    private void OnIslemMenuSecildi(MenuItemEventArgs args)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            if (menuSatir is null)
+                return;
+
+            var row = menuSatir;
+            menuSatir = null;
+
+            switch (args.Value?.ToString())
+            {
+                case "qr":
+                    await OnQrClick(row);
+                    break;
+                case "barkod":
+                    await OnBarkodClick(row);
+                    break;
+                case "duzenle":
+                    await OnDuzenleClick(row);
+                    break;
+                case "sil":
+                    await OnSilClick(row);
+                    break;
+            }
+        });
     }
 
     private async Task OnDuzenleClick(ItemUrun item)
@@ -170,7 +243,8 @@ else
         var result = await DialogSvc.OpenAsync<UrunTnm>("Ürün Düzenle",
             new Dictionary<string, object?> { { "Item", item } },
             new DialogOptions { Width = "620px", Resizable = false, Draggable = true, CloseDialogOnOverlayClick = false });
-        if (result is true) await LoadAsync();
+        if (result is bool kaydedildi && kaydedildi)
+            await LoadAsync(tamSpinner: false);
     }
 
     private async Task OnQrClick(ItemUrun item)
@@ -209,7 +283,7 @@ else
         else
         {
             NotificationSvc.Notify(NotificationSeverity.Success, "Başarılı", $"{item.Ad} silindi.", 3000);
-            await LoadAsync();
+            await LoadAsync(tamSpinner: false);
         }
     }
 }

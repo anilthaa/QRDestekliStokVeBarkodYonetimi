@@ -1,0 +1,9 @@
+<div class="grid-islem-menu">
+    <RadzenButton Icon="more_vert" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small"
+                  Variant="Variant.Flat" Click="@Click" title="İşlemler" />
+</div>
+
+@code {
+    [Parameter]
+    public EventCallback<MouseEventArgs> Click { get; set; }
+}

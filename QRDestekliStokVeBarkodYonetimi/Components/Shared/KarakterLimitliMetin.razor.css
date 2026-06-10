@@ -1,0 +1,28 @@
+.karakter-limitli-metin {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.karakter-limitli-metin__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.35rem 0.6rem;
+    font-size: 0.78rem;
+    color: var(--rz-text-secondary-color, #6b7280);
+}
+
+.karakter-limitli-metin__count {
+    font-variant-numeric: tabular-nums;
+    font-weight: 500;
+}
+
+.karakter-limitli-metin__count--over {
+    color: var(--rz-danger, #c62828);
+    font-weight: 600;
+}
+
+.karakter-limitli-metin__hint {
+    color: var(--rz-text-secondary-color, #9ca3af);
+}

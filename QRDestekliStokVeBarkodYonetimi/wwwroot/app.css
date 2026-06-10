@@ -324,3 +324,21 @@ h1:focus {
         max-height: calc(100dvh - 9rem);
     }
 }
+
+th.grid-sira-kolon {
+    padding-left: 0.35rem;
+    padding-right: 0.35rem;
+    white-space: nowrap;
+}
+
+td.grid-sira-kolon {
+    padding-left: 0.25rem;
+    padding-right: 0.25rem;
+    white-space: nowrap;
+}
+
+.grid-islem-menu {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
