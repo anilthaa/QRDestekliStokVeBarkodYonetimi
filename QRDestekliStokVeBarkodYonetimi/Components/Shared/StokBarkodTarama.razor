@@ -88,7 +88,7 @@
     public ButtonStyle AraButtonStyle { get; set; } = ButtonStyle.Primary;
 
     [Parameter]
-    public EventCallback<string> BarkodBulundu { get; set; }
+    public EventCallback<BarkodOkumaBildirimi> BarkodBulundu { get; set; }
 
     [Parameter]
     public string ManuelBarkod { get; set; } = string.Empty;
@@ -116,7 +116,7 @@
     private async Task AraTikla()
     {
         if (!string.IsNullOrWhiteSpace(ManuelBarkod))
-            await BarkodBulundu.InvokeAsync(ManuelBarkod);
+            await BarkodBulundu.InvokeAsync(new BarkodOkumaBildirimi(ManuelBarkod, BarkodTaramaKaynagi.Manuel));
     }
 
     private async Task ManuelBarkodKeyDown(KeyboardEventArgs e)
@@ -163,7 +163,7 @@
                 return;
             }
 
-            await BarkodBulundu.InvokeAsync(metin);
+            await BarkodBulundu.InvokeAsync(new BarkodOkumaBildirimi(metin, BarkodTaramaKaynagi.Dosya));
         }
         catch
         {
@@ -197,7 +197,7 @@
     public async Task OnBarkodOkundu(string barkod)
     {
         await KameraKapat();
-        await BarkodBulundu.InvokeAsync(barkod);
+        await BarkodBulundu.InvokeAsync(new BarkodOkumaBildirimi(barkod, BarkodTaramaKaynagi.Kamera));
         await InvokeAsync(StateHasChanged);
     }
 

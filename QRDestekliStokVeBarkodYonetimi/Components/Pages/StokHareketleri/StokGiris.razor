@@ -107,9 +107,9 @@ else if (aramaTamamlandi)
         sadecOkuma = YetkiSvc.SadecOkuma("/stok-giris");
     }
 
-    private async Task BarkodAra(string barkod)
+    private async Task BarkodAra(BarkodOkumaBildirimi okuma)
     {
-        barkod = QrSvc.BarkodNoCikar(barkod) ?? barkod;
+        var barkod = QrSvc.BarkodNoCikar(okuma.Barkod) ?? okuma.Barkod;
         if (string.IsNullOrWhiteSpace(barkod)) return;
         bulunanUrun = null;
         birimAdi = "adet";
@@ -122,6 +122,7 @@ else if (aramaTamamlandi)
             var birimler = await DataSvc.GetBirim(bulunanUrun.Birim_ID);
             if (birimler.Length > 0 && !string.IsNullOrWhiteSpace(birimler[0].Ad))
                 birimAdi = birimler[0].Ad.Trim();
+            await BarkodBasariSesiYardimci.CalAsync(JS, okuma.Kaynak);
         }
         aramaTamamlandi = true;
         StateHasChanged();

@@ -1,0 +1,123 @@
+@implements IAsyncDisposable
+
+<div class="karakter-limitli-metin" id="@kokId" data-char-count-root>
+    @if (ShowLabel && !string.IsNullOrEmpty(Label))
+    {
+        <RadzenLabel Text="@LabelMetni" Component="@Name" />
+    }
+
+    @if (Multiline)
+    {
+        <RadzenTextArea Value="@gorunenDeger"
+                        ValueChanged="@OnValueChanged"
+                        Name="@Name"
+                        Placeholder="@Placeholder"
+                        Style="@InputStyle"
+                        Rows="@Rows"
+                        Disabled="@Disabled" />
+    }
+    else
+    {
+        <RadzenTextBox Value="@gorunenDeger"
+                       ValueChanged="@OnValueChanged"
+                       Name="@Name"
+                       Placeholder="@Placeholder"
+                       Style="@InputStyle"
+                       Disabled="@Disabled" />
+    }
+
+    <div class="karakter-limitli-metin__meta">
+        <span class="karakter-limitli-metin__count @(Asildi ? "karakter-limitli-metin__count--over" : "")"
+              data-char-count data-char-max="@MaxLength">
+            @Uzunluk / @MaxLength karakter
+        </span>
+        <span class="karakter-limitli-metin__hint">En fazla @MaxLength karakter</span>
+    </div>
+
+    @if (Required)
+    {
+        <RadzenRequiredValidator Component="@Name" Text="@ZorunluMesaj" Style="display:block" />
+    }
+
+    <RadzenCustomValidator Component="@Name"
+                           Validator="@(() => !Asildi)"
+                           Text="@SinirMesaji"
+                           Style="display:block" />
+</div>
+
+@code {
+    [Parameter] public string Name { get; set; } = string.Empty;
+    [Parameter] public string? Label { get; set; }
+    [Parameter] public bool ShowLabel { get; set; } = true;
+    [Parameter] public string? Value { get; set; }
+    [Parameter] public EventCallback<string?> ValueChanged { get; set; }
+    [Parameter] public int MaxLength { get; set; }
+    [Parameter] public bool Required { get; set; }
+    [Parameter] public bool Multiline { get; set; }
+    [Parameter] public int Rows { get; set; } = 3;
+    [Parameter] public string? Placeholder { get; set; }
+    [Parameter] public bool Disabled { get; set; }
+    [Parameter] public string Style { get; set; } = "width:100%";
+
+    private readonly string kokId = $"klm-{Guid.NewGuid():N}";
+    private string? gorunenDeger;
+    private bool jsBaglandi;
+
+    private int Uzunluk => gorunenDeger?.Length ?? 0;
+    private bool Asildi => Uzunluk > MaxLength;
+
+    private string LabelMetni => Required && !string.IsNullOrEmpty(Label) && !Label.Contains('*')
+        ? $"{Label} *"
+        : Label ?? string.Empty;
+
+    private string ZorunluMesaj => string.IsNullOrEmpty(Label)
+        ? "Bu alan zorunludur."
+        : $"{Label.TrimEnd(' ', '*')} zorunludur.";
+
+    private string SinirMesaji => string.IsNullOrEmpty(Label)
+        ? $"En fazla {MaxLength} karakter olabilir."
+        : $"{Label.TrimEnd(' ', '*')} en fazla {MaxLength} karakter olabilir.";
+
+    private string InputStyle => string.IsNullOrWhiteSpace(Style) ? "width:100%" : Style;
+
+    protected override void OnParametersSet()
+    {
+        if (gorunenDeger != Value)
+            gorunenDeger = Value;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        try
+        {
+            var bagli = await JS.InvokeAsync<bool>("KarakterSayaci.guncelle", kokId);
+            if (bagli)
+                jsBaglandi = true;
+        }
+        catch
+        {
+            // JS henüz yüklenmemiş veya diyalog kapanıyor
+        }
+    }
+
+    private async Task OnValueChanged(string? value)
+    {
+        gorunenDeger = value;
+        await ValueChanged.InvokeAsync(value);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (!jsBaglandi)
+            return;
+
+        try
+        {
+            await JS.InvokeVoidAsync("KarakterSayaci.kopar", kokId);
+        }
+        catch
+        {
+            // dispose sırasında JS erişimi kesilebilir
+        }
+    }
+}

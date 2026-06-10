@@ -4,17 +4,14 @@
 <PageTitle>Şifremi unuttum</PageTitle>
 
 <div class="auth-card">
-    <div class="auth-card__brand">
-        <i class="fa-solid fa-key" style="font-size:2.4rem;color:#1b6ec2;"></i>
-        <h1>Şifre sıfırlama</h1>
-        <p>Kayıtlı e-posta adresinize sıfırlama bağlantısı gönderilir</p>
-    </div>
+    <AuthCardHeader Title="Şifre sıfırlama"
+                    Subtitle="Kayıtlı e-posta adresinize sıfırlama bağlantısı gönderilir" />
 
     <form method="post" action="/api/auth/forgot-password" class="auth-form">
         <input type="hidden" name="SiteOrigin" id="site-origin" value="" />
         @if (!string.IsNullOrEmpty(Gonderildi))
         {
-            <div class="rz-alert rz-alert-success" style="margin-bottom:0.75rem;">
+            <div class="auth-message auth-message--success">
                 E-posta adresiniz kayıtlıysa bir sıfırlama bağlantısı gönderdik. Gelen kutunuzu ve gerekiyorsa spam klasörünü kontrol edin.
             </div>
         }
@@ -22,22 +19,16 @@
         <div class="auth-field">
             <label class="rz-label" for="Eposta">E-posta</label>
             <input id="Eposta" name="Eposta" type="email" required
-                   placeholder="ornek@mail.com"
-                   class="rz-textbox"
-                   style="width:100%;" />
+                   placeholder="ornek@mail.com" />
         </div>
 
         @if (!string.IsNullOrEmpty(Error))
         {
-            <div class="rz-alert rz-alert-danger" style="margin-bottom:0.75rem;">@Error</div>
+            <div class="auth-message auth-message--danger">@Error</div>
         }
 
-        <button type="submit" class="rz-button rz-button-md rz-button-primary"
-                style="width:100%; margin-top:0.25rem;">
-            <span class="rz-button-icon-left">
-                <i class="fa-solid fa-paper-plane"></i>
-            </span>
-            <span class="rz-button-text">Bağlantı gönder</span>
+        <button type="submit" class="auth-btn-primary">
+            <i class="fa-solid fa-paper-plane"></i> BAĞLANTI GÖNDER
         </button>
     </form>
 

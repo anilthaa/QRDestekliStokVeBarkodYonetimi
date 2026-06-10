@@ -1,0 +1,33 @@
+@using System.Globalization
+
+@if (ShowDate)
+{
+    <div class="auth-card__date">@TarihMetni</div>
+}
+
+<div class="auth-card__brand">
+    <div class="auth-logo" aria-hidden="true">
+        <span></span><span></span><span></span><span></span>
+    </div>
+    <h1>@Title</h1>
+    @if (!string.IsNullOrWhiteSpace(Subtitle))
+    {
+        <p>@Subtitle</p>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public string Title { get; set; } = string.Empty;
+
+    [Parameter]
+    public string? Subtitle { get; set; }
+
+    [Parameter]
+    public bool ShowDate { get; set; } = true;
+
+    private static readonly CultureInfo Tr = CultureInfo.GetCultureInfo("tr-TR");
+
+    private string TarihMetni =>
+        DateTime.Now.ToString("dd MMMM yyyy, dddd", Tr);
+}

@@ -4,23 +4,20 @@
 <PageTitle>Yeni şifre belirle</PageTitle>
 
 <div class="auth-card">
-    <div class="auth-card__brand">
-        <i class="fa-solid fa-lock" style="font-size:2.4rem;color:#1b6ec2;"></i>
-        <h1>Yeni şifre</h1>
-        <p>Hesabınız için yeni bir şifre seçin</p>
-    </div>
+    <AuthCardHeader Title="Yeni şifre"
+                    Subtitle="Hesabınız için yeni bir şifre seçin" />
 
     @if (string.IsNullOrWhiteSpace(Token))
     {
         @if (!string.IsNullOrEmpty(Error))
         {
-            <div class="rz-alert rz-alert-danger" style="margin-bottom:0.75rem;">@Error</div>
+            <div class="auth-message auth-message--danger">@Error</div>
         }
         else
         {
-            <div class="rz-alert rz-alert-danger" style="margin-bottom:0.75rem;">
+            <div class="auth-message auth-message--danger">
                 Geçerli bir sıfırlama bağlantısı yok. Lütfen e-postanızdaki bağlantıyı kullanın veya
-                <a href="/sifremi-unuttum" style="font-weight:600;">şifre sıfırlama</a> talebinde bulunun.
+                <a href="/sifremi-unuttum" style="font-weight:600; color:#0d9488;">şifre sıfırlama</a> talebinde bulunun.
             </div>
         }
         <div class="auth-card__footer">
@@ -44,15 +41,11 @@
 
             @if (!string.IsNullOrEmpty(Error))
             {
-                <div class="rz-alert rz-alert-danger" style="margin-bottom:0.75rem;">@Error</div>
+                <div class="auth-message auth-message--danger">@Error</div>
             }
 
-            <button type="submit" class="rz-button rz-button-md rz-button-primary"
-                    style="width:100%; margin-top:0.25rem;">
-                <span class="rz-button-icon-left">
-                    <i class="fa-solid fa-check"></i>
-                </span>
-                <span class="rz-button-text">Şifreyi kaydet</span>
+            <button type="submit" class="auth-btn-primary">
+                <i class="fa-solid fa-check"></i> ŞİFREYİ KAYDET
             </button>
         </form>
 

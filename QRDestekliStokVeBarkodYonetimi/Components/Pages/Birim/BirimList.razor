@@ -2,6 +2,8 @@
 @layout QRDestekliStokVeBarkodYonetimi.Components.Layout.MainLayout
 @rendermode InteractiveServer
 
+@implements IDisposable
+
 @inject YetkiService YetkiSvc
 @inject NavigationManager Nav
 
@@ -31,7 +33,7 @@
 }
 else
 {
-    <RadzenDataGrid Data="@filtreliBirimler" TItem="ItemBirim" AllowSorting="true"
+    <RadzenDataGrid @ref="gridRef" Data="@filtreliBirimler" TItem="ItemBirim" AllowSorting="true"
                     AllowFiltering="true" FilterMode="FilterMode.Simple"
                     FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
                     AllowPaging="true" PageSize="15"
@@ -39,11 +41,13 @@ else
                     ColumnWidth="200px">
         <Columns>
 
-            <RadzenDataGridColumn TItem="ItemBirim" Property="ID" Title="ID"
-                                  Width="70px" Frozen="true">
-                <FilterTemplate>
-                    <GridTextFilter @bind-Value="@idFiltre" />
-                </FilterTemplate>
+            <RadzenDataGridColumn TItem="ItemBirim" Property="ID" Title="Sıra" Width="@GridSiraYardimci.KolonGenisligi" MinWidth="@GridSiraYardimci.KolonGenisligi"
+                                  Frozen="true" Filterable="false"
+                                  SortComparer="@GridSiraYardimci.SiralamaIndeksiComparer(filtreliBirimler)"
+                                  TextAlign="TextAlign.Center" CssClass="grid-sira-kolon">
+                <Template Context="row">
+                    @GridSiraYardimci.ListeSirasi(filtreliBirimler, row)
+                </Template>
             </RadzenDataGridColumn>
 
             <RadzenDataGridColumn TItem="ItemBirim" Property="Ad" Title="Birim Adı"
@@ -60,22 +64,10 @@ else
                 </FilterTemplate>
             </RadzenDataGridColumn>
 
-            <RadzenDataGridColumn TItem="ItemBirim" Title="İşlemler"
-                                  Width="120px" TextAlign="TextAlign.Center"
+            <RadzenDataGridColumn TItem="ItemBirim" Title="" Width="48px" TextAlign="TextAlign.Center"
                                   Sortable="false" Filterable="false">
                 <Template Context="row">
-                    <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Info" Size="ButtonSize.Small"
-                                  Variant="Variant.Flat"
-                                  Click="@(() => OnDuzenleClick(row))"
-                                  Disabled="@sadecOkuma"
-                                  Style="@("margin-right:4px;" + (sadecOkuma ? "opacity:0.35;pointer-events:none;" : ""))"
-                                  title="Düzenle" />
-                    <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
-                                  Variant="Variant.Flat"
-                                  Click="@(() => OnSilClick(row))"
-                                  Disabled="@sadecOkuma"
-                                  Style="@(sadecOkuma ? "opacity:0.35;pointer-events:none;" : "")"
-                                  title="Sil" />
+                    <GridIslemMenuButonu Click="@(e => IslemlerMenuAc(e, row))" />
                 </Template>
             </RadzenDataGridColumn>
 
@@ -84,22 +76,26 @@ else
 }
 
 @code {
+    private RadzenDataGrid<ItemBirim>? gridRef;
     private ItemBirim[] birimler = [];
     private bool isLoading = true;
     private bool sadecOkuma = false;
-    private string? idFiltre;
     private bool? aktifFiltre;
+    private ItemBirim? menuSatir;
 
     private ItemBirim[] filtreliBirimler => birimler.Where(b =>
-        GridFilterHelper.Eslesir(b.ID, idFiltre) &&
         GridFilterHelper.BoolEslesir(b.Aktif, aktifFiltre)).ToArray();
 
-    private IList<ExportColumn<ItemBirim>> CiktiKolonlari() => new List<ExportColumn<ItemBirim>>
+    private IList<ExportColumn<ItemBirim>> CiktiKolonlari()
     {
-        new() { Header = "ID",        Value = b => b.ID,    Align = ExportAlign.Right, Width = 0.6f },
+        var liste = birimler.ToList();
+        return new List<ExportColumn<ItemBirim>>
+    {
+        new() { Header = "Sıra",      Value = b => GridSiraYardimci.ExportSirasi(liste, b), Align = ExportAlign.Right, Width = 0.6f },
         new() { Header = "Birim Adı", Value = b => b.Ad,    Width = 2f   },
         new() { Header = "Aktif",     Value = b => b.Aktif, Align = ExportAlign.Center, Width = 0.7f },
     };
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -111,14 +107,29 @@ else
             return;
         }
         sadecOkuma = YetkiSvc.SadecOkuma("/birimler");
+        Nav.LocationChanged += OnLocationChanged;
         await LoadAsync();
     }
 
-    private async Task LoadAsync()
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        isLoading = true;
+        var path = new Uri(e.Location).AbsolutePath.TrimEnd('/');
+        if (string.Equals(path, "/birimler", StringComparison.OrdinalIgnoreCase))
+            _ = InvokeAsync(() => LoadAsync(tamSpinner: false));
+    }
+
+    public void Dispose()
+        => Nav.LocationChanged -= OnLocationChanged;
+
+    private async Task LoadAsync(bool tamSpinner = true)
+    {
+        if (tamSpinner) isLoading = true;
         try { birimler = await DataSvc.GetBirim(); }
-        finally { isLoading = false; }
+        finally { if (tamSpinner) isLoading = false; }
+
+        await InvokeAsync(StateHasChanged);
+        if (gridRef is not null)
+            await gridRef.Reload();
     }
 
     private async Task OnYeniClick()
@@ -127,7 +138,42 @@ else
         var result = await DialogSvc.OpenAsync<BirimTnm>("Yeni Birim",
             new Dictionary<string, object?> { { "Item", new ItemBirim { Aktif = true } } },
             new DialogOptions { Width = "480px", Resizable = false, Draggable = true, CloseDialogOnOverlayClick = false });
-        if (result is true) await LoadAsync();
+        if (result is bool kaydedildi && kaydedildi)
+            await LoadAsync(tamSpinner: false);
+    }
+
+    private void IslemlerMenuAc(MouseEventArgs args, ItemBirim row)
+    {
+        menuSatir = row;
+        ContextMenuSvc.Open(args,
+            new List<ContextMenuItem>
+            {
+                new() { Text = "Düzenle", Icon = "edit", Value = "duzenle", Disabled = sadecOkuma },
+                new() { Text = "Sil", Icon = "delete", Value = "sil", Disabled = sadecOkuma }
+            },
+            OnIslemMenuSecildi);
+    }
+
+    private void OnIslemMenuSecildi(MenuItemEventArgs args)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            if (menuSatir is null)
+                return;
+
+            var row = menuSatir;
+            menuSatir = null;
+
+            switch (args.Value?.ToString())
+            {
+                case "duzenle":
+                    await OnDuzenleClick(row);
+                    break;
+                case "sil":
+                    await OnSilClick(row);
+                    break;
+            }
+        });
     }
 
     private async Task OnDuzenleClick(ItemBirim item)
@@ -136,7 +182,8 @@ else
         var result = await DialogSvc.OpenAsync<BirimTnm>("Birim Düzenle",
             new Dictionary<string, object?> { { "Item", item } },
             new DialogOptions { Width = "480px", Resizable = false, Draggable = true, CloseDialogOnOverlayClick = false });
-        if (result is true) await LoadAsync();
+        if (result is bool kaydedildi && kaydedildi)
+            await LoadAsync(tamSpinner: false);
     }
 
     private async Task OnSilClick(ItemBirim item)
@@ -156,7 +203,7 @@ else
         else
         {
             NotificationSvc.Notify(NotificationSeverity.Success, "Başarılı", $"{item.Ad} silindi.", 3000);
-            await LoadAsync();
+            await LoadAsync(tamSpinner: false);
         }
     }
 }

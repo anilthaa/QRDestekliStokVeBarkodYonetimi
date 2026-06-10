@@ -4,15 +4,12 @@
 
 <PageTitle>Kayıt Ol</PageTitle>
 
-<div class="auth-card">
-    <div class="auth-card__brand">
-        <i class="fa-solid fa-user-plus" style="font-size:2.4rem;color:#1b6ec2;"></i>
-        <h1>Yeni Hesap Oluştur</h1>
-        <p>Stok yönetim paneline erişmek için kaydolun</p>
-    </div>
+<div class="auth-card auth-card--wide">
+    <AuthCardHeader Title="Yeni Hesap Oluştur"
+                    Subtitle="Stok yönetim paneline erişmek için kaydolun" />
 
     <div class="auth-form">
-        <div class="auth-row" style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem;">
+        <div class="auth-row">
             <div class="auth-field">
                 <RadzenLabel Text="Ad" Component="Ad" />
                 <RadzenTextBox @bind-Value="model.Ad" Name="Ad" Style="width:100%;" Disabled="@kayitIsBusy" />
@@ -33,15 +30,14 @@
 
         <div class="auth-field">
             <RadzenLabel Text="Şifre" Component="Sifre" />
-            <RadzenPassword @bind-Value="model.Sifre" Name="Sifre"
-                            Placeholder="En az 6 karakter"
-                            Style="width:100%;" Disabled="@kayitIsBusy" />
+            <TogglePasswordField @bind-Value="model.Sifre" Name="Sifre"
+                                 Placeholder="En az 6 karakter" Disabled="@kayitIsBusy" />
         </div>
 
         <div class="auth-field">
             <RadzenLabel Text="Şifre (Tekrar)" Component="SifreTekrar" />
-            <RadzenPassword @bind-Value="model.SifreTekrar" Name="SifreTekrar"
-                            Style="width:100%;" Disabled="@kayitIsBusy" />
+            <TogglePasswordField @bind-Value="model.SifreTekrar" Name="SifreTekrar"
+                                 Disabled="@kayitIsBusy" />
         </div>
 
         @if (!string.IsNullOrEmpty(kayitHata))
@@ -50,9 +46,10 @@
                         Style="margin-bottom:0.75rem;">@kayitHata</RadzenAlert>
         }
 
-        <RadzenButton Text="Kayıt Ol" Icon="person_add" ButtonStyle="ButtonStyle.Primary"
-                      Click="@KayitOlAsync" IsBusy="@kayitIsBusy" BusyText="Kaydediliyor…"
-                      Disabled="@kayitIsBusy" Style="width:100%; margin-top:0.25rem;" />
+        <RadzenButton Click="@KayitOlAsync" IsBusy="@kayitIsBusy" BusyText="Kaydediliyor…"
+                      Disabled="@kayitIsBusy" class="auth-btn-primary">
+            <i class="fa-solid fa-user-plus"></i> KAYIT OL
+        </RadzenButton>
     </div>
 
     <div class="auth-card__footer">

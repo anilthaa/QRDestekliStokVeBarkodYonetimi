@@ -3,6 +3,8 @@
 @rendermode InteractiveServer
 @using QRDestekliStokVeBarkodYonetimi.Components.Pages.Urun
 
+@implements IDisposable
+
 @inject YetkiService YetkiSvc
 @inject NavigationManager Nav
 
@@ -17,7 +19,7 @@
                       FileName="stok-hareketleri"
                       Columns="@CiktiKolonlari()" />
         <RadzenButton Text="Yenile" Icon="refresh" ButtonStyle="ButtonStyle.Secondary"
-                      Click="@LoadAsync" />
+                      Click="@(() => LoadAsync())" />
     </div>
 </div>
 
@@ -82,21 +84,25 @@ else
         </div>
     </div>
 
-    <RadzenDataGrid Data="@gridHareketler" TItem="ItemStokHareketleri"
+    <RadzenDataGrid @ref="gridRef" Data="@gridHareketler" TItem="ItemStokHareketleri"
                     AllowSorting="true" AllowFiltering="true" FilterMode="FilterMode.Simple"
                     FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
-                    AllowPaging="true" PageSize="20" EmptyText="Kayıt bulunamadı." ColumnWidth="160px">
+                    AllowPaging="true" PageSize="20" EmptyText="Kayıt bulunamadı." ColumnWidth="160px"
+                    class="stok-hareket-grid">
         <Columns>
-            <RadzenDataGridColumn TItem="ItemStokHareketleri" Property="ID" Title="ID" Width="70px" Frozen="true">
-                <FilterTemplate>
-                    <GridTextFilter @bind-Value="@idFiltre" />
-                </FilterTemplate>
+            <RadzenDataGridColumn TItem="ItemStokHareketleri" Property="ID" Title="Sıra" Width="@GridSiraYardimci.KolonGenisligi" MinWidth="@GridSiraYardimci.KolonGenisligi"
+                                  Frozen="true" Filterable="false"
+                                  SortComparer="@GridSiraYardimci.SiralamaIndeksiComparer(gridHareketler)"
+                                  TextAlign="TextAlign.Center" CssClass="grid-sira-kolon">
+                <Template Context="row">
+                    @GridSiraYardimci.ListeSirasi(gridHareketler, row)
+                </Template>
             </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="ItemStokHareketleri" Title="Resim" Width="72px" TextAlign="TextAlign.Center"
                                   Sortable="false" Filterable="false">
                 <Template Context="row">
                     @{
-                        var thumb = IlkResimYolu(row.ResimYolu);
+                        var thumb = UrunResimYardimci.IlkResimYolu(row.ResimYolu);
                     }
                     @if (!string.IsNullOrEmpty(thumb))
                     {
@@ -164,14 +170,10 @@ else
                                       Style="width:100%;" />
                 </FilterTemplate>
             </RadzenDataGridColumn>
-            <RadzenDataGridColumn TItem="ItemStokHareketleri" Title="İşlemler" Width="140px" TextAlign="TextAlign.Center"
-                                  Sortable="false" Filterable="false" Frozen="true" FrozenPosition="FrozenColumnPosition.Right">
+            <RadzenDataGridColumn TItem="ItemStokHareketleri" Title="" Width="48px" TextAlign="TextAlign.Center"
+                                  Sortable="false" Filterable="false">
                 <Template Context="row">
-                    <RadzenButton Icon="visibility" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" Variant="Variant.Flat"
-                                  Click="@(() => OnInceleClick(row))" title="İncele" style="margin-right:4px;" />
-                    <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Info" Size="ButtonSize.Small" Variant="Variant.Flat"
-                                  Click="@(() => OnDuzenleClick(row))" Disabled="@urunSadecOkuma"
-                                  Style="@(urunSadecOkuma ? "opacity:0.35;pointer-events:none;" : "")" title="Düzenle" />
+                    <GridIslemMenuButonu Click="@(e => IslemlerMenuAc(e, row))" />
                 </Template>
             </RadzenDataGridColumn>
         </Columns>
@@ -188,17 +190,18 @@ else
     [SupplyParameterFromQuery(Name = "bit")]
     public string? QueryBit { get; set; }
 
+    private RadzenDataGrid<ItemStokHareketleri>? gridRef;
     private ItemStokHareketleri[] tumHareketler = [];
     private ItemStokHareketleri[] tarihFiltreliHareketler = [];
     private bool isLoading = true;
     private bool urunSadecOkuma;
+    private ItemStokHareketleri? menuSatir;
 
     private short? filtreHareketTipi = null;
     private DateTime? filtreBasTarih = null;
     private DateTime? filtreBitTarih = null;
     private DateTime? tarihKolonFiltre;
     private short? hareketTipiKolonFiltre;
-    private string? idFiltre;
     private string? miktarFiltre;
 
     private ItemStokHareketleri[] filtreliHareketler => tarihFiltreliHareketler
@@ -206,7 +209,6 @@ else
         .ToArray();
 
     private ItemStokHareketleri[] gridHareketler => filtreliHareketler.Where(h =>
-        GridFilterHelper.Eslesir(h.ID, idFiltre) &&
         GridFilterHelper.Eslesir(h.Miktar, miktarFiltre)).ToArray();
 
     private readonly List<HareketTipiSecenegi> hareketTipiSecenekleri =
@@ -217,9 +219,12 @@ else
 
     private sealed record HareketTipiSecenegi(short Deger, string Etiket);
 
-    private IList<ExportColumn<ItemStokHareketleri>> CiktiKolonlari() => new List<ExportColumn<ItemStokHareketleri>>
+    private IList<ExportColumn<ItemStokHareketleri>> CiktiKolonlari()
     {
-        new() { Header = "ID",          Value = h => h.ID,        Align = ExportAlign.Right, Width = 0.6f },
+        var liste = filtreliHareketler.ToList();
+        return new List<ExportColumn<ItemStokHareketleri>>
+    {
+        new() { Header = "Sıra",        Value = h => GridSiraYardimci.ExportSirasi(liste, h), Align = ExportAlign.Right, Width = 0.6f },
         new() { Header = "Ürün Kodu",   Value = h => h.UrunKodu,  Width = 1.2f },
         new() { Header = "Ürün Adı",    Value = h => h.UrunAd,    Width = 2f   },
         new() { Header = "Hareket Tipi", Value = h => h.HareketTipi == 1 ? "Giriş" : (h.HareketTipi == 2 ? "Çıkış" : "Diğer"),
@@ -228,6 +233,7 @@ else
         new() { Header = "Not",         Value = h => string.IsNullOrWhiteSpace(h.Not) ? "-" : h.Not, Width = 2f },
         new() { Header = "Tarih",       Value = h => h.CreDate,   Format = "dd.MM.yyyy HH:mm", Align = ExportAlign.Center, Width = 1.3f },
     };
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -239,17 +245,52 @@ else
             return;
         }
         urunSadecOkuma = YetkiSvc.SadecOkuma("/urunler");
+        Nav.LocationChanged += OnLocationChanged;
         await LoadAsync();
     }
 
-    private static string? IlkResimYolu(string? resimYolu)
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
     {
-        if (string.IsNullOrWhiteSpace(resimYolu))
-            return null;
+        var path = new Uri(e.Location).AbsolutePath.TrimEnd('/');
+        if (string.Equals(path, "/stok-hareketleri", StringComparison.OrdinalIgnoreCase))
+            _ = InvokeAsync(() => LoadAsync(tamSpinner: false));
+    }
 
-        return resimYolu
-            .Split(';', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .FirstOrDefault();
+    public void Dispose()
+        => Nav.LocationChanged -= OnLocationChanged;
+
+    private void IslemlerMenuAc(MouseEventArgs args, ItemStokHareketleri row)
+    {
+        menuSatir = row;
+        ContextMenuSvc.Open(args,
+            new List<ContextMenuItem>
+            {
+                new() { Text = "İncele", Icon = "visibility", Value = "incele" },
+                new() { Text = "Düzenle", Icon = "edit", Value = "duzenle", Disabled = urunSadecOkuma }
+            },
+            OnIslemMenuSecildi);
+    }
+
+    private void OnIslemMenuSecildi(MenuItemEventArgs args)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            if (menuSatir is null)
+                return;
+
+            var row = menuSatir;
+            menuSatir = null;
+
+            switch (args.Value?.ToString())
+            {
+                case "incele":
+                    OnInceleClick(row);
+                    break;
+                case "duzenle":
+                    await OnDuzenleClick(row);
+                    break;
+            }
+        });
     }
 
     private void OnInceleClick(ItemStokHareketleri row)
@@ -282,8 +323,8 @@ else
             new Dictionary<string, object?> { { "Item", item } },
             new DialogOptions { Width = "620px", Resizable = false, Draggable = true, CloseDialogOnOverlayClick = false });
 
-        if (result is true)
-            await LoadAsync();
+        if (result is bool kaydedildi && kaydedildi)
+            await LoadAsync(tamSpinner: false);
     }
 
     protected override void OnParametersSet()
@@ -293,9 +334,9 @@ else
         ApplyDateFilter();
     }
 
-    private async Task LoadAsync()
+    private async Task LoadAsync(bool tamSpinner = true)
     {
-        isLoading = true;
+        if (tamSpinner) isLoading = true;
         try
         {
             tumHareketler = await DataSvc.GetStokHareketleri();
@@ -307,7 +348,11 @@ else
             NotificationSvc.Notify(NotificationSeverity.Error, "Hata",
                 "Veriler yüklenirken bir sorun oluştu: " + ex.Message, 5000);
         }
-        finally { isLoading = false; }
+        finally { if (tamSpinner) isLoading = false; }
+
+        await InvokeAsync(StateHasChanged);
+        if (gridRef is not null)
+            await gridRef.Reload();
     }
 
     private void ApplyQueryFilters()

@@ -11,34 +11,36 @@
 
         <div class="form-row">
             <div>
-                <RadzenLabel Text="Ürün Kodu *" Component="UrunKodu" />
-                <RadzenTextBox @bind-Value="model.UrunKodu" Name="UrunKodu" Placeholder="Ürün kodu giriniz"
-                               Style="width:100%" Disabled="@isBusy" />
-                <RadzenRequiredValidator Component="UrunKodu" Text="Ürün kodu zorunludur." Style="display:block" />
+                <KarakterLimitliMetin Label="Ürün Kodu" Name="UrunKodu" @bind-Value="model.UrunKodu"
+                                      MaxLength="@UrunAlanSinirlari.UrunKodu" Required="true"
+                                      Placeholder="Ürün kodu giriniz" Disabled="@isBusy" />
             </div>
             <div>
                 <RadzenLabel Text="Barkod No" Component="BarkodNo" />
-                <div style="display:flex; gap:0.4rem; align-items:center;">
-                    <RadzenTextBox @bind-Value="model.BarkodNo" Name="BarkodNo" Placeholder="Barkod numarası"
-                                   Style="flex:1" Disabled="@isBusy" />
+                <div style="display:flex; gap:0.4rem; align-items:flex-start;">
+                    <div style="flex:1; min-width:0;">
+                        <KarakterLimitliMetin Name="BarkodNo" @bind-Value="model.BarkodNo" ShowLabel="false"
+                                              MaxLength="@UrunAlanSinirlari.BarkodNo"
+                                              Placeholder="Barkod numarası" Disabled="@isBusy" Style="width:100%" />
+                    </div>
                     <RadzenButton Icon="casino" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small"
                                   Variant="Variant.Flat" title="Rastgele barkod oluştur"
-                                  Click="@OnRandomBarkodClick" Disabled="@isBusy" />
+                                  Click="@OnRandomBarkodClick" Disabled="@isBusy"
+                                  Style="margin-top:0.15rem;" />
                 </div>
             </div>
         </div>
 
         <div>
-            <RadzenLabel Text="Ürün Adı *" Component="Ad" />
-            <RadzenTextBox @bind-Value="model.Ad" Name="Ad" Placeholder="Ürün adı giriniz"
-                           Style="width:100%" Disabled="@isBusy" />
-            <RadzenRequiredValidator Component="Ad" Text="Ürün adı zorunludur." Style="display:block" />
+            <KarakterLimitliMetin Label="Ürün Adı" Name="Ad" @bind-Value="model.Ad"
+                                  MaxLength="@UrunAlanSinirlari.Ad" Required="true"
+                                  Placeholder="Ürün adı giriniz" Disabled="@isBusy" />
         </div>
 
         <div>
-            <RadzenLabel Text="Açıklama" Component="Aciklama" />
-            <RadzenTextArea @bind-Value="model.Aciklama" Name="Aciklama" Placeholder="Açıklama (opsiyonel)"
-                            Style="width:100%" Rows="3" Disabled="@isBusy" />
+            <KarakterLimitliMetin Label="Açıklama" Name="Aciklama" @bind-Value="model.Aciklama"
+                                  MaxLength="@UrunAlanSinirlari.Aciklama" Multiline="true" Rows="3"
+                                  Placeholder="Açıklama (opsiyonel)" Disabled="@isBusy" />
         </div>
 
         <div class="form-row">
@@ -134,7 +136,8 @@
             <RadzenButton ButtonStyle="ButtonStyle.Light" Text="İptal" Icon="cancel"
                           Click="@OnCancel" Disabled="@isBusy" />
             <RadzenButton ButtonType="ButtonType.Submit" Text="Kaydet" Icon="save"
-                          IsBusy="@isBusy" BusyText="Kaydediliyor..." />
+                          IsBusy="@isBusy" BusyText="Kaydediliyor..."
+                          Disabled="@(isBusy || metinSinirlariAsildi)" />
         </div>
 
     </div>
@@ -156,6 +159,8 @@
 
     private ItemKategori[] kategoriler = [];
     private ItemBirim[] birimler = [];
+
+    private bool metinSinirlariAsildi => UrunMetinDogrulama.SinirAsildi(model);
 
     private static readonly string[] IzinliUzantilar = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
     private const long MaxResimBoyutu = 5 * 1024 * 1024; // 5 MB
@@ -270,6 +275,13 @@
     private async Task OnSubmitAsync()
     {
         errorMessage = null;
+
+        if (metinSinirlariAsildi)
+        {
+            errorMessage = UrunMetinDogrulama.IlkHata(model);
+            return;
+        }
+
         isBusy = true;
         try
         {
