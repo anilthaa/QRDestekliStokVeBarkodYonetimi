@@ -91,13 +91,6 @@
     gap: 0.75rem;
 }
 
-.auth-page ::deep .auth-field {
-    margin-bottom: 1rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.4rem;
-}
-
 .auth-page ::deep .auth-label-row {
     display: flex;
     align-items: center;
@@ -118,10 +111,6 @@
     color: #0f766e;
 }
 
-.auth-page ::deep .auth-remember-row {
-    margin-bottom: 0.75rem;
-}
-
 .auth-page ::deep .auth-card__footer {
     margin-top: 1.25rem;
     text-align: center;
@@ -138,32 +127,6 @@
 .auth-page ::deep .auth-card__footer a:hover {
     text-decoration: underline;
     color: #0f766e;
-}
-
-.auth-page ::deep .auth-message {
-    margin-bottom: 0.75rem;
-    padding: 0.75rem 1rem;
-    border-radius: 8px;
-    font-size: 0.88rem;
-    line-height: 1.45;
-}
-
-.auth-page ::deep .auth-message--success {
-    background: #ecfdf5;
-    color: #065f46;
-    border: 1px solid #a7f3d0;
-}
-
-.auth-page ::deep .auth-message--danger {
-    background: #fef2f2;
-    color: #991b1b;
-    border: 1px solid #fecaca;
-}
-
-.auth-page ::deep .auth-message--info {
-    background: #f0f9ff;
-    color: #0c4a6e;
-    border: 1px solid #bae6fd;
 }
 
 .auth-page ::deep .auth-icon-large {
@@ -213,39 +176,6 @@
     font-size: 1rem;
 }
 
-.auth-page ::deep .rz-textbox,
-.auth-page ::deep .rz-password {
-    width: 100%;
-}
-
-.auth-page ::deep .rz-textbox .rz-inputtext,
-.auth-page ::deep .rz-password .rz-inputtext {
-    width: 100%;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    padding: 0.55rem 0.75rem;
-    font-size: 0.9rem;
-    box-shadow: none;
-}
-
-.auth-page ::deep .rz-textbox .rz-inputtext:focus,
-.auth-page ::deep .rz-password .rz-inputtext:focus {
-    border-color: #6366f1;
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
-}
-
-.auth-page ::deep .rz-label {
-    font-size: 0.88rem;
-    font-weight: 500;
-    color: #374151;
-    margin: 0;
-}
-
-.auth-page ::deep .password-field .rz-inputtext {
-    padding-right: 2.5rem;
-}
-
 .auth-page ::deep .rz-button.auth-btn-primary,
 .auth-page ::deep button.auth-btn-primary.rz-button {
     background: linear-gradient(90deg, #db2777 0%, #6366f1 100%) !important;
@@ -271,36 +201,6 @@
     text-transform: uppercase;
     font-weight: 700;
     letter-spacing: 0.04em;
-}
-
-.auth-page ::deep .rz-alert {
-    border-radius: 8px;
-    font-size: 0.88rem;
-}
-
-.auth-page ::deep input[type="email"],
-.auth-page ::deep input[type="password"],
-.auth-page ::deep input[type="text"] {
-    width: 100%;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    padding: 0.55rem 0.75rem;
-    font-size: 0.9rem;
-    box-sizing: border-box;
-}
-
-.auth-page ::deep input[type="email"]:focus,
-.auth-page ::deep input[type="password"]:focus,
-.auth-page ::deep input[type="text"]:focus {
-    border-color: #6366f1;
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
-}
-
-.auth-page ::deep label.rz-label {
-    font-size: 0.88rem;
-    font-weight: 500;
-    color: #374151;
 }
 
 @media (max-width: 520px) {

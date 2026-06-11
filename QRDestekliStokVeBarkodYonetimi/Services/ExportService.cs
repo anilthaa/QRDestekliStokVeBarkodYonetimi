@@ -48,7 +48,6 @@ public class ExportService
             cell.Style.Font.FontColor = XLColor.White;
             cell.Style.Alignment.Horizontal = XLAlignmentHorizontalValues.Center;
             cell.Style.Alignment.Vertical = XLAlignmentVerticalValues.Center;
-            cell.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
         }
 
         int row = 2;
@@ -68,12 +67,21 @@ public class ExportService
                     ExportAlign.Center => XLAlignmentHorizontalValues.Center,
                     _ => XLAlignmentHorizontalValues.Left
                 };
-                cell.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
-                cell.Style.Border.OutsideBorderColor = XLColor.FromHtml("#dddddd");
 
                 if (row % 2 == 1) cell.Style.Fill.BackgroundColor = XLColor.FromHtml("#f5f7fa");
             }
             row++;
+        }
+
+        var lastRow = Math.Max(1, row - 1);
+        var lastCol = columns.Count;
+        if (lastCol > 0)
+        {
+            var tableRange = ws.Range(1, 1, lastRow, lastCol);
+            tableRange.Style.Border.OutsideBorder = XLBorderStyleValues.Thin;
+            tableRange.Style.Border.InsideBorder = XLBorderStyleValues.Thin;
+            tableRange.Style.Border.OutsideBorderColor = XLColor.FromHtml("#dddddd");
+            tableRange.Style.Border.InsideBorderColor = XLColor.FromHtml("#dddddd");
         }
 
         ws.SheetView.FreezeRows(1);
@@ -102,7 +110,9 @@ public class ExportService
                 break;
             case decimal or double or float or int or long or short:
                 cell.Value = Convert.ToDouble(raw, CultureInfo.InvariantCulture);
-                if (!string.IsNullOrEmpty(format)) cell.Style.NumberFormat.Format = format;
+                var excelFormat = ToExcelNumberFormat(format);
+                if (!string.IsNullOrEmpty(excelFormat))
+                    cell.Style.NumberFormat.Format = excelFormat;
                 break;
             default:
                 cell.Value = raw.ToString();
@@ -234,6 +244,21 @@ public class ExportService
             IFormattable f when !string.IsNullOrEmpty(format)
                 => f.ToString(format, CultureInfo.GetCultureInfo("tr-TR")),
             _ => raw.ToString() ?? string.Empty
+        };
+    }
+
+    private static string? ToExcelNumberFormat(string? format)
+    {
+        if (string.IsNullOrWhiteSpace(format)) return null;
+        return format.ToUpperInvariant() switch
+        {
+            "N0" => "#,##0",
+            "N1" => "#,##0.0",
+            "N2" => "#,##0.00",
+            "F0" => "0",
+            "F2" => "0.00",
+            _ when format.Contains('#') || format.Contains('0') => format,
+            _ => null
         };
     }
 

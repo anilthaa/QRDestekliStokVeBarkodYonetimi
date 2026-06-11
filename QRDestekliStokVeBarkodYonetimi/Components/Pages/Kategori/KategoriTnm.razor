@@ -8,14 +8,14 @@
 
     <div class="form-shell rz-p-4">
 
-        <div>
+        <div class="form-field">
             <RadzenLabel Text="Kategori Adı *" Component="Ad" />
             <RadzenTextBox @bind-Value="model.Ad" Name="Ad" Placeholder="Kategori adı giriniz"
                            Style="width:100%" Disabled="@isBusy" />
             <RadzenRequiredValidator Component="Ad" Text="Kategori adı zorunludur." Style="display:block" />
         </div>
 
-        <div>
+        <div class="form-field">
             <RadzenLabel Text="Açıklama" Component="Aciklama" />
             <RadzenTextArea @bind-Value="model.Aciklama" Name="Aciklama" Placeholder="Açıklama (opsiyonel)"
                             Style="width:100%" Rows="3" Disabled="@isBusy" />
@@ -31,7 +31,7 @@
             </div>
         }
 
-        <div>
+        <div class="form-field">
             <RadzenLabel Text="Kategori Resmi" />
             @if (!string.IsNullOrWhiteSpace(model.ResimYolu))
             {
@@ -59,7 +59,7 @@
             }
         </div>
 
-        <div style="display:flex; align-items:center; gap:0.5rem;">
+        <div class="form-check-row">
             <RadzenCheckBox @bind-Value="model.Aktif" Name="Aktif" Disabled="@isBusy" />
             <RadzenLabel Text="Aktif" Component="Aktif" />
         </div>

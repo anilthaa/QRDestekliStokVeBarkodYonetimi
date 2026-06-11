@@ -3,13 +3,13 @@
     <div class="form-shell form-shell--wide rz-p-4">
 
         <div class="form-row">
-            <div>
+            <div class="form-field">
                 <RadzenLabel Text="Ad *" Component="Ad" />
                 <RadzenTextBox @bind-Value="model.Ad" Name="Ad" Placeholder="Ad giriniz"
                                Style="width:100%" Disabled="@isBusy" />
                 <RadzenRequiredValidator Component="Ad" Text="Ad zorunludur." Style="display:block" />
             </div>
-            <div>
+            <div class="form-field">
                 <RadzenLabel Text="Soyad *" Component="Soyad" />
                 <RadzenTextBox @bind-Value="model.Soyad" Name="Soyad" Placeholder="Soyad giriniz"
                                Style="width:100%" Disabled="@isBusy" />
@@ -17,14 +17,14 @@
             </div>
         </div>
 
-        <div>
+        <div class="form-field">
             <RadzenLabel Text="E-posta *" Component="Eposta" />
             <RadzenTextBox @bind-Value="model.Eposta" Name="Eposta" Placeholder="eposta@ornek.com"
                            Style="width:100%" Disabled="@isBusy" InputType="email" />
             <RadzenRequiredValidator Component="Eposta" Text="E-posta zorunludur." Style="display:block" />
         </div>
 
-        <div>
+        <div class="form-field">
             <RadzenLabel Text="Kullanıcı Tipi *" Component="KullaniciTip_ID" />
             <RadzenDropDown @bind-Value="model.KullaniciTip_ID" Name="KullaniciTip_ID"
                             Data="@kullaniciTipler" TextProperty="Ad" ValueProperty="ID"
@@ -43,11 +43,11 @@
         }
         else
         {
-            <div style="display:flex; align-items:center; gap:0.5rem;">
+            <div class="form-check-row">
                 <RadzenCheckBox @bind-Value="model.Aktif" Name="Aktif" Disabled="@isBusy" />
                 <RadzenLabel Text="Aktif" Component="Aktif" />
             </div>
-            <div style="font-size:0.82rem; color:#666;">
+            <div class="form-field" style="font-size:0.82rem; color:#666;">
                 Şifre, kullanıcı hesap onayını tamamladığında otomatik oluşturulup e-posta ile gönderilir.
             </div>
         }

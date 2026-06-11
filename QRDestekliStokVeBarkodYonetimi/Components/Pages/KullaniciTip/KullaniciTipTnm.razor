@@ -2,19 +2,19 @@
 
     <div class="form-shell rz-p-4">
 
-        <div>
+        <div class="form-field">
             <RadzenLabel Text="Kullanıcı Tipi Adı *" Component="Ad" />
             <RadzenTextBox @bind-Value="model.Ad" Name="Ad" Placeholder="Tip adı giriniz"
                            Style="width:100%" Disabled="@isBusy" />
             <RadzenRequiredValidator Component="Ad" Text="Kullanıcı tipi adı zorunludur." Style="display:block" />
         </div>
 
-        <div style="display:flex; align-items:center; gap:0.5rem;">
+        <div class="form-check-row">
             <RadzenCheckBox @bind-Value="model.Aktif" Name="Aktif" Disabled="@isBusy" />
             <RadzenLabel Text="Aktif" Component="Aktif" />
         </div>
 
-        <div style="display:flex; align-items:flex-start; gap:0.5rem;">
+        <div class="form-check-row" style="align-items:flex-start;">
             <RadzenCheckBox @bind-Value="model.Varsayilan" Name="Varsayilan" Disabled="@isBusy" />
             <RadzenLabel Text="Yeni kayıt olan kullanıcılar için varsayılan tip"
                          Component="Varsayilan"

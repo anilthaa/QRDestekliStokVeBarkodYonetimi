@@ -10,12 +10,12 @@
     <div class="form-shell form-shell--wide rz-p-4">
 
         <div class="form-row">
-            <div>
+            <div class="form-field">
                 <KarakterLimitliMetin Label="Ürün Kodu" Name="UrunKodu" @bind-Value="model.UrunKodu"
                                       MaxLength="@UrunAlanSinirlari.UrunKodu" Required="true"
                                       Placeholder="Ürün kodu giriniz" Disabled="@isBusy" />
             </div>
-            <div>
+            <div class="form-field">
                 <RadzenLabel Text="Barkod No" Component="BarkodNo" />
                 <div style="display:flex; gap:0.4rem; align-items:flex-start;">
                     <div style="flex:1; min-width:0;">
@@ -31,20 +31,20 @@
             </div>
         </div>
 
-        <div>
+        <div class="form-field">
             <KarakterLimitliMetin Label="Ürün Adı" Name="Ad" @bind-Value="model.Ad"
                                   MaxLength="@UrunAlanSinirlari.Ad" Required="true"
                                   Placeholder="Ürün adı giriniz" Disabled="@isBusy" />
         </div>
 
-        <div>
+        <div class="form-field">
             <KarakterLimitliMetin Label="Açıklama" Name="Aciklama" @bind-Value="model.Aciklama"
                                   MaxLength="@UrunAlanSinirlari.Aciklama" Multiline="true" Rows="3"
                                   Placeholder="Açıklama (opsiyonel)" Disabled="@isBusy" />
         </div>
 
         <div class="form-row">
-            <div>
+            <div class="form-field">
                 <RadzenLabel Text="Kategori *" Component="Kategori_ID" />
                 <RadzenDropDown @bind-Value="model.Kategori_ID" Name="Kategori_ID"
                                 Data="@kategoriler" TextProperty="Ad" ValueProperty="ID"
@@ -52,7 +52,7 @@
                                 Disabled="@isBusy" AllowClear="true" />
                 <RadzenRequiredValidator Component="Kategori_ID" Text="Kategori zorunludur." Style="display:block" />
             </div>
-            <div>
+            <div class="form-field">
                 <RadzenLabel Text="Birim *" Component="Birim_ID" />
                 <RadzenDropDown @bind-Value="model.Birim_ID" Name="Birim_ID"
                                 Data="@birimler" TextProperty="Ad" ValueProperty="ID"
@@ -63,12 +63,12 @@
         </div>
 
         <div class="form-row">
-            <div>
+            <div class="form-field">
                 <RadzenLabel Text="Stok Miktarı" Component="Stok" />
                 <RadzenNumeric @bind-Value="model.Stok" Name="Stok"
                                Style="width:100%" Disabled="@isBusy" Min="0" />
             </div>
-            <div>
+            <div class="form-field">
                 <RadzenLabel Text="Kritik Stok Seviyesi" Component="KritikStokSeviyesi" />
                 <RadzenNumeric @bind-Value="model.KritikStokSeviyesi" Name="KritikStokSeviyesi"
                                Style="width:100%" Disabled="@isBusy" Min="0" />
@@ -86,7 +86,7 @@
         }
 
         <!-- Çoklu resim yükleme -->
-        <div>
+        <div class="form-field">
             <RadzenLabel Text="Ürün Resimleri" />
 
             @if (resimListesi.Count > 0)
