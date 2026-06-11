@@ -86,7 +86,7 @@ else
                         }
                     </div>
                     <span style="font-size:0.8rem; color:var(--rz-text-secondary-color); display:block; margin-top:0.35rem;">
-                        JPEG, PNG, WebP veya GIF; en fazla 2 MB. Resim seçildikten sonra kırpma penceresinde görünen alanı ayarlayın.
+                        JPEG, PNG veya WebP; en fazla 10 MB — kırpma penceresinde alanı ayarlayın. GIF animasyonlu saklanır; kırpma uygulanmaz.
                     </span>
                     @if (!string.IsNullOrEmpty(profilResmiHata))
                     {
@@ -465,7 +465,7 @@ else
     private static readonly Regex EpostaRegex =
         new(@"^[^@\s]+@[^@\s]+\.[^@\s]+$", RegexOptions.Compiled);
 
-    private const long ProfilResmiMaxBoyut = 2 * 1024 * 1024;
+    private const long ProfilResmiMaxBoyut = 10 * 1024 * 1024;
 
     private static readonly HashSet<string> ProfilResmiMime = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -942,7 +942,7 @@ else
 
         if (file.Size > ProfilResmiMaxBoyut)
         {
-            profilResmiHata = "Dosya en fazla 2 MB olabilir.";
+            profilResmiHata = "Dosya en fazla 10 MB olabilir.";
             return;
         }
 
@@ -954,9 +954,19 @@ else
 
         try
         {
+            var mime = string.IsNullOrWhiteSpace(file.ContentType) ? "image/jpeg" : file.ContentType;
+
+            if (string.Equals(mime, "image/gif", StringComparison.OrdinalIgnoreCase))
+            {
+                await using var gifUpload = file.OpenReadStream(ProfilResmiMaxBoyut);
+                using var gifBuffer = new MemoryStream();
+                await gifUpload.CopyToAsync(gifBuffer);
+                await ProfilResmiGifKaydetAsync(gifBuffer.ToArray());
+                return;
+            }
+
             KirpState.Temizle();
             await using var upload = file.OpenReadStream(ProfilResmiMaxBoyut);
-            var mime = string.IsNullOrWhiteSpace(file.ContentType) ? "image/jpeg" : file.ContentType;
             var dataUrl = await ProfilResimIslemci.OnizlemeDataUrlOlusturAsync(upload, mime);
 
             var result = await DialogSvc.OpenAsync<ProfilResimKirpma>(
@@ -985,6 +995,27 @@ else
 
     private async Task ProfilResmiKaydetAsync(byte[] jpegBytes)
     {
+        if (kullanici is null) return;
+        await ProfilResmiDosyaKaydetAsync(
+            jpegBytes,
+            $"/uploads/profiles/{kullanici.ID}.jpg",
+            (stream, path) => ProfilResimIslemci.ProfilJpegKaydetAsync(stream, path));
+    }
+
+    private async Task ProfilResmiGifKaydetAsync(byte[] gifBytes)
+    {
+        if (kullanici is null) return;
+        await ProfilResmiDosyaKaydetAsync(
+            gifBytes,
+            $"/uploads/profiles/{kullanici.ID}.gif",
+            (stream, path) => ProfilResimIslemci.ProfilGifKaydetAsync(stream, path));
+    }
+
+    private async Task ProfilResmiDosyaKaydetAsync(
+        byte[] dosyaBytes,
+        string relatifYol,
+        Func<Stream, string, Task> dosyayaYaz)
+    {
         profilResmiHata = string.Empty;
         if (kullanici is null || AuthState.CurrentUser is null) return;
 
@@ -995,12 +1026,11 @@ else
             Directory.CreateDirectory(profilDizin);
             ProfilResmiDosyalariniSil(kullanici.ID);
 
-            var relatif = $"/uploads/profiles/{kullanici.ID}.jpg";
-            var dosyaYolu = Path.Combine(profilDizin, $"{kullanici.ID}.jpg");
-            await using var stream = new MemoryStream(jpegBytes);
-            await ProfilResimIslemci.ProfilJpegKaydetAsync(stream, dosyaYolu);
+            var dosyaYolu = Path.Combine(profilDizin, Path.GetFileName(relatifYol));
+            await using var stream = new MemoryStream(dosyaBytes);
+            await dosyayaYaz(stream, dosyaYolu);
 
-            kullanici.ProfilResmi = relatif;
+            kullanici.ProfilResmi = relatifYol;
             kullanici.Sifre = string.Empty;
             kullanici.UpdUser = AuthState.CurrentUser.ID;
             kullanici.DelUser = 0;

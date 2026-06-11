@@ -1,4 +1,5 @@
 using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.Formats.Gif;
 using SixLabors.ImageSharp.Formats.Jpeg;
 using SixLabors.ImageSharp.Processing;
 
@@ -14,6 +15,13 @@ public class ProfilResimIslemci
     /// </summary>
     public async Task<string> OnizlemeDataUrlOlusturAsync(Stream kaynak, string? contentType, CancellationToken ct = default)
     {
+        if (string.Equals(contentType, "image/gif", StringComparison.OrdinalIgnoreCase))
+        {
+            using var gifBuffer = new MemoryStream();
+            await kaynak.CopyToAsync(gifBuffer, ct);
+            return $"data:image/gif;base64,{Convert.ToBase64String(gifBuffer.ToArray())}";
+        }
+
         using var image = await Image.LoadAsync(kaynak, ct);
         var maxKenar = Math.Max(image.Width, image.Height);
         if (maxKenar > OnizlemeMaxKenar)
@@ -63,5 +71,21 @@ public class ProfilResimIslemci
             Directory.CreateDirectory(dizin);
 
         await image.SaveAsJpegAsync(hedefDosyaYolu, new JpegEncoder { Quality = 85 }, ct);
+    }
+
+    /// <summary>
+    /// GIF profil resmini animasyonu koruyarak kare 256px boyutuna indirip kaydeder.
+    /// </summary>
+    public async Task ProfilGifKaydetAsync(Stream kaynak, string hedefDosyaYolu, CancellationToken ct = default)
+    {
+        using var image = await Image.LoadAsync(kaynak, ct);
+
+        image.Mutate(ctx => ctx.Resize(CiktiBoyut, CiktiBoyut));
+
+        var dizin = Path.GetDirectoryName(hedefDosyaYolu);
+        if (!string.IsNullOrEmpty(dizin))
+            Directory.CreateDirectory(dizin);
+
+        await image.SaveAsGifAsync(hedefDosyaYolu, new GifEncoder(), ct);
     }
 }

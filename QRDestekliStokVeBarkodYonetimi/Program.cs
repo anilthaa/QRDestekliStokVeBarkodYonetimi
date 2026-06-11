@@ -20,7 +20,7 @@ builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents()
     .AddHubOptions(options =>
     {
-        options.MaximumReceiveMessageSize = 4 * 1024 * 1024;
+        options.MaximumReceiveMessageSize = 12 * 1024 * 1024;
     });
 
 builder.Services.AddRadzenComponents();

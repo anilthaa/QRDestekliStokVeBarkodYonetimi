@@ -2,14 +2,14 @@
 
     <div class="form-shell rz-p-4">
 
-        <div>
+        <div class="form-field">
             <RadzenLabel Text="Birim Adı *" Component="Ad" />
             <RadzenTextBox @bind-Value="model.Ad" Name="Ad" Placeholder="Birim adı giriniz"
                            Style="width:100%" Disabled="@isBusy" />
             <RadzenRequiredValidator Component="Ad" Text="Birim adı zorunludur." Style="display:block" />
         </div>
 
-        <div style="display:flex; align-items:center; gap:0.5rem;">
+        <div class="form-check-row">
             <RadzenCheckBox @bind-Value="model.Aktif" Name="Aktif" Disabled="@isBusy" />
             <RadzenLabel Text="Aktif" Component="Aktif" />
         </div>
