@@ -36,7 +36,13 @@ else
         </div>
     </div>
 
-    @if (kullanici is null)
+    @if (yukleniyor && kullanici is null)
+    {
+        <div style="display:flex; justify-content:center; padding:3rem;">
+            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Large" />
+        </div>
+    }
+    else if (kullanici is null)
     {
         <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true">Kullanıcı bulunamadı.</RadzenAlert>
     }
@@ -145,7 +151,7 @@ else
     [Parameter] public int KullaniciId { get; set; }
 
     private bool authChecked = false;
-    private bool yukleniyor  = false;
+    private bool yukleniyor  = true;
     private bool yazmaYetkisi = false;
 
     private ItemKullanicilar? kullanici    = null;
@@ -186,6 +192,7 @@ else
             return;
         }
         yazmaYetkisi = YetkiSvc.HasYazma("/kullanici-yetki");
+        yukleniyor = true;
         authChecked = true;
         await LoadAsync();
     }

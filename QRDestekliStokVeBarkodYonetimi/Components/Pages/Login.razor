@@ -1,7 +1,6 @@
 @page "/login"
 @layout QRDestekliStokVeBarkodYonetimi.Components.Layout.AuthLayout
 @rendermode InteractiveServer
-@using System.Net.Mail
 
 <PageTitle>Giriş Yap</PageTitle>
 
@@ -19,53 +18,58 @@
     <AuthCardHeader Title="QR Destekli Stok Yönetimi"
                     Subtitle="Hesabınıza giriş yapın" />
 
-    <div class="auth-form">
-        @if (!string.IsNullOrEmpty(Registered))
-        {
-            <div class="auth-message auth-message--success">
-                Kayıt başarılı. Şimdi giriş yapabilirsiniz.
+    <RadzenTemplateForm TItem="LoginModel" Data="@model" Submit="@OnSubmitAsync" InvalidSubmit="@OnInvalidSubmit">
+        <div class="auth-form">
+            @if (!string.IsNullOrEmpty(Registered))
+            {
+                <div class="auth-message auth-message--success">
+                    Kayıt başarılı. Şimdi giriş yapabilirsiniz.
+                </div>
+            }
+
+            @if (!string.IsNullOrEmpty(Sifirlandi))
+            {
+                <div class="auth-message auth-message--success">
+                    Şifreniz güncellendi. Yeni şifrenizle giriş yapabilirsiniz.
+                </div>
+            }
+
+            <div class="auth-field">
+                <RadzenLabel Text="E-posta *" Component="Eposta" />
+                <RadzenTextBox @bind-Value="model.Eposta" Name="Eposta"
+                               Placeholder="ornek@mail.com"
+                               Style="width:100%;" Disabled="@girisIsBusy" />
+                <RadzenRequiredValidator Component="Eposta" Text="E-posta zorunludur." Style="display:block" />
+                <RadzenEmailValidator Component="Eposta" Text="Geçerli bir e-posta giriniz." Style="display:block" />
             </div>
-        }
 
-        @if (!string.IsNullOrEmpty(Sifirlandi))
-        {
-            <div class="auth-message auth-message--success">
-                Şifreniz güncellendi. Yeni şifrenizle giriş yapabilirsiniz.
+            <div class="auth-field">
+                <div class="auth-label-row">
+                    <RadzenLabel Text="Şifre *" Component="Sifre" Style="margin:0;" />
+                    <a class="auth-forgot-link" href="/sifremi-unuttum">Şifremi unuttum</a>
+                </div>
+                <TogglePasswordField @bind-Value="model.Sifre" Name="Sifre"
+                                     HatalariGoster="@hatalariGoster"
+                                     Placeholder="••••••••" Disabled="@girisIsBusy" />
+                <RadzenRequiredValidator Component="Sifre" Text="Şifre zorunludur." Style="display:block" />
             </div>
-        }
 
-        <div class="auth-field">
-            <RadzenLabel Text="E-posta" Component="Eposta" />
-            <RadzenTextBox @bind-Value="model.Eposta" Name="Eposta"
-                           Placeholder="ornek@mail.com"
-                           Style="width:100%;" Disabled="@girisIsBusy" />
-        </div>
-
-        <div class="auth-field">
-            <div class="auth-label-row">
-                <RadzenLabel Text="Şifre" Component="Sifre" Style="margin:0;" />
-                <a class="auth-forgot-link" href="/sifremi-unuttum">Şifremi unuttum</a>
+            <div class="auth-remember-row" style="display:flex; align-items:center; gap:0.5rem;">
+                <RadzenCheckBox @bind-Value="model.BeniHatirla" Name="BeniHatirla" Disabled="@girisIsBusy" />
+                <RadzenLabel Text="Beni hatırla" Component="BeniHatirla" Style="margin:0; cursor:pointer;" />
             </div>
-            <TogglePasswordField @bind-Value="model.Sifre" Name="Sifre"
-                                 Placeholder="••••••••" Disabled="@girisIsBusy" />
+
+            @if (!string.IsNullOrEmpty(girisHata))
+            {
+                <RadzenAlert AlertStyle="AlertStyle.Danger" Variant="Variant.Flat" AllowClose="false"
+                            Style="margin-bottom:0.75rem;">@girisHata</RadzenAlert>
+            }
+
+            <RadzenButton ButtonType="ButtonType.Submit" Text="Giriş yap" Icon="login"
+                          ButtonStyle="ButtonStyle.Primary"
+                          IsBusy="@girisIsBusy" BusyText="Giriş yapılıyor…" Disabled="@girisIsBusy" />
         </div>
-
-        <div class="auth-remember-row" style="display:flex; align-items:center; gap:0.5rem;">
-            <RadzenCheckBox @bind-Value="model.BeniHatirla" Name="BeniHatirla" Disabled="@girisIsBusy" />
-            <RadzenLabel Text="Beni hatırla" Component="BeniHatirla" Style="margin:0; cursor:pointer;" />
-        </div>
-
-        @if (!string.IsNullOrEmpty(girisHata))
-        {
-            <RadzenAlert AlertStyle="AlertStyle.Danger" Variant="Variant.Flat" AllowClose="false"
-                        Style="margin-bottom:0.75rem;">@girisHata</RadzenAlert>
-        }
-
-        <RadzenButton Click="@GirisYapAsync" IsBusy="@girisIsBusy" BusyText="Giriş yapılıyor…"
-                      Disabled="@girisIsBusy" class="auth-btn-primary">
-            <i class="fa-solid fa-power-off"></i> GİRİŞ YAP
-        </RadzenButton>
-    </div>
+    </RadzenTemplateForm>
 
     <div class="auth-card__footer">
         Hesabınız yok mu? <a href="/register">Kayıt olun</a>
@@ -90,6 +94,7 @@
     private LoginModel model = new();
     private string girisHata = string.Empty;
     private bool girisIsBusy;
+    private bool hatalariGoster;
 
     protected override void OnInitialized()
     {
@@ -106,23 +111,14 @@
             girisHata = Error;
     }
 
-    private async Task GirisYapAsync()
+    private void OnInvalidSubmit() => hatalariGoster = true;
+
+    private async Task OnSubmitAsync()
     {
         girisHata = string.Empty;
-
-        if (string.IsNullOrWhiteSpace(model.Eposta) || string.IsNullOrWhiteSpace(model.Sifre))
-        {
-            girisHata = "E-posta ve şifre zorunludur.";
-            return;
-        }
+        hatalariGoster = true;
 
         var eposta = model.Eposta.Trim();
-        if (!MailAddress.TryCreate(eposta, out _))
-        {
-            girisHata = "Geçerli bir e-posta giriniz.";
-            return;
-        }
-
         girisIsBusy = true;
         var postSubmitted = false;
         try

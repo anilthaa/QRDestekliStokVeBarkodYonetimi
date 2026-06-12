@@ -36,7 +36,13 @@ else
         </div>
     </div>
 
-    @if (kullaniciTip is null)
+    @if (yukleniyor && kullaniciTip is null)
+    {
+        <div style="display:flex; justify-content:center; padding:3rem;">
+            <RadzenProgressBarCircular ShowValue="false" Mode="ProgressBarMode.Indeterminate" Size="ProgressBarCircularSize.Large" />
+        </div>
+    }
+    else if (kullaniciTip is null)
     {
         <RadzenAlert AlertStyle="AlertStyle.Warning" ShowIcon="true">Kullanıcı tipi bulunamadı.</RadzenAlert>
     }
@@ -109,7 +115,7 @@ else
     [Parameter] public int KullaniciTipId { get; set; }
 
     private bool authChecked = false;
-    private bool yukleniyor  = false;
+    private bool yukleniyor  = true;
     private bool yazmaYetkisi = false;
 
     private ItemKullaniciTip?    kullaniciTip;
@@ -131,6 +137,7 @@ else
             return;
         }
         yazmaYetkisi = YetkiSvc.HasYazma("/kullanici-tip-yetki");
+        yukleniyor = true;
         authChecked = true;
         await LoadAsync();
     }

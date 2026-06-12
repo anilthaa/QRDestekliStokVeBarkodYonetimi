@@ -27,23 +27,27 @@
             <i class="fa-solid fa-image"></i> QR veya barkod içeren PNG, JPEG, SVG, WebP veya GIF dosyası seçin.
             Ürün listesinden indirdiğiniz <strong>barkod_… .png</strong> dosyasını doğrudan kullanabilirsiniz.
         </div>
-        <div class="stok-tarama-dosya-satir">
+        <div class="stok-tarama-dosya-alan">
             <InputFile id="@dosyaInputId" OnChange="@OnDosyaSecildi"
                        accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml,.jpg,.jpeg,.png,.webp,.gif,.svg"
-                       class="stok-tarama-dosya-input"
+                       style="display:none;"
                        disabled="@dosyaYukleniyor" />
-            <label for="@dosyaInputId" class="stok-tarama-dosya-label @(dosyaYukleniyor ? "stok-tarama-dosya-label--disabled" : "")">
+            <label for="@dosyaInputId"
+                   class="stok-tarama-dosya-label @(dosyaYukleniyor ? "stok-tarama-dosya-label--disabled" : "")">
                 <RadzenButton Text="@(dosyaYukleniyor ? "Okunuyor..." : "Görsel Seç")"
-                              Icon="folder_open" ButtonStyle="@AraButtonStyle"
-                              Disabled="@dosyaYukleniyor" Style="pointer-events:none;" />
+                              Icon="folder_open"
+                              ButtonStyle="@AraButtonStyle"
+                              Disabled="@dosyaYukleniyor"
+                              Style="width:100%; pointer-events:none;" />
             </label>
-        </div>
-        @if (!string.IsNullOrWhiteSpace(secilenDosyaAdi))
-        {
-            <div class="stok-tarama-dosya-adi">
-                <i class="fa-solid fa-file-image"></i> @secilenDosyaAdi
+            <div class="stok-tarama-dosya-adi @(string.IsNullOrWhiteSpace(secilenDosyaAdi) ? "stok-tarama-dosya-adi--bos" : "")">
+                @if (!string.IsNullOrWhiteSpace(secilenDosyaAdi))
+                {
+                    <i class="fa-solid fa-file-image"></i>
+                }
+                @(string.IsNullOrWhiteSpace(secilenDosyaAdi) ? "Dosya seçilmedi" : secilenDosyaAdi)
             </div>
-        }
+        </div>
         @if (!string.IsNullOrWhiteSpace(dosyaHata))
         {
             <RadzenAlert AlertStyle="AlertStyle.Danger" Style="margin-top:0.5rem;">@dosyaHata</RadzenAlert>
@@ -107,6 +111,7 @@
     private async Task OnModDegisti()
     {
         dosyaHata = null;
+        secilenDosyaAdi = null;
         if (taramaModu != ModKamera && kameraAcik)
             await KameraKapat();
     }

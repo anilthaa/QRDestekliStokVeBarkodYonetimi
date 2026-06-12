@@ -1,5 +1,8 @@
 @page "/sifre-sifirla"
 @layout QRDestekliStokVeBarkodYonetimi.Components.Layout.AuthLayout
+@rendermode InteractiveServer
+
+@inject SifreSifirlamaTokenService TokenSvc
 
 <PageTitle>Yeni şifre belirle</PageTitle>
 
@@ -24,30 +27,52 @@
             <a href="/login">Giriş sayfasına dön</a>
         </div>
     }
+    else if (!TokenSvc.TryPeekValidToken(Token, out _))
+    {
+        <div class="auth-message auth-message--danger">
+            Bağlantı geçersiz veya süresi dolmuş. Lütfen yeni şifre sıfırlama talebi oluşturun.
+        </div>
+        <div class="auth-card__footer">
+            <a href="/sifremi-unuttum">Yeni bağlantı iste</a>
+        </div>
+    }
     else
     {
-        <form method="post" action="/api/auth/reset-password" class="auth-form">
-            <input type="hidden" name="Token" value="@Token" />
+        <RadzenTemplateForm TItem="SifreSifirlaModel" Data="@model" Submit="@OnSubmitAsync" InvalidSubmit="@OnInvalidSubmit">
+            <div class="auth-form">
+                <div class="auth-field">
+                    <RadzenLabel Text="Yeni şifre" Component="YeniSifre" />
+                    <TogglePasswordField @bind-Value="model.YeniSifre" Name="YeniSifre"
+                                         HatalariGoster="@hatalariGoster"
+                                         Placeholder="En az 6 karakter" Disabled="@isBusy" />
+                    <RadzenRequiredValidator Component="YeniSifre" Text="Şifre zorunludur." Style="display:block" />
+                    <RadzenCustomValidator Component="YeniSifre"
+                                           Validator="@(() => string.IsNullOrEmpty(model.YeniSifre) || model.YeniSifre.Length >= 6)"
+                                           Text="Şifre en az 6 karakter olmalıdır." Style="display:block" />
+                </div>
 
-            <div class="auth-field">
-                <label class="rz-label" for="YeniSifre">Yeni şifre</label>
-                <AuthPasswordInput Id="YeniSifre" Name="YeniSifre" Placeholder="En az 6 karakter" MinLength="6" />
+                <div class="auth-field">
+                    <RadzenLabel Text="Yeni şifre (tekrar)" Component="YeniSifreTekrar" />
+                    <TogglePasswordField @bind-Value="model.YeniSifreTekrar" Name="YeniSifreTekrar"
+                                         HatalariGoster="@hatalariGoster"
+                                         Disabled="@isBusy" />
+                    <RadzenRequiredValidator Component="YeniSifreTekrar" Text="Tekrar şifre zorunludur." Style="display:block" />
+                    <RadzenCustomValidator Component="YeniSifreTekrar"
+                                           Validator="@(() => string.IsNullOrEmpty(model.YeniSifreTekrar) || model.YeniSifre == model.YeniSifreTekrar)"
+                                           Text="Şifreler eşleşmiyor." Style="display:block" />
+                </div>
+
+                @if (!string.IsNullOrEmpty(sunucuHata))
+                {
+                    <RadzenAlert AlertStyle="AlertStyle.Danger" Variant="Variant.Flat" AllowClose="false"
+                                Style="margin-bottom:0.75rem;">@sunucuHata</RadzenAlert>
+                }
+
+                <RadzenButton ButtonType="ButtonType.Submit" Text="Şifreyi kaydet" Icon="check"
+                              ButtonStyle="ButtonStyle.Primary"
+                              IsBusy="@isBusy" BusyText="Kaydediliyor…" Disabled="@isBusy" />
             </div>
-
-            <div class="auth-field">
-                <label class="rz-label" for="YeniSifreTekrar">Yeni şifre (tekrar)</label>
-                <AuthPasswordInput Id="YeniSifreTekrar" Name="YeniSifreTekrar" MinLength="6" />
-            </div>
-
-            @if (!string.IsNullOrEmpty(Error))
-            {
-                <div class="auth-message auth-message--danger">@Error</div>
-            }
-
-            <button type="submit" class="auth-btn-primary">
-                <i class="fa-solid fa-check"></i> ŞİFREYİ KAYDET
-            </button>
-        </form>
+        </RadzenTemplateForm>
 
         <div class="auth-card__footer">
             <a href="/login">Giriş sayfasına dön</a>
@@ -56,6 +81,55 @@
 </div>
 
 @code {
+    private sealed class SifreSifirlaModel
+    {
+        public string YeniSifre { get; set; } = string.Empty;
+        public string YeniSifreTekrar { get; set; } = string.Empty;
+    }
+
     [SupplyParameterFromQuery] public string? Token { get; set; }
     [SupplyParameterFromQuery] public string? Error { get; set; }
+
+    private SifreSifirlaModel model = new();
+    private bool isBusy;
+    private bool hatalariGoster;
+    private string? sunucuHata;
+
+    private void OnInvalidSubmit() => hatalariGoster = true;
+
+    private async Task OnSubmitAsync()
+    {
+        sunucuHata = null;
+        hatalariGoster = true;
+
+        if (string.IsNullOrWhiteSpace(Token) || !TokenSvc.TryPeekValidToken(Token, out var userId))
+        {
+            sunucuHata = "Bağlantı geçersiz veya süresi dolmuş. Lütfen yeni şifre sıfırlama talebi oluşturun.";
+            return;
+        }
+
+        isBusy = true;
+        try
+        {
+            var result = await DataSvc.SifreSifirlaTokenIle(userId, model.YeniSifre);
+            if (result.SonucKodu < 0)
+            {
+                sunucuHata = string.IsNullOrEmpty(result.SonucAciklama)
+                    ? "Şifre güncellenemedi."
+                    : result.SonucAciklama;
+                return;
+            }
+
+            TokenSvc.TryConsume(Token, out _);
+            NavigationManager.NavigateTo("/login?sifirlandi=1");
+        }
+        catch (Exception ex)
+        {
+            sunucuHata = "Beklenmeyen hata: " + ex.Message;
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
 }

@@ -8,7 +8,7 @@ public class UrunMetinDogrulamaTests
     private static ItemUrun GecerliUrun() => new()
     {
         UrunKodu = new string('K', UrunAlanSinirlari.UrunKodu),
-        BarkodNo = new string('B', UrunAlanSinirlari.BarkodNo),
+        BarkodNo = new string('1', UrunAlanSinirlari.BarkodNo),
         Ad = new string('A', UrunAlanSinirlari.Ad),
         Aciklama = new string('C', UrunAlanSinirlari.Aciklama)
     };
@@ -39,6 +39,16 @@ public class UrunMetinDogrulamaTests
 
         Assert.True(UrunMetinDogrulama.SinirAsildi(urun));
         Assert.Contains("Ürün adı", UrunMetinDogrulama.IlkHata(urun));
+    }
+
+    [Fact]
+    public void SinirAsildi_BarkodNoHarf_HataDondurur()
+    {
+        var urun = GecerliUrun();
+        urun.BarkodNo = "ABC123";
+
+        Assert.True(UrunMetinDogrulama.SinirAsildi(urun));
+        Assert.Contains("Barkod no yalnızca rakam", UrunMetinDogrulama.IlkHata(urun));
     }
 
     [Fact]

@@ -18,9 +18,8 @@
         Yöneticinizle iletişime geçerek gerekli yetkilerin tanımlanmasını isteyebilirsiniz.
     </div>
 
-    <RadzenButton Click="@(() => Nav.NavigateTo("/"))" class="auth-btn-primary">
-        <i class="fa-solid fa-house"></i> ANA SAYFAYA DÖN
-    </RadzenButton>
+    <RadzenButton Text="Ana sayfaya dön" Icon="home" ButtonStyle="ButtonStyle.Primary"
+                  Click="@(() => Nav.NavigateTo("/"))" />
 
     <div class="auth-card__footer">
         <a href="/login">Giriş yap</a>

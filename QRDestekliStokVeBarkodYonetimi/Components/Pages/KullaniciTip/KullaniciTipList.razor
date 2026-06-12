@@ -184,6 +184,7 @@ else
                     await OnDuzenleClick(row);
                     break;
                 case "yetki":
+                    ContextMenuSvc.Close();
                     Nav.NavigateTo($"/kullanici-tip-yetki/{row.ID}");
                     break;
                 case "sil":
