@@ -8,49 +8,64 @@
     <AuthCardHeader Title="Yeni Hesap Oluştur"
                     Subtitle="Stok yönetim paneline erişmek için kaydolun" />
 
-    <div class="auth-form">
-        <div class="auth-row">
-            <div class="auth-field">
-                <RadzenLabel Text="Ad" Component="Ad" />
-                <RadzenTextBox @bind-Value="model.Ad" Name="Ad" Style="width:100%;" Disabled="@kayitIsBusy" />
+    <RadzenTemplateForm TItem="RegisterModel" Data="@model" Submit="@OnSubmitAsync" InvalidSubmit="@OnInvalidSubmit">
+        <div class="auth-form">
+            <div class="auth-row">
+                <div class="auth-field">
+                    <RadzenLabel Text="Ad *" Component="Ad" />
+                    <RadzenTextBox @bind-Value="model.Ad" Name="Ad" Style="width:100%;" Disabled="@kayitIsBusy" />
+                    <RadzenRequiredValidator Component="Ad" Text="Ad zorunludur." Style="display:block" />
+                </div>
+
+                <div class="auth-field">
+                    <RadzenLabel Text="Soyad *" Component="Soyad" />
+                    <RadzenTextBox @bind-Value="model.Soyad" Name="Soyad" Style="width:100%;" Disabled="@kayitIsBusy" />
+                    <RadzenRequiredValidator Component="Soyad" Text="Soyad zorunludur." Style="display:block" />
+                </div>
             </div>
 
             <div class="auth-field">
-                <RadzenLabel Text="Soyad" Component="Soyad" />
-                <RadzenTextBox @bind-Value="model.Soyad" Name="Soyad" Style="width:100%;" Disabled="@kayitIsBusy" />
+                <RadzenLabel Text="E-posta *" Component="Eposta" />
+                <RadzenTextBox @bind-Value="model.Eposta" Name="Eposta"
+                               Placeholder="ornek@mail.com"
+                               Style="width:100%;" Disabled="@kayitIsBusy" />
+                <RadzenRequiredValidator Component="Eposta" Text="E-posta zorunludur." Style="display:block" />
+                <RadzenEmailValidator Component="Eposta" Text="Geçerli bir e-posta giriniz." Style="display:block" />
             </div>
+
+            <div class="auth-field">
+                <RadzenLabel Text="Şifre *" Component="Sifre" />
+                <TogglePasswordField @bind-Value="model.Sifre" Name="Sifre"
+                                     HatalariGoster="@hatalariGoster"
+                                     Placeholder="En az 6 karakter" Disabled="@kayitIsBusy" />
+                <RadzenRequiredValidator Component="Sifre" Text="Şifre zorunludur." Style="display:block" />
+                <RadzenCustomValidator Component="Sifre"
+                                       Validator="@(() => string.IsNullOrEmpty(model.Sifre) || model.Sifre.Length >= 6)"
+                                       Text="Şifre en az 6 karakter olmalıdır." Style="display:block" />
+            </div>
+
+            <div class="auth-field">
+                <RadzenLabel Text="Şifre (Tekrar) *" Component="SifreTekrar" />
+                <TogglePasswordField @bind-Value="model.SifreTekrar" Name="SifreTekrar"
+                                     HatalariGoster="@hatalariGoster"
+                                     Disabled="@kayitIsBusy" />
+                <RadzenRequiredValidator Component="SifreTekrar" Text="Tekrar şifre zorunludur." Style="display:block" />
+                <RadzenCustomValidator Component="SifreTekrar"
+                                       Validator="@(() => string.IsNullOrEmpty(model.SifreTekrar) || model.Sifre == model.SifreTekrar)"
+                                       Text="Şifreler eşleşmiyor." Style="display:block" />
+            </div>
+
+            @if (!string.IsNullOrEmpty(kayitHata))
+            {
+                <RadzenAlert AlertStyle="AlertStyle.Danger" Variant="Variant.Flat" AllowClose="false"
+                            Style="margin-bottom:0.75rem;">@kayitHata</RadzenAlert>
+            }
+
+            <RadzenButton ButtonType="ButtonType.Submit" Text="Kayıt ol" Icon="person_add"
+                          ButtonStyle="ButtonStyle.Primary"
+                          IsBusy="@kayitIsBusy" BusyText="Kaydediliyor…" Disabled="@kayitIsBusy" />
         </div>
-
-        <div class="auth-field">
-            <RadzenLabel Text="E-posta" Component="Eposta" />
-            <RadzenTextBox @bind-Value="model.Eposta" Name="Eposta"
-                           Placeholder="ornek@mail.com"
-                           Style="width:100%;" Disabled="@kayitIsBusy" />
-        </div>
-
-        <div class="auth-field">
-            <RadzenLabel Text="Şifre" Component="Sifre" />
-            <TogglePasswordField @bind-Value="model.Sifre" Name="Sifre"
-                                 Placeholder="En az 6 karakter" Disabled="@kayitIsBusy" />
-        </div>
-
-        <div class="auth-field">
-            <RadzenLabel Text="Şifre (Tekrar)" Component="SifreTekrar" />
-            <TogglePasswordField @bind-Value="model.SifreTekrar" Name="SifreTekrar"
-                                 Disabled="@kayitIsBusy" />
-        </div>
-
-        @if (!string.IsNullOrEmpty(kayitHata))
-        {
-            <RadzenAlert AlertStyle="AlertStyle.Danger" Variant="Variant.Flat" AllowClose="false"
-                        Style="margin-bottom:0.75rem;">@kayitHata</RadzenAlert>
-        }
-
-        <RadzenButton Click="@KayitOlAsync" IsBusy="@kayitIsBusy" BusyText="Kaydediliyor…"
-                      Disabled="@kayitIsBusy" class="auth-btn-primary">
-            <i class="fa-solid fa-user-plus"></i> KAYIT OL
-        </RadzenButton>
-    </div>
+    </RadzenTemplateForm>
 
     <div class="auth-card__footer">
         Zaten hesabınız var mı? <a href="/login">Giriş yapın</a>
@@ -72,6 +87,7 @@
     private RegisterModel model = new();
     private string kayitHata = string.Empty;
     private bool kayitIsBusy;
+    private bool hatalariGoster;
 
     protected override void OnParametersSet()
     {
@@ -79,24 +95,12 @@
             kayitHata = Error;
     }
 
-    private async Task KayitOlAsync()
+    private void OnInvalidSubmit() => hatalariGoster = true;
+
+    private async Task OnSubmitAsync()
     {
         kayitHata = string.Empty;
-
-        var hata =
-            string.IsNullOrWhiteSpace(model.Ad) ? "Ad zorunludur." :
-            string.IsNullOrWhiteSpace(model.Soyad) ? "Soyad zorunludur." :
-            string.IsNullOrWhiteSpace(model.Eposta) ? "E-posta zorunludur." :
-            string.IsNullOrWhiteSpace(model.Sifre) ? "Şifre zorunludur." :
-            model.Sifre.Length < 6 ? "Şifre en az 6 karakter olmalıdır." :
-            model.Sifre != model.SifreTekrar ? "Şifreler eşleşmiyor." :
-            null;
-
-        if (hata is not null)
-        {
-            kayitHata = hata;
-            return;
-        }
+        hatalariGoster = true;
 
         kayitIsBusy = true;
         try

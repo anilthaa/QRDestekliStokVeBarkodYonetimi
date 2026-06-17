@@ -18,6 +18,9 @@ public static class UrunMetinDogrulama
 
     public static string? IlkHata(ItemUrun urun)
     {
+        if (!string.IsNullOrEmpty(urun.BarkodNo) && !urun.BarkodNo.All(char.IsDigit))
+            return "Barkod no yalnızca rakam içerebilir.";
+
         foreach (var (property, label) in KontrolAlanlari)
         {
             var max = UrunAlanSinirlari.Sinir(property);

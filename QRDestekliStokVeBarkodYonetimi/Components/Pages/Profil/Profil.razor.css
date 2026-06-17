@@ -9,9 +9,13 @@
     padding: 0 1rem 2.5rem;
 }
 
-.profil-hero {
+.profil-hero ::deep .rz-card {
+    background-color: #2d3748;
+    color: #fff;
+    padding: 2rem;
     border-radius: 16px;
-    box-shadow: 0 4px 24px rgba(99, 102, 241, 0.22);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18);
+    border: none;
 }
 
 .profil-avatar {
@@ -92,13 +96,9 @@
     border-bottom: 1px solid var(--rz-border-color);
 }
 
-.profil-form-card ::deep .password-field .rz-inputtext {
-    width: 100%;
-}
-
 .profil-field-error {
     display: block;
     margin-top: 0.25rem;
     font-size: 0.82rem;
-    color: var(--rz-danger);
+    color: var(--rz-danger, #c62828);
 }

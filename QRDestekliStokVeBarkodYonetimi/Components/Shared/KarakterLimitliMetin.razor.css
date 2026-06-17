@@ -26,3 +26,8 @@
 .karakter-limitli-metin__hint {
     color: var(--rz-text-secondary-color, #9ca3af);
 }
+
+.karakter-limitli-metin__error {
+    font-size: 0.78rem;
+    color: var(--rz-danger, #c62828);
+}

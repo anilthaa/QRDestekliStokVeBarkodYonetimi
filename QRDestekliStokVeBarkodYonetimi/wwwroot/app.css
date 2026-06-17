@@ -183,6 +183,18 @@ h1:focus {
     gap: 0.4rem;
 }
 
+.form-field-error {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.82rem;
+    color: var(--rz-danger, #c62828);
+}
+
+.form-shell ::deep .rz-message,
+.auth-form ::deep .rz-message {
+    display: block;
+}
+
 .form-shell .form-check-row,
 .form-shell .auth-remember-row,
 .auth-form .form-check-row,
@@ -254,80 +266,14 @@ h1:focus {
     width: 100%;
 }
 
-/* Basit inputlar: textbox, password, textarea */
-.form-shell .rz-textbox .rz-inputtext,
-.form-shell .rz-password .rz-inputtext,
-.form-shell .rz-textarea .rz-inputtext,
-.auth-form .rz-textbox .rz-inputtext,
-.auth-form .rz-password .rz-inputtext,
-.auth-form .rz-textarea .rz-inputtext {
-    width: 100%;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    padding: 0.55rem 0.75rem;
-    font-size: 0.9rem;
-    box-shadow: none;
-    box-sizing: border-box;
-}
-
-.form-shell .rz-textbox .rz-inputtext:focus,
-.form-shell .rz-password .rz-inputtext:focus,
-.form-shell .rz-textarea .rz-inputtext:focus,
-.auth-form .rz-textbox .rz-inputtext:focus,
-.auth-form .rz-password .rz-inputtext:focus,
-.auth-form .rz-textarea .rz-inputtext:focus {
-    border-color: #6366f1;
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
-}
-
-/* Bileşik inputlar: dropdown — tek dış border, metin sola hizalı */
-.form-shell .rz-dropdown,
-.auth-form .rz-dropdown {
-    display: inline-flex;
-    flex-direction: column;
-    text-align: start;
-    position: relative;
-    width: 100%;
-    height: 2.5rem;
-    min-height: 2.5rem;
-    padding-block: 0;
-    padding-inline: 0.75rem;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    box-shadow: none;
-    box-sizing: border-box;
-    overflow: hidden;
-}
-
-.form-shell .rz-dropdown:focus-within,
-.auth-form .rz-dropdown:focus-within {
-    border-color: #6366f1;
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
-}
-
+/* Dropdown/numeric: çift border önleme (yalnızca yapısal) */
 .form-shell .rz-dropdown .rz-dropdown-label,
 .form-shell .rz-dropdown .rz-inputtext,
 .auth-form .rz-dropdown .rz-dropdown-label,
 .auth-form .rz-dropdown .rz-inputtext {
-    display: block;
-    width: 100%;
-    min-width: 0;
-    padding: 0;
-    padding-inline-start: 0;
-    padding-inline-end: 2.75rem;
     border: none;
-    border-radius: 0;
     box-shadow: none;
     background: transparent;
-    font-size: 0.9rem;
-    line-height: 2.5rem;
-    text-align: start;
-    box-sizing: border-box;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
 }
 
 .form-shell .rz-dropdown .rz-inputtext:focus,
@@ -339,42 +285,16 @@ h1:focus {
 
 .form-shell .rz-dropdown .rz-dropdown-trigger,
 .auth-form .rz-dropdown .rz-dropdown-trigger {
-    position: absolute;
     border: none;
     background: transparent;
     box-shadow: none;
-}
-
-/* Bileşik inputlar: numeric — tek dış border */
-.form-shell .rz-numeric,
-.auth-form .rz-numeric {
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    box-shadow: none;
-    min-height: 2.5rem;
-    align-items: center;
-    box-sizing: border-box;
-}
-
-.form-shell .rz-numeric:focus-within,
-.auth-form .rz-numeric:focus-within {
-    border-color: #6366f1;
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
 }
 
 .form-shell .rz-numeric .rz-inputtext,
 .auth-form .rz-numeric .rz-inputtext {
-    width: 100%;
     border: none;
-    border-radius: 0;
     box-shadow: none;
     background: transparent;
-    padding-block: 0;
-    padding-inline: 0.75rem;
-    font-size: 0.9rem;
-    line-height: 1.25;
-    box-sizing: border-box;
 }
 
 .form-shell .rz-numeric .rz-inputtext:focus,
@@ -391,81 +311,9 @@ h1:focus {
     box-shadow: none;
 }
 
-.form-shell .password-field .rz-inputtext,
-.auth-form .password-field .rz-inputtext {
-    padding-right: 2.5rem;
-}
-
 .form-shell .rz-alert,
 .auth-form .rz-alert {
-    border-radius: 8px;
     font-size: 0.88rem;
-}
-
-.form-shell input[type="email"],
-.form-shell input[type="password"],
-.form-shell input[type="text"],
-.auth-form input[type="email"],
-.auth-form input[type="password"],
-.auth-form input[type="text"] {
-    width: 100%;
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-    padding: 0.55rem 0.75rem;
-    font-size: 0.9rem;
-    box-sizing: border-box;
-}
-
-.form-shell input[type="email"]:focus,
-.form-shell input[type="password"]:focus,
-.form-shell input[type="text"]:focus,
-.auth-form input[type="email"]:focus,
-.auth-form input[type="password"]:focus,
-.auth-form input[type="text"]:focus {
-    border-color: #6366f1;
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.2);
-}
-
-/* ── Şifre göster/gizle ─────────────────────────────────────── */
-.password-field {
-    position: relative;
-    width: 100%;
-}
-
-.password-field input {
-    width: 100%;
-    padding-right: 2.5rem !important;
-    box-sizing: border-box;
-}
-
-.password-toggle-btn {
-    position: absolute;
-    right: 0.35rem;
-    top: 50%;
-    transform: translateY(-50%);
-    z-index: 2;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    width: 2rem;
-    height: 2rem;
-    padding: 0;
-    border: none;
-    background: transparent;
-    color: #64748b;
-    cursor: pointer;
-    border-radius: 4px;
-}
-
-.password-toggle-btn:hover:not(:disabled) {
-    color: #1b6ec2;
-    background: rgba(27, 110, 194, 0.08);
-}
-
-.password-toggle-btn:disabled {
-    opacity: 0.45;
-    cursor: not-allowed;
 }
 
 /* ── DataGrid filtre operatör toggle ─────────────────────────── */
@@ -578,6 +426,16 @@ h1:focus {
         overflow-y: auto;
         max-height: calc(100dvh - 9rem);
     }
+}
+
+/* Radzen DataGrid: kolon başlıkları her zaman sola; hücre hizası TextAlign ile kalır */
+.rz-grid-table thead th {
+    text-align: left !important;
+}
+
+.rz-grid-table thead th .rz-column-title {
+    justify-content: flex-start !important;
+    text-align: left !important;
 }
 
 th.grid-sira-kolon {

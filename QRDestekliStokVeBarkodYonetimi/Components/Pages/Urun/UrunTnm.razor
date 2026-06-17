@@ -5,7 +5,7 @@
 @inject QrService QrSvc
 @inject IWebHostEnvironment Env
 
-<RadzenTemplateForm TItem="ItemUrun" Data="@model" Submit="@OnSubmitAsync">
+<RadzenTemplateForm TItem="ItemUrun" Data="@model" Submit="@OnSubmitAsync" InvalidSubmit="@OnInvalidSubmit">
 
     <div class="form-shell form-shell--wide rz-p-4">
 
@@ -13,15 +13,17 @@
             <div class="form-field">
                 <KarakterLimitliMetin Label="Ürün Kodu" Name="UrunKodu" @bind-Value="model.UrunKodu"
                                       MaxLength="@UrunAlanSinirlari.UrunKodu" Required="true"
-                                      Placeholder="Ürün kodu giriniz" Disabled="@isBusy" />
+                                      Placeholder="Ürün kodu giriniz" Disabled="@isBusy"
+                                      HatalariGoster="@hatalariGoster" />
             </div>
             <div class="form-field">
                 <RadzenLabel Text="Barkod No" Component="BarkodNo" />
                 <div style="display:flex; gap:0.4rem; align-items:flex-start;">
                     <div style="flex:1; min-width:0;">
                         <KarakterLimitliMetin Name="BarkodNo" @bind-Value="model.BarkodNo" ShowLabel="false"
-                                              MaxLength="@UrunAlanSinirlari.BarkodNo"
-                                              Placeholder="Barkod numarası" Disabled="@isBusy" Style="width:100%" />
+                                              MaxLength="@UrunAlanSinirlari.BarkodNo" DigitsOnly="true"
+                                              Placeholder="Barkod numarası" Disabled="@isBusy" Style="width:100%"
+                                              HatalariGoster="@hatalariGoster" />
                     </div>
                     <RadzenButton Icon="casino" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small"
                                   Variant="Variant.Flat" title="Rastgele barkod oluştur"
@@ -34,13 +36,15 @@
         <div class="form-field">
             <KarakterLimitliMetin Label="Ürün Adı" Name="Ad" @bind-Value="model.Ad"
                                   MaxLength="@UrunAlanSinirlari.Ad" Required="true"
-                                  Placeholder="Ürün adı giriniz" Disabled="@isBusy" />
+                                  Placeholder="Ürün adı giriniz" Disabled="@isBusy"
+                                  HatalariGoster="@hatalariGoster" />
         </div>
 
         <div class="form-field">
             <KarakterLimitliMetin Label="Açıklama" Name="Aciklama" @bind-Value="model.Aciklama"
                                   MaxLength="@UrunAlanSinirlari.Aciklama" Multiline="true" Rows="3"
-                                  Placeholder="Açıklama (opsiyonel)" Disabled="@isBusy" />
+                                  Placeholder="Açıklama (opsiyonel)" Disabled="@isBusy"
+                                  HatalariGoster="@hatalariGoster" />
         </div>
 
         <div class="form-row">
@@ -137,7 +141,7 @@
                           Click="@OnCancel" Disabled="@isBusy" />
             <RadzenButton ButtonType="ButtonType.Submit" Text="Kaydet" Icon="save"
                           IsBusy="@isBusy" BusyText="Kaydediliyor..."
-                          Disabled="@(isBusy || metinSinirlariAsildi)" />
+                          Disabled="@isBusy" />
         </div>
 
     </div>
@@ -149,6 +153,7 @@
 
     private ItemUrun model = new() { Stok = 0, KritikStokSeviyesi = 0 };
     private bool isBusy;
+    private bool hatalariGoster;
     private string? errorMessage;
     private bool resimYukleniyor;
     private string? resimHata;
@@ -272,9 +277,15 @@
         model.BarkodNo = QrSvc.GenerateRandomBarkod();
     }
 
+    private void OnInvalidSubmit()
+    {
+        hatalariGoster = true;
+    }
+
     private async Task OnSubmitAsync()
     {
         errorMessage = null;
+        hatalariGoster = true;
 
         if (metinSinirlariAsildi)
         {

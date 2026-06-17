@@ -1,6 +1,6 @@
 @implements IAsyncDisposable
 
-<div class="karakter-limitli-metin" id="@kokId" data-char-count-root>
+<div class="karakter-limitli-metin" id="@kokId" data-char-count-root @onfocusout="OnBlur">
     @if (ShowLabel && !string.IsNullOrEmpty(Label))
     {
         <RadzenLabel Text="@LabelMetni" Component="@Name" />
@@ -34,6 +34,11 @@
         <span class="karakter-limitli-metin__hint">En fazla @MaxLength karakter</span>
     </div>
 
+    @if (!string.IsNullOrEmpty(GorunenHataMetni))
+    {
+        <span class="karakter-limitli-metin__error">@GorunenHataMetni</span>
+    }
+
     @if (Required)
     {
         <RadzenRequiredValidator Component="@Name" Text="@ZorunluMesaj" Style="display:block" />
@@ -43,9 +48,19 @@
                            Validator="@(() => !Asildi)"
                            Text="@SinirMesaji"
                            Style="display:block" />
+
+    @if (DigitsOnly)
+    {
+        <RadzenCustomValidator Component="@Name"
+                               Validator="@(() => string.IsNullOrEmpty(gorunenDeger) || gorunenDeger.All(char.IsDigit))"
+                               Text="Yalnızca rakam giriniz."
+                               Style="display:block" />
+    }
 </div>
 
 @code {
+    [CascadingParameter] private EditContext? EditContext { get; set; }
+
     [Parameter] public string Name { get; set; } = string.Empty;
     [Parameter] public string? Label { get; set; }
     [Parameter] public bool ShowLabel { get; set; } = true;
@@ -57,14 +72,29 @@
     [Parameter] public int Rows { get; set; } = 3;
     [Parameter] public string? Placeholder { get; set; }
     [Parameter] public bool Disabled { get; set; }
+    [Parameter] public bool DigitsOnly { get; set; }
+    [Parameter] public bool HatalariGoster { get; set; }
     [Parameter] public string Style { get; set; } = "width:100%";
 
     private readonly string kokId = $"klm-{Guid.NewGuid():N}";
     private string? gorunenDeger;
     private bool jsBaglandi;
+    private bool dokunuldu;
 
     private int Uzunluk => gorunenDeger?.Length ?? 0;
     private bool Asildi => Uzunluk > MaxLength;
+
+    private bool RakamHatasi =>
+        DigitsOnly && !string.IsNullOrEmpty(gorunenDeger) && !gorunenDeger.All(char.IsDigit);
+
+    private bool ZorunluHatasi =>
+        Required && string.IsNullOrWhiteSpace(gorunenDeger) && (HatalariGoster || dokunuldu);
+
+    private string? GorunenHataMetni =>
+        RakamHatasi ? "Yalnızca rakam giriniz."
+        : Asildi ? SinirMesaji
+        : ZorunluHatasi ? ZorunluMesaj
+        : null;
 
     private string LabelMetni => Required && !string.IsNullOrEmpty(Label) && !Label.Contains('*')
         ? $"{Label} *"
@@ -100,10 +130,27 @@
         }
     }
 
+    private void OnBlur()
+    {
+        dokunuldu = true;
+    }
+
     private async Task OnValueChanged(string? value)
     {
         gorunenDeger = value;
         await ValueChanged.InvokeAsync(value);
+        BildirAlanDegisti();
+        StateHasChanged();
+    }
+
+    private void BildirAlanDegisti()
+    {
+        if (EditContext is null || string.IsNullOrEmpty(Name))
+            return;
+
+        var field = new FieldIdentifier(EditContext.Model, Name);
+        EditContext.NotifyFieldChanged(field);
+        EditContext.NotifyValidationStateChanged();
     }
 
     public async ValueTask DisposeAsync()

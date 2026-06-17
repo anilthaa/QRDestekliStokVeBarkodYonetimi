@@ -136,71 +136,20 @@
     margin-bottom: 0.5rem;
 }
 
-.auth-page ::deep .auth-btn-primary {
+.auth-page ::deep .auth-form .rz-button {
+    width: 100%;
+    margin-top: 0.25rem;
+}
+
+.auth-page ::deep .auth-btn-link {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
     width: 100%;
     margin-top: 0.25rem;
-    padding: 0.75rem 1.25rem;
-    border: none;
-    border-radius: 10px;
-    background: linear-gradient(90deg, #db2777 0%, #6366f1 100%);
-    color: #ffffff;
-    font-size: 0.9rem;
-    font-weight: 700;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: filter 0.15s ease, transform 0.1s ease;
-    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
     text-decoration: none;
     box-sizing: border-box;
-}
-
-.auth-page ::deep .auth-btn-primary:hover:not(:disabled) {
-    filter: brightness(1.06);
-}
-
-.auth-page ::deep .auth-btn-primary:active:not(:disabled) {
-    transform: translateY(1px);
-}
-
-.auth-page ::deep .auth-btn-primary:disabled {
-    opacity: 0.65;
-    cursor: not-allowed;
-}
-
-.auth-page ::deep .auth-btn-primary i {
-    font-size: 1rem;
-}
-
-.auth-page ::deep .rz-button.auth-btn-primary,
-.auth-page ::deep button.auth-btn-primary.rz-button {
-    background: linear-gradient(90deg, #db2777 0%, #6366f1 100%) !important;
-    border: none !important;
-    color: #ffffff !important;
-    border-radius: 10px !important;
-    font-weight: 700 !important;
-    letter-spacing: 0.04em;
-    text-transform: uppercase;
-    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.35);
-    width: 100%;
-    margin-top: 0.25rem;
-    padding: 0.7rem 1.25rem;
-}
-
-.auth-page ::deep .rz-button.auth-btn-primary:hover:not(:disabled),
-.auth-page ::deep button.auth-btn-primary.rz-button:hover:not(:disabled) {
-    filter: brightness(1.06);
-    background: linear-gradient(90deg, #db2777 0%, #6366f1 100%) !important;
-}
-
-.auth-page ::deep .rz-button.auth-btn-primary .rz-button-text {
-    text-transform: uppercase;
-    font-weight: 700;
-    letter-spacing: 0.04em;
 }
 
 @media (max-width: 520px) {

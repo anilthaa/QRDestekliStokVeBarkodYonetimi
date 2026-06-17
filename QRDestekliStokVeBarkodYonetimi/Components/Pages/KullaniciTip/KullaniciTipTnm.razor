@@ -1,4 +1,4 @@
-<RadzenTemplateForm TItem="ItemKullaniciTip" Data="@model" Submit="@OnSubmitAsync">
+<RadzenTemplateForm TItem="ItemKullaniciTip" Data="@model" Submit="@OnSubmitAsync" InvalidSubmit="@OnInvalidSubmit">
 
     <div class="form-shell rz-p-4">
 
@@ -43,7 +43,10 @@
 
     private ItemKullaniciTip model = new() { Aktif = true };
     private bool isBusy;
+    private bool hatalariGoster;
     private string? errorMessage;
+
+    private void OnInvalidSubmit() => hatalariGoster = true;
 
     protected override void OnParametersSet()
     {
@@ -68,6 +71,7 @@
     private async Task OnSubmitAsync()
     {
         errorMessage = null;
+        hatalariGoster = true;
         isBusy = true;
         try
         {

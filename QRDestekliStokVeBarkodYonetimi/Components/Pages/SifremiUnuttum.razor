@@ -1,5 +1,9 @@
 @page "/sifremi-unuttum"
 @layout QRDestekliStokVeBarkodYonetimi.Components.Layout.AuthLayout
+@rendermode InteractiveServer
+
+@inject EmailService EmailSvc
+@inject SifreSifirlamaTokenService TokenSvc
 
 <PageTitle>Şifremi unuttum</PageTitle>
 
@@ -7,47 +11,104 @@
     <AuthCardHeader Title="Şifre sıfırlama"
                     Subtitle="Kayıtlı e-posta adresinize sıfırlama bağlantısı gönderilir" />
 
-    <form method="post" action="/api/auth/forgot-password" class="auth-form">
-        <input type="hidden" name="SiteOrigin" id="site-origin" value="" />
-        @if (!string.IsNullOrEmpty(Gonderildi))
-        {
-            <div class="auth-message auth-message--success">
-                E-posta adresiniz kayıtlıysa bir sıfırlama bağlantısı gönderdik. Gelen kutunuzu ve gerekiyorsa spam klasörünü kontrol edin.
-            </div>
-        }
-
-        <div class="auth-field">
-            <label class="rz-label" for="Eposta">E-posta</label>
-            <input id="Eposta" name="Eposta" type="email" required
-                   placeholder="ornek@mail.com" />
+    @if (gonderildi)
+    {
+        <div class="auth-message auth-message--success">
+            E-posta adresiniz kayıtlıysa bir sıfırlama bağlantısı gönderdik. Gelen kutunuzu ve gerekiyorsa spam klasörünü kontrol edin.
         </div>
+        <div class="auth-card__footer">
+            <a href="/login">Giriş sayfasına dön</a>
+        </div>
+    }
+    else
+    {
+        <RadzenTemplateForm TItem="SifremiUnuttumModel" Data="@model" Submit="@OnSubmitAsync" InvalidSubmit="@OnInvalidSubmit">
+            <div class="auth-form">
+                <div class="auth-field">
+                    <RadzenLabel Text="E-posta" Component="Eposta" />
+                    <RadzenTextBox @bind-Value="model.Eposta" Name="Eposta"
+                                   Placeholder="ornek@mail.com"
+                                   Style="width:100%;" Disabled="@isBusy" />
+                    <RadzenRequiredValidator Component="Eposta" Text="E-posta zorunludur." Style="display:block" />
+                    <RadzenEmailValidator Component="Eposta" Text="Geçerli bir e-posta giriniz." Style="display:block" />
+                </div>
 
-        @if (!string.IsNullOrEmpty(Error))
-        {
-            <div class="auth-message auth-message--danger">@Error</div>
-        }
+                @if (!string.IsNullOrEmpty(sunucuHata))
+                {
+                    <RadzenAlert AlertStyle="AlertStyle.Danger" Variant="Variant.Flat" AllowClose="false"
+                                Style="margin-bottom:0.75rem;">@sunucuHata</RadzenAlert>
+                }
 
-        <button type="submit" class="auth-btn-primary">
-            <i class="fa-solid fa-paper-plane"></i> BAĞLANTI GÖNDER
-        </button>
-    </form>
+                <RadzenButton ButtonType="ButtonType.Submit" Text="Bağlantı gönder" Icon="send"
+                              ButtonStyle="ButtonStyle.Primary"
+                              IsBusy="@isBusy" BusyText="Gönderiliyor…" Disabled="@isBusy" />
+            </div>
+        </RadzenTemplateForm>
 
-    <div class="auth-card__footer">
-        <a href="/login">Giriş sayfasına dön</a>
-    </div>
+        <div class="auth-card__footer">
+            <a href="/login">Giriş sayfasına dön</a>
+        </div>
+    }
 </div>
 
-<script>
-    (function () {
-        var el = document.getElementById('site-origin');
-        if (el) el.value = window.location.origin;
-        document.querySelector('.auth-form')?.addEventListener('submit', function () {
-            if (el) el.value = window.location.origin;
-        });
-    })();
-</script>
-
 @code {
+    private sealed class SifremiUnuttumModel
+    {
+        public string Eposta { get; set; } = string.Empty;
+    }
+
     [SupplyParameterFromQuery] public string? Gonderildi { get; set; }
-    [SupplyParameterFromQuery] public string? Error { get; set; }
+
+    private SifremiUnuttumModel model = new();
+    private bool isBusy;
+    private bool hatalariGoster;
+    private bool gonderildi;
+    private string? sunucuHata;
+
+    protected override void OnParametersSet()
+    {
+        if (!string.IsNullOrEmpty(Gonderildi))
+            gonderildi = true;
+    }
+
+    private void OnInvalidSubmit() => hatalariGoster = true;
+
+    private async Task OnSubmitAsync()
+    {
+        sunucuHata = null;
+        hatalariGoster = true;
+        isBusy = true;
+
+        try
+        {
+            var eposta = model.Eposta.Trim();
+            if (!string.IsNullOrWhiteSpace(eposta))
+            {
+                var user = await DataSvc.GetKullaniciByEposta(eposta);
+                if (user is not null && user.Aktif != false && !string.IsNullOrWhiteSpace(user.Eposta))
+                {
+                    var token = TokenSvc.OlusturKaydet(user.ID);
+                    var baseUrl = new Uri(NavigationManager.Uri).GetLeftPart(UriPartial.Authority);
+                    var link = $"{baseUrl}/sifre-sifirla?token={Uri.EscapeDataString(token)}";
+                    var html =
+                        "<p>Merhaba,</p>" +
+                        "<p>Şifre sıfırlama talebinde bulundunuz. Aşağıdaki bağlantıya tıklayarak yeni şifrenizi " +
+                        "belirleyebilirsiniz. Bağlantı 60 dakika geçerlidir.</p>" +
+                        $"<p><a href=\"{link}\">Şifremi sıfırla</a></p>" +
+                        "<p>Bu talebi siz oluşturmadıysanız bu e-postayı yok sayabilirsiniz.</p>";
+                    await EmailSvc.SendAsync(user.Eposta, "Şifre sıfırlama", html);
+                }
+            }
+
+            gonderildi = true;
+        }
+        catch (Exception ex)
+        {
+            sunucuHata = "İşlem sırasında bir hata oluştu: " + ex.Message;
+        }
+        finally
+        {
+            isBusy = false;
+        }
+    }
 }

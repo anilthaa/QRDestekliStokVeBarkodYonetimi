@@ -1,4 +1,4 @@
-<RadzenTemplateForm TItem="ItemKullanicilar" Data="@model" Submit="@OnSubmitAsync">
+<RadzenTemplateForm TItem="ItemKullanicilar" Data="@model" Submit="@OnSubmitAsync" InvalidSubmit="@OnInvalidSubmit">
 
     <div class="form-shell form-shell--wide rz-p-4">
 
@@ -22,6 +22,7 @@
             <RadzenTextBox @bind-Value="model.Eposta" Name="Eposta" Placeholder="eposta@ornek.com"
                            Style="width:100%" Disabled="@isBusy" InputType="email" />
             <RadzenRequiredValidator Component="Eposta" Text="E-posta zorunludur." Style="display:block" />
+            <RadzenEmailValidator Component="Eposta" Text="Geçerli bir e-posta giriniz." Style="display:block" />
         </div>
 
         <div class="form-field">
@@ -74,7 +75,10 @@
 
     private ItemKullanicilar model = new() { Aktif = false };
     private bool isBusy;
+    private bool hatalariGoster;
     private string? errorMessage;
+
+    private void OnInvalidSubmit() => hatalariGoster = true;
 
     private ItemKullaniciTip[] kullaniciTipler = [];
 
@@ -110,6 +114,7 @@
     private async Task OnSubmitAsync()
     {
         errorMessage = null;
+        hatalariGoster = true;
         isBusy = true;
         try
         {

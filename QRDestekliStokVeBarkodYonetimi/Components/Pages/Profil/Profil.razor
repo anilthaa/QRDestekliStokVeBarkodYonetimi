@@ -31,31 +31,32 @@ else
     <div class="profil-page">
 
         @* ── Hero Kartı ─────────────────────────────────────────────── *@
-        <RadzenCard class="profil-hero"
-                    Style="background:linear-gradient(135deg,#6366f1 0%,#8b5cf6 100%); color:#fff; padding:2rem;">
-            <div style="display:flex; align-items:center; gap:1.5rem; flex-wrap:wrap;">
-                <div class="profil-avatar profil-avatar--hero">
-                    @if (!string.IsNullOrWhiteSpace(kullanici.ProfilResmi))
-                    {
-                        <img src="@($"{kullanici.ProfilResmi}?v={kullanici.UpdDate?.Ticks ?? kullanici.ID}")" alt="" />
-                    }
-                    else
-                    {
-                        @Initials(kullanici)
-                    }
+        <div class="profil-hero">
+            <RadzenCard>
+                <div style="display:flex; align-items:center; gap:1.5rem; flex-wrap:wrap;">
+                    <div class="profil-avatar profil-avatar--hero">
+                        @if (!string.IsNullOrWhiteSpace(kullanici.ProfilResmi))
+                        {
+                            <img src="@($"{kullanici.ProfilResmi}?v={kullanici.UpdDate?.Ticks ?? kullanici.ID}")" alt="" />
+                        }
+                        else
+                        {
+                            @Initials(kullanici)
+                        }
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:0.35rem;">
+                        <h2 style="margin:0; font-size:1.6rem; font-weight:700; color:#fff;">@kullanici.Ad @kullanici.Soyad</h2>
+                        <span style="font-size:0.95rem; opacity:0.85;">@kullanici.Eposta</span>
+                        <span style="display:inline-flex; align-items:center; gap:0.35rem; padding:0.2rem 0.75rem; border-radius:20px;
+                            font-size:0.82rem; font-weight:600; width:fit-content;
+                            background:rgba(255,255,255,0.2);">
+                            <RadzenIcon Icon="@(kullanici.Aktif == true ? "check_circle" : "cancel")" />
+                            @(kullanici.Aktif == true ? "Aktif" : "Pasif")
+                        </span>
+                    </div>
                 </div>
-                <div style="display:flex; flex-direction:column; gap:0.35rem;">
-                    <h2 style="margin:0; font-size:1.6rem; font-weight:700; color:#fff;">@kullanici.Ad @kullanici.Soyad</h2>
-                    <span style="font-size:0.95rem; opacity:0.85;">@kullanici.Eposta</span>
-                    <span style="display:inline-flex; align-items:center; gap:0.35rem; padding:0.2rem 0.75rem; border-radius:20px;
-                        font-size:0.82rem; font-weight:600; width:fit-content;
-                        background:rgba(255,255,255,0.2);">
-                        <RadzenIcon Icon="@(kullanici.Aktif == true ? "check_circle" : "cancel")" />
-                        @(kullanici.Aktif == true ? "Aktif" : "Pasif")
-                    </span>
-                </div>
-            </div>
-        </RadzenCard>
+            </RadzenCard>
+        </div>
 
         @* ── İçerik Grid ────────────────────────────────────────────── *@
         <div class="profil-forms-grid">
@@ -94,7 +95,7 @@ else
                     }
                 </div>
 
-                <RadzenTemplateForm TItem="ItemKullanicilar" Data="@kullanici" Submit="@ProfilGuncelleAsync">
+                <RadzenTemplateForm TItem="ItemKullanicilar" Data="@kullanici" Submit="@ProfilGuncelleAsync" InvalidSubmit="@OnProfilInvalidSubmit">
 
                     <div style="display:flex; flex-direction:column; gap:1rem;">
 
@@ -333,6 +334,7 @@ else
     private bool isLoading = true;
     private bool profilIsBusy = false;
     private bool sifreIsBusy = false;
+    private bool profilHatalariGoster;
     private string profilHata = string.Empty;
     private string sifreHata = string.Empty;
     private string profilResmiHata = string.Empty;
@@ -373,6 +375,8 @@ else
         string.IsNullOrEmpty(eskiSifreAlanHata) &&
         string.IsNullOrEmpty(yeniSifreAlanHata) &&
         string.IsNullOrEmpty(yeniSifreTekrarAlanHata);
+
+    private void OnProfilInvalidSubmit() => profilHatalariGoster = true;
 
     private async Task OnSifreFormDegisti()
     {
@@ -454,12 +458,12 @@ else
 
     private void TemizleSifreAlanHatalari()
     {
+        eskiSifreDogrulandi = null;
+        eskiSifreDogrulamaCts?.Cancel();
+        sifreFormEtkilesildi = false;
         eskiSifreAlanHata = null;
         yeniSifreAlanHata = null;
         yeniSifreTekrarAlanHata = null;
-        sifreFormEtkilesildi = false;
-        eskiSifreDogrulandi = null;
-        eskiSifreDogrulamaCts?.Cancel();
     }
 
     private static readonly Regex EpostaRegex =
@@ -510,12 +514,50 @@ else
 
     // ── Profil güncelle ─────────────────────────────────────────────────────
 
+    private bool ProfilAdSoyadDegisti()
+    {
+        if (kullanici is null || AuthState.CurrentUser is null)
+            return false;
+
+        var ad = (kullanici.Ad ?? string.Empty).Trim();
+        var soyad = (kullanici.Soyad ?? string.Empty).Trim();
+        var eskiAd = (AuthState.CurrentUser.Ad ?? string.Empty).Trim();
+        var eskiSoyad = (AuthState.CurrentUser.Soyad ?? string.Empty).Trim();
+
+        return !string.Equals(ad, eskiAd, StringComparison.Ordinal)
+            || !string.Equals(soyad, eskiSoyad, StringComparison.Ordinal);
+    }
+
     private async Task ProfilGuncelleAsync()
     {
         if (kullanici is null || AuthState.CurrentUser is null)
             return;
 
         profilHata = string.Empty;
+        profilHatalariGoster = true;
+
+        if (!ProfilAdSoyadDegisti())
+        {
+            NotificationSvc.Notify(NotificationSeverity.Info, "Bilgi",
+                "Kaydedilecek bir değişiklik bulunmuyor.", 3500);
+            return;
+        }
+
+        var yeniAd = (kullanici.Ad ?? string.Empty).Trim();
+        var yeniSoyad = (kullanici.Soyad ?? string.Empty).Trim();
+        var onay = await DialogSvc.Confirm(
+            DialogFragments.Html(
+                $"Ad ve soyad bilgileriniz {DialogFragments.B($"{yeniAd} {yeniSoyad}")} olarak güncellenecek.<br/><br/>Devam edilsin mi?"),
+            "Profil Güncelleme",
+            new ConfirmOptions
+            {
+                OkButtonText = "Evet, Güncelle",
+                CancelButtonText = "İptal"
+            });
+
+        if (onay != true)
+            return;
+
         profilIsBusy = true;
 
         try
@@ -810,13 +852,13 @@ else
                     eskiSifreDogrulandi = false;
                     eskiSifreAlanHata = mesaj;
                     sifreHata = string.Empty;
+                    GuncelleSifreAlanHatalari();
                 }
                 else
                 {
                     sifreHata = mesaj;
                 }
 
-                GuncelleSifreAlanHatalari();
                 return;
             }
 

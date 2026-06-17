@@ -55,6 +55,7 @@ builder.Services.AddSingleton<KullaniciHesapOnayTokenService>();
 builder.Services.AddSingleton<RequestBaseUrlHelper>();
 
 builder.Services.AddScoped<AuthStateService>();
+builder.Services.AddScoped<OturumSuresiService>();
 builder.Services.AddScoped<IAuthState>(sp => sp.GetRequiredService<AuthStateService>());
 
 builder.Services.AddScoped<IYetkiDataAccess>(sp => sp.GetRequiredService<DataService>());
