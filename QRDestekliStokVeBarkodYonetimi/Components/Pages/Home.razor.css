@@ -31,21 +31,14 @@
     overflow-x: auto;
 }
 
-.dashboard-hareket-scroll {
-    max-width: 100%;
-    overflow-x: auto;
-    overflow-y: hidden;
-    -webkit-overflow-scrolling: touch;
-    border-radius: 6px;
-    scrollbar-gutter: stable;
+.dashboard-welcome {
+    font-size: 0.9rem;
+    color: #555;
 }
 
-.dashboard-hareket-scroll ::deep .rz-grid-table {
-    min-width: 430px;
-}
-
-.dashboard-hareket-scroll ::deep .rz-grid-table tbody td {
-    white-space: nowrap;
+.dashboard-session-remaining {
+    color: #888;
+    font-size: 0.82rem;
 }
 
 @media (min-width: 992px) {

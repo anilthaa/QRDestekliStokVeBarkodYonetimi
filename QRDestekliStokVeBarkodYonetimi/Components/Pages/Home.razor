@@ -1,6 +1,7 @@
 ﻿@page "/"
 @layout QRDestekliStokVeBarkodYonetimi.Components.Layout.MainLayout
 @rendermode InteractiveServer
+@implements IAsyncDisposable
 
 <style>
     .stat-card {
@@ -21,6 +22,7 @@
 @inject DataService DataSvc
 @inject AuthStateService AuthState
 @inject YetkiService YetkiSvc
+@inject OturumSuresiService OturumSvc
 @inject NavigationManager Nav
 
 <PageTitle>Dashboard</PageTitle>
@@ -40,8 +42,12 @@
             <h3 style="margin:0;">Dashboard</h3>
             <div style="font-size:0.85rem; color:#888;">@DateTime.Now.ToString("dd MMMM yyyy, dddd", new System.Globalization.CultureInfo("tr-TR"))</div>
         </div>
-        <div style="font-size:0.9rem; color:#555;">
+        <div class="dashboard-welcome">
             Hoş geldiniz, <strong>@(AuthState.CurrentUser?.Ad) @(AuthState.CurrentUser?.Soyad)</strong>
+            @if (oturumBitisUtc.HasValue)
+            {
+                <span class="dashboard-session-remaining">· @OturumKalanMetin()</span>
+            }
         </div>
     </div>
 
@@ -262,7 +268,6 @@
                 }
                 else
                 {
-                    <div class="dashboard-hareket-scroll">
                     <RadzenDataGrid Data="@sonHareketler" TItem="ItemStokHareketleri"
                                     AllowSorting="false" AllowFiltering="false" AllowPaging="false"
                                     EmptyText="Kayıt yok." Style="font-size:0.85rem;">
@@ -295,7 +300,6 @@
                             </RadzenDataGridColumn>
                         </Columns>
                     </RadzenDataGrid>
-                    </div>
                 }
             </div>
             }
@@ -318,6 +322,11 @@
     private bool canStokGiris;
     private bool canStokCikis;
 
+    private DateTimeOffset? oturumBitisUtc;
+    private TimeSpan oturumKalan;
+    private CancellationTokenSource? oturumSayacCts;
+    private bool oturumSayacBasladi;
+
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (firstRender)
@@ -338,6 +347,12 @@
             canStokCikis = YetkiSvc.ErişimVar("/stok-cikis");
             await LoadAsync();
             StateHasChanged();
+        }
+
+        if (authChecked && !oturumSayacBasladi)
+        {
+            oturumSayacBasladi = true;
+            _ = OturumSayaciniBaslatAsync();
         }
     }
 
@@ -369,5 +384,70 @@
         var url = $"/stok-hareketleri?bas={bugun}&bit={bugun}";
         if (tip is 1 or 2) url += $"&tip={tip.Value}";
         return url;
+    }
+
+    private async Task OturumSayaciniBaslatAsync()
+    {
+        oturumSayacCts?.Cancel();
+        oturumSayacCts?.Dispose();
+        oturumSayacCts = new CancellationTokenSource();
+        var ct = oturumSayacCts.Token;
+
+        try
+        {
+            oturumBitisUtc = await OturumSvc.GetBitisZamaniUtcAsync();
+            if (!oturumBitisUtc.HasValue)
+                return;
+
+            oturumKalan = oturumBitisUtc.Value - DateTimeOffset.UtcNow;
+            await InvokeAsync(StateHasChanged);
+
+            var sonSenkron = DateTime.UtcNow;
+            while (!ct.IsCancellationRequested)
+            {
+                if ((DateTime.UtcNow - sonSenkron).TotalSeconds >= 60)
+                {
+                    oturumBitisUtc = await OturumSvc.GetBitisZamaniUtcAsync();
+                    sonSenkron = DateTime.UtcNow;
+                }
+
+                oturumKalan = oturumBitisUtc.Value - DateTimeOffset.UtcNow;
+                if (oturumKalan <= TimeSpan.Zero)
+                {
+                    await InvokeAsync(() => Nav.NavigateTo("/login", forceLoad: true));
+                    return;
+                }
+
+                await InvokeAsync(StateHasChanged);
+                await Task.Delay(1000, ct);
+            }
+        }
+        catch (OperationCanceledException)
+        {
+            // Bileşen dispose edildi.
+        }
+    }
+
+    private string OturumKalanMetin()
+    {
+        if (oturumKalan.TotalDays >= 1)
+            return $"Oturumunuzun kapanmasına {(int)oturumKalan.TotalDays} gün {oturumKalan.Hours} saat {oturumKalan.Minutes} dk kaldı";
+
+        if (oturumKalan.TotalHours >= 1)
+            return $"Oturumunuzun kapanmasına {oturumKalan.Hours} saat {oturumKalan.Minutes} dk kaldı";
+
+        if (oturumKalan.TotalMinutes >= 1)
+            return $"Oturumunuzun kapanmasına {oturumKalan.Minutes} dk {oturumKalan.Seconds} sn kaldı";
+
+        return $"Oturumunuzun kapanmasına {Math.Max(0, oturumKalan.Seconds)} sn kaldı";
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (oturumSayacCts is not null)
+        {
+            await oturumSayacCts.CancelAsync();
+            oturumSayacCts.Dispose();
+        }
     }
 }

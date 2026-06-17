@@ -95,3 +95,10 @@
     padding-bottom: 0.75rem;
     border-bottom: 1px solid var(--rz-border-color);
 }
+
+.profil-field-error {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.82rem;
+    color: var(--rz-danger, #c62828);
+}

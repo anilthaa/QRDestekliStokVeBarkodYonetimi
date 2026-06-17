@@ -38,28 +38,28 @@
     }
     else
     {
-        <RadzenTemplateForm TItem="SifreSifirlaModel" Data="@model" Submit="@OnSubmitAsync" InvalidSubmit="@OnInvalidSubmit">
+        <RadzenTemplateForm TItem="SifreSifirlaModel" Data="@model" Submit="@OnSubmitAsync">
             <div class="auth-form">
                 <div class="auth-field">
                     <RadzenLabel Text="Yeni şifre" Component="YeniSifre" />
-                    <TogglePasswordField @bind-Value="model.YeniSifre" Name="YeniSifre"
-                                         HatalariGoster="@hatalariGoster"
+                    <TogglePasswordField @bind-Value="model.YeniSifre" @bind-Value:after="OnFormDegisti"
+                                         Name="YeniSifre"
                                          Placeholder="En az 6 karakter" Disabled="@isBusy" />
-                    <RadzenRequiredValidator Component="YeniSifre" Text="Şifre zorunludur." Style="display:block" />
-                    <RadzenCustomValidator Component="YeniSifre"
-                                           Validator="@(() => string.IsNullOrEmpty(model.YeniSifre) || model.YeniSifre.Length >= 6)"
-                                           Text="Şifre en az 6 karakter olmalıdır." Style="display:block" />
+                    @if (!string.IsNullOrEmpty(yeniSifreAlanHata))
+                    {
+                        <span class="form-field-error">@yeniSifreAlanHata</span>
+                    }
                 </div>
 
                 <div class="auth-field">
                     <RadzenLabel Text="Yeni şifre (tekrar)" Component="YeniSifreTekrar" />
-                    <TogglePasswordField @bind-Value="model.YeniSifreTekrar" Name="YeniSifreTekrar"
-                                         HatalariGoster="@hatalariGoster"
+                    <TogglePasswordField @bind-Value="model.YeniSifreTekrar" @bind-Value:after="OnFormDegisti"
+                                         Name="YeniSifreTekrar"
                                          Disabled="@isBusy" />
-                    <RadzenRequiredValidator Component="YeniSifreTekrar" Text="Tekrar şifre zorunludur." Style="display:block" />
-                    <RadzenCustomValidator Component="YeniSifreTekrar"
-                                           Validator="@(() => string.IsNullOrEmpty(model.YeniSifreTekrar) || model.YeniSifre == model.YeniSifreTekrar)"
-                                           Text="Şifreler eşleşmiyor." Style="display:block" />
+                    @if (!string.IsNullOrEmpty(yeniSifreTekrarAlanHata))
+                    {
+                        <span class="form-field-error">@yeniSifreTekrarAlanHata</span>
+                    }
                 </div>
 
                 @if (!string.IsNullOrEmpty(sunucuHata))
@@ -70,7 +70,8 @@
 
                 <RadzenButton ButtonType="ButtonType.Submit" Text="Şifreyi kaydet" Icon="check"
                               ButtonStyle="ButtonStyle.Primary"
-                              IsBusy="@isBusy" BusyText="Kaydediliyor…" Disabled="@isBusy" />
+                              IsBusy="@isBusy" BusyText="Kaydediliyor…"
+                              Disabled="@(!SifreSifirlaFormuGecerli || isBusy)" />
             </div>
         </RadzenTemplateForm>
 
@@ -92,15 +93,56 @@
 
     private SifreSifirlaModel model = new();
     private bool isBusy;
-    private bool hatalariGoster;
     private string? sunucuHata;
+    private string? yeniSifreAlanHata;
+    private string? yeniSifreTekrarAlanHata;
+    private bool formEtkilesildi;
 
-    private void OnInvalidSubmit() => hatalariGoster = true;
+    private bool SifreSifirlaFormuGecerli =>
+        !string.IsNullOrWhiteSpace(model.YeniSifre) &&
+        model.YeniSifre.Length >= 6 &&
+        !string.IsNullOrWhiteSpace(model.YeniSifreTekrar) &&
+        string.Equals(model.YeniSifre, model.YeniSifreTekrar, StringComparison.Ordinal) &&
+        string.IsNullOrEmpty(yeniSifreAlanHata) &&
+        string.IsNullOrEmpty(yeniSifreTekrarAlanHata);
+
+    private void OnFormDegisti()
+    {
+        formEtkilesildi = true;
+        GuncelleAlanHatalari();
+    }
+
+    private void GuncelleAlanHatalari()
+    {
+        if (!formEtkilesildi)
+        {
+            yeniSifreAlanHata = null;
+            yeniSifreTekrarAlanHata = null;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(model.YeniSifre))
+            yeniSifreAlanHata = "Şifre zorunludur.";
+        else if (model.YeniSifre.Length < 6)
+            yeniSifreAlanHata = "Şifre en az 6 karakter olmalıdır.";
+        else
+            yeniSifreAlanHata = null;
+
+        if (string.IsNullOrWhiteSpace(model.YeniSifreTekrar))
+            yeniSifreTekrarAlanHata = "Tekrar şifre zorunludur.";
+        else if (!string.Equals(model.YeniSifre, model.YeniSifreTekrar, StringComparison.Ordinal))
+            yeniSifreTekrarAlanHata = "Şifreler eşleşmiyor.";
+        else
+            yeniSifreTekrarAlanHata = null;
+    }
 
     private async Task OnSubmitAsync()
     {
         sunucuHata = null;
-        hatalariGoster = true;
+        formEtkilesildi = true;
+        GuncelleAlanHatalari();
+        if (!SifreSifirlaFormuGecerli)
+            return;
 
         if (string.IsNullOrWhiteSpace(Token) || !TokenSvc.TryPeekValidToken(Token, out var userId))
         {

@@ -213,7 +213,6 @@ else
                 </div>
 
                 <RadzenTemplateForm TItem="SifreModel" Data="@sifreForm" Submit="@OnSifreKoduGonderAsync"
-                                    InvalidSubmit="@OnSifreInvalidSubmit"
                                     Style="display:flex; flex-direction:column; flex:1;">
 
                     <div style="display:flex; flex-direction:column; gap:1rem; flex:1;">
@@ -226,39 +225,36 @@ else
                             <RadzenLabel Text="Mevcut Şifre *" Component="EskiSifre" />
                             <TogglePasswordField @bind-Value="sifreForm.EskiSifre" @bind-Value:after="OnSifreFormDegisti"
                                                  Name="EskiSifre"
-                                                 HatalariGoster="@sifreHatalariGoster"
                                                  Placeholder="Mevcut şifreniz"
                                                  Disabled="@sifreAlanlariKilitli" />
-                            <RadzenRequiredValidator Component="EskiSifre" Text="Mevcut şifre zorunludur." Style="display:block" />
-                            <RadzenCustomValidator Component="EskiSifre"
-                                                   Validator="@(() => string.IsNullOrWhiteSpace(sifreForm.EskiSifre) || eskiSifreDogrulandi == true)"
-                                                   Text="@EskiSifreDogrulamaMesaji" Style="display:block" />
+                            @if (!string.IsNullOrEmpty(eskiSifreAlanHata))
+                            {
+                                <span class="profil-field-error">@eskiSifreAlanHata</span>
+                            }
                         </div>
 
                         <div>
                             <RadzenLabel Text="Yeni Şifre *" Component="YeniSifre" />
                             <TogglePasswordField @bind-Value="sifreForm.YeniSifre" @bind-Value:after="OnSifreFormDegisti"
                                                  Name="YeniSifre"
-                                                 HatalariGoster="@sifreHatalariGoster"
                                                  Placeholder="En az 6 karakter"
                                                  Disabled="@sifreAlanlariKilitli" />
-                            <RadzenRequiredValidator Component="YeniSifre" Text="Yeni şifre zorunludur." Style="display:block" />
-                            <RadzenCustomValidator Component="YeniSifre"
-                                                   Validator="@(() => string.IsNullOrEmpty(sifreForm.YeniSifre) || sifreForm.YeniSifre.Length >= 6)"
-                                                   Text="Şifre en az 6 karakter olmalıdır." Style="display:block" />
+                            @if (!string.IsNullOrEmpty(yeniSifreAlanHata))
+                            {
+                                <span class="profil-field-error">@yeniSifreAlanHata</span>
+                            }
                         </div>
 
                         <div>
                             <RadzenLabel Text="Yeni Şifre (Tekrar) *" Component="YeniSifreTekrar" />
                             <TogglePasswordField @bind-Value="sifreForm.YeniSifreTekrar" @bind-Value:after="OnSifreFormDegisti"
                                                  Name="YeniSifreTekrar"
-                                                 HatalariGoster="@sifreHatalariGoster"
                                                  Placeholder="Şifreyi tekrar girin"
                                                  Disabled="@sifreAlanlariKilitli" />
-                            <RadzenRequiredValidator Component="YeniSifreTekrar" Text="Tekrar şifre zorunludur." Style="display:block" />
-                            <RadzenCustomValidator Component="YeniSifreTekrar"
-                                                   Validator="@(() => string.IsNullOrEmpty(sifreForm.YeniSifreTekrar) || sifreForm.YeniSifre == sifreForm.YeniSifreTekrar)"
-                                                   Text="Şifreler eşleşmiyor." Style="display:block" />
+                            @if (!string.IsNullOrEmpty(yeniSifreTekrarAlanHata))
+                            {
+                                <span class="profil-field-error">@yeniSifreTekrarAlanHata</span>
+                            }
                         </div>
 
                         @if (sifreKodGonderildi)
@@ -307,7 +303,7 @@ else
                             <div class="form-actions" style="margin-top:auto;">
                                 <RadzenButton ButtonType="ButtonType.Submit" Text="Doğrulama kodu gönder" Icon="mail"
                                               ButtonStyle="ButtonStyle.Primary"
-                                              Disabled="@sifreIsBusy"
+                                              Disabled="@(!SifreDegisimFormuGecerli || sifreIsBusy)"
                                               IsBusy="@sifreIsBusy" BusyText="Gönderiliyor…" />
                             </div>
                         }
@@ -339,7 +335,6 @@ else
     private bool profilIsBusy = false;
     private bool sifreIsBusy = false;
     private bool profilHatalariGoster;
-    private bool sifreHatalariGoster;
     private string profilHata = string.Empty;
     private string sifreHata = string.Empty;
     private string profilResmiHata = string.Empty;
@@ -363,18 +358,63 @@ else
 
     private bool sifreAlanlariKilitli => sifreIsBusy || sifreDogrulaniyor || sifreKodGonderildi;
 
+    private string? eskiSifreAlanHata;
+    private string? yeniSifreAlanHata;
+    private string? yeniSifreTekrarAlanHata;
+    private bool sifreFormEtkilesildi;
     private bool? eskiSifreDogrulandi;
     private CancellationTokenSource? eskiSifreDogrulamaCts;
 
-    private string EskiSifreDogrulamaMesaji =>
-        eskiSifreDogrulandi == false ? "Mevcut şifre hatalı." : "Mevcut şifre doğrulanıyor…";
+    private bool SifreDegisimFormuGecerli =>
+        eskiSifreDogrulandi == true &&
+        !string.IsNullOrWhiteSpace(sifreForm.EskiSifre) &&
+        !string.IsNullOrWhiteSpace(sifreForm.YeniSifre) &&
+        sifreForm.YeniSifre.Length >= 6 &&
+        !string.IsNullOrWhiteSpace(sifreForm.YeniSifreTekrar) &&
+        string.Equals(sifreForm.YeniSifre, sifreForm.YeniSifreTekrar, StringComparison.Ordinal) &&
+        string.IsNullOrEmpty(eskiSifreAlanHata) &&
+        string.IsNullOrEmpty(yeniSifreAlanHata) &&
+        string.IsNullOrEmpty(yeniSifreTekrarAlanHata);
 
     private void OnProfilInvalidSubmit() => profilHatalariGoster = true;
-    private void OnSifreInvalidSubmit() => sifreHatalariGoster = true;
 
     private async Task OnSifreFormDegisti()
     {
+        sifreFormEtkilesildi = true;
+        GuncelleSifreAlanHatalari();
         await DebouncedEskiSifreDogrulaAsync();
+    }
+
+    private void GuncelleSifreAlanHatalari()
+    {
+        if (!sifreFormEtkilesildi)
+        {
+            eskiSifreAlanHata = null;
+            yeniSifreAlanHata = null;
+            yeniSifreTekrarAlanHata = null;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(sifreForm.EskiSifre))
+            eskiSifreAlanHata = "Mevcut şifre zorunludur.";
+        else if (eskiSifreDogrulandi == false)
+            eskiSifreAlanHata = "Mevcut şifre hatalı.";
+        else
+            eskiSifreAlanHata = null;
+
+        if (string.IsNullOrWhiteSpace(sifreForm.YeniSifre))
+            yeniSifreAlanHata = "Yeni şifre zorunludur.";
+        else if (sifreForm.YeniSifre.Length < 6)
+            yeniSifreAlanHata = "Şifre en az 6 karakter olmalıdır.";
+        else
+            yeniSifreAlanHata = null;
+
+        if (string.IsNullOrWhiteSpace(sifreForm.YeniSifreTekrar))
+            yeniSifreTekrarAlanHata = "Tekrar şifre zorunludur.";
+        else if (!string.Equals(sifreForm.YeniSifre, sifreForm.YeniSifreTekrar, StringComparison.Ordinal))
+            yeniSifreTekrarAlanHata = "Şifreler eşleşmiyor.";
+        else
+            yeniSifreTekrarAlanHata = null;
     }
 
     private async Task DebouncedEskiSifreDogrulaAsync()
@@ -396,6 +436,7 @@ else
         if (string.IsNullOrWhiteSpace(sifreForm.EskiSifre))
         {
             eskiSifreDogrulandi = null;
+            GuncelleSifreAlanHatalari();
             await InvokeAsync(StateHasChanged);
             return;
         }
@@ -411,6 +452,7 @@ else
         eskiSifreDogrulandi = !string.IsNullOrEmpty(hash) &&
                               PasswordHasher.Verify(sifreForm.EskiSifre, hash);
 
+        GuncelleSifreAlanHatalari();
         await InvokeAsync(StateHasChanged);
     }
 
@@ -418,6 +460,10 @@ else
     {
         eskiSifreDogrulandi = null;
         eskiSifreDogrulamaCts?.Cancel();
+        sifreFormEtkilesildi = false;
+        eskiSifreAlanHata = null;
+        yeniSifreAlanHata = null;
+        yeniSifreTekrarAlanHata = null;
     }
 
     private static readonly Regex EpostaRegex =
@@ -468,6 +514,20 @@ else
 
     // ── Profil güncelle ─────────────────────────────────────────────────────
 
+    private bool ProfilAdSoyadDegisti()
+    {
+        if (kullanici is null || AuthState.CurrentUser is null)
+            return false;
+
+        var ad = (kullanici.Ad ?? string.Empty).Trim();
+        var soyad = (kullanici.Soyad ?? string.Empty).Trim();
+        var eskiAd = (AuthState.CurrentUser.Ad ?? string.Empty).Trim();
+        var eskiSoyad = (AuthState.CurrentUser.Soyad ?? string.Empty).Trim();
+
+        return !string.Equals(ad, eskiAd, StringComparison.Ordinal)
+            || !string.Equals(soyad, eskiSoyad, StringComparison.Ordinal);
+    }
+
     private async Task ProfilGuncelleAsync()
     {
         if (kullanici is null || AuthState.CurrentUser is null)
@@ -475,6 +535,29 @@ else
 
         profilHata = string.Empty;
         profilHatalariGoster = true;
+
+        if (!ProfilAdSoyadDegisti())
+        {
+            NotificationSvc.Notify(NotificationSeverity.Info, "Bilgi",
+                "Kaydedilecek bir değişiklik bulunmuyor.", 3500);
+            return;
+        }
+
+        var yeniAd = (kullanici.Ad ?? string.Empty).Trim();
+        var yeniSoyad = (kullanici.Soyad ?? string.Empty).Trim();
+        var onay = await DialogSvc.Confirm(
+            DialogFragments.Html(
+                $"Ad ve soyad bilgileriniz {DialogFragments.B($"{yeniAd} {yeniSoyad}")} olarak güncellenecek.<br/><br/>Devam edilsin mi?"),
+            "Profil Güncelleme",
+            new ConfirmOptions
+            {
+                OkButtonText = "Evet, Güncelle",
+                CancelButtonText = "İptal"
+            });
+
+        if (onay != true)
+            return;
+
         profilIsBusy = true;
 
         try
@@ -733,7 +816,10 @@ else
         if (AuthState.CurrentUser is null || sifreKodGonderildi)
             return;
 
-        sifreHatalariGoster = true;
+        sifreFormEtkilesildi = true;
+        GuncelleSifreAlanHatalari();
+        if (!SifreDegisimFormuGecerli)
+            return;
 
         var onay = await DialogSvc.Confirm(
             DialogFragments.Html(
@@ -764,7 +850,9 @@ else
                 if (mesaj.Contains("Mevcut şifre", StringComparison.OrdinalIgnoreCase))
                 {
                     eskiSifreDogrulandi = false;
+                    eskiSifreAlanHata = mesaj;
                     sifreHata = string.Empty;
+                    GuncelleSifreAlanHatalari();
                 }
                 else
                 {
@@ -857,6 +945,7 @@ else
         sifreDogrulamaKodu = string.Empty;
         sifreDogrulamaHata = string.Empty;
         sifreHata = string.Empty;
+        GuncelleSifreAlanHatalari();
     }
 
     // ── Yardımcı ────────────────────────────────────────────────────────────
