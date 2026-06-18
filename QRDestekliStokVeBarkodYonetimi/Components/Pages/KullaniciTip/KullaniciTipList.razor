@@ -36,7 +36,9 @@ else
     <RadzenDataGrid @ref="gridRef" Data="@filtreliTipler" TItem="ItemKullaniciTip" AllowSorting="true"
                     AllowFiltering="true" FilterMode="FilterMode.Simple"
                     FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
-                    AllowPaging="true" PageSize="15"
+                    AllowPaging="false" AllowVirtualization="true" PageSize="25"
+                    VirtualizationOverscanCount="3"
+                    class="liste-grid-virtual"
                     EmptyText="Kayıt bulunamadı."
                     ColumnWidth="200px">
         <Columns>
