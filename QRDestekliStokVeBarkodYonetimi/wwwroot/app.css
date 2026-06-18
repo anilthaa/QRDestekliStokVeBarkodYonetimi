@@ -503,3 +503,12 @@ td.grid-sira-kolon {
     align-items: center;
     justify-content: center;
 }
+
+.liste-grid-virtual {
+    height: clamp(360px, calc(100vh - 280px), 640px);
+    width: 100%;
+}
+
+.stok-hareket-grid.liste-grid-virtual {
+    height: clamp(300px, calc(100vh - 420px), 520px);
+}

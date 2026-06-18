@@ -87,8 +87,10 @@ else
     <RadzenDataGrid @ref="gridRef" Data="@gridHareketler" TItem="ItemStokHareketleri"
                     AllowSorting="true" AllowFiltering="true" FilterMode="FilterMode.Simple"
                     FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
-                    AllowPaging="true" PageSize="20" EmptyText="Kayıt bulunamadı." ColumnWidth="160px"
-                    class="stok-hareket-grid">
+                    AllowPaging="false" AllowVirtualization="true" PageSize="25"
+                    VirtualizationOverscanCount="3"
+                    EmptyText="Kayıt bulunamadı." ColumnWidth="160px"
+                    class="stok-hareket-grid liste-grid-virtual">
         <Columns>
             <RadzenDataGridColumn TItem="ItemStokHareketleri" Property="ID" Title="Sıra" Width="@GridSiraYardimci.KolonGenisligi" MinWidth="@GridSiraYardimci.KolonGenisligi"
                                   Frozen="true" Filterable="false"
