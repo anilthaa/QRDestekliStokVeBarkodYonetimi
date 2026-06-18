@@ -11,14 +11,17 @@
         <div class="form-field">
             <RadzenLabel Text="Kategori Adı *" Component="Ad" />
             <RadzenTextBox @bind-Value="model.Ad" Name="Ad" Placeholder="Kategori adı giriniz"
-                           Style="width:100%" Disabled="@isBusy" />
-            <RadzenRequiredValidator Component="Ad" Text="Kategori adı zorunludur." Style="display:block" />
+                           Style="width:100%" Disabled="@AlanDevreDisi" />
+            @if (!SadeceIncele)
+            {
+                <RadzenRequiredValidator Component="Ad" Text="Kategori adı zorunludur." Style="display:block" />
+            }
         </div>
 
         <div class="form-field">
             <RadzenLabel Text="Açıklama" Component="Aciklama" />
             <RadzenTextArea @bind-Value="model.Aciklama" Name="Aciklama" Placeholder="Açıklama (opsiyonel)"
-                            Style="width:100%" Rows="3" Disabled="@isBusy" />
+                            Style="width:100%" Rows="3" Disabled="@AlanDevreDisi" />
         </div>
 
         @if (!string.IsNullOrWhiteSpace(onizlemeResim))
@@ -39,28 +42,34 @@
                     <img src="@model.ResimYolu" alt="Kategori resmi"
                          style="max-height:120px; max-width:100%; border-radius:8px; border:1px solid #ddd; object-fit:cover; cursor:zoom-in;"
                          @onclick="@(() => onizlemeResim = model.ResimYolu)" />
-                    <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
-                                  Variant="Variant.Flat"
-                                  Style="position:absolute; top:4px; right:4px; padding:2px 6px;"
-                                  Click="@ResimSil" title="Resmi kaldır" />
+                    @if (!SadeceIncele)
+                    {
+                        <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                                      Variant="Variant.Flat"
+                                      Style="position:absolute; top:4px; right:4px; padding:2px 6px;"
+                                      Click="@ResimSil" title="Resmi kaldır" />
+                    }
                 </div>
             }
-            <InputFile OnChange="@OnResimSecildi" accept="image/*"
-                       style="display:block; margin-top:4px;" disabled="@isBusy" />
-            @if (resimYukleniyor)
+            @if (!SadeceIncele)
             {
-                <div style="font-size:0.8rem; color:#555; margin-top:4px;">
-                    <RadzenProgressBar Value="100" Mode="ProgressBarMode.Indeterminate" Style="height:6px;" />
-                </div>
-            }
-            @if (!string.IsNullOrWhiteSpace(resimHata))
-            {
-                <div style="font-size:0.8rem; color:#c62828; margin-top:4px;">@resimHata</div>
+                <InputFile OnChange="@OnResimSecildi" accept="image/*"
+                           style="display:block; margin-top:4px;" disabled="@AlanDevreDisi" />
+                @if (resimYukleniyor)
+                {
+                    <div style="font-size:0.8rem; color:#555; margin-top:4px;">
+                        <RadzenProgressBar Value="100" Mode="ProgressBarMode.Indeterminate" Style="height:6px;" />
+                    </div>
+                }
+                @if (!string.IsNullOrWhiteSpace(resimHata))
+                {
+                    <div style="font-size:0.8rem; color:#c62828; margin-top:4px;">@resimHata</div>
+                }
             }
         </div>
 
         <div class="form-check-row">
-            <RadzenCheckBox @bind-Value="model.Aktif" Name="Aktif" Disabled="@isBusy" />
+            <RadzenCheckBox @bind-Value="model.Aktif" Name="Aktif" Disabled="@AlanDevreDisi" />
             <RadzenLabel Text="Aktif" Component="Aktif" />
         </div>
 
@@ -71,10 +80,13 @@
         }
 
         <div class="form-actions">
-            <RadzenButton ButtonStyle="ButtonStyle.Light" Text="İptal" Icon="cancel"
+            <RadzenButton ButtonStyle="ButtonStyle.Light" Text="@(SadeceIncele ? "Kapat" : "İptal")" Icon="cancel"
                           Click="@OnCancel" Disabled="@isBusy" />
-            <RadzenButton ButtonType="ButtonType.Submit" Text="Kaydet" Icon="save"
-                          IsBusy="@isBusy" BusyText="Kaydediliyor..." />
+            @if (!SadeceIncele)
+            {
+                <RadzenButton ButtonType="ButtonType.Submit" Text="Kaydet" Icon="save"
+                              IsBusy="@isBusy" BusyText="Kaydediliyor..." />
+            }
         </div>
 
     </div>
@@ -83,11 +95,14 @@
 
 @code {
     [Parameter] public ItemKategori? Item { get; set; }
+    [Parameter] public bool SadeceIncele { get; set; }
 
     private ItemKategori model = new() { Aktif = true };
     private bool isBusy;
     private bool hatalariGoster;
     private string? errorMessage;
+
+    private bool AlanDevreDisi => isBusy || SadeceIncele;
 
     private void OnInvalidSubmit() => hatalariGoster = true;
     private bool resimYukleniyor;
@@ -141,7 +156,6 @@
             var klasor = Path.Combine(Env.WebRootPath, "uploads", "kategoriler");
             Directory.CreateDirectory(klasor);
 
-            // Eski dosyayı sil
             if (!string.IsNullOrWhiteSpace(model.ResimYolu))
             {
                 var eskiDosya = Path.Combine(Env.WebRootPath, model.ResimYolu.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));

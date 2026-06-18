@@ -6,23 +6,32 @@
             <div class="form-field">
                 <RadzenLabel Text="Ad *" Component="Ad" />
                 <RadzenTextBox @bind-Value="model.Ad" Name="Ad" Placeholder="Ad giriniz"
-                               Style="width:100%" Disabled="@isBusy" />
-                <RadzenRequiredValidator Component="Ad" Text="Ad zorunludur." Style="display:block" />
+                               Style="width:100%" Disabled="@AlanDevreDisi" />
+                @if (!SadeceIncele)
+                {
+                    <RadzenRequiredValidator Component="Ad" Text="Ad zorunludur." Style="display:block" />
+                }
             </div>
             <div class="form-field">
                 <RadzenLabel Text="Soyad *" Component="Soyad" />
                 <RadzenTextBox @bind-Value="model.Soyad" Name="Soyad" Placeholder="Soyad giriniz"
-                               Style="width:100%" Disabled="@isBusy" />
-                <RadzenRequiredValidator Component="Soyad" Text="Soyad zorunludur." Style="display:block" />
+                               Style="width:100%" Disabled="@AlanDevreDisi" />
+                @if (!SadeceIncele)
+                {
+                    <RadzenRequiredValidator Component="Soyad" Text="Soyad zorunludur." Style="display:block" />
+                }
             </div>
         </div>
 
         <div class="form-field">
             <RadzenLabel Text="E-posta *" Component="Eposta" />
             <RadzenTextBox @bind-Value="model.Eposta" Name="Eposta" Placeholder="eposta@ornek.com"
-                           Style="width:100%" Disabled="@isBusy" InputType="email" />
-            <RadzenRequiredValidator Component="Eposta" Text="E-posta zorunludur." Style="display:block" />
-            <RadzenEmailValidator Component="Eposta" Text="Geçerli bir e-posta giriniz." Style="display:block" />
+                           Style="width:100%" Disabled="@AlanDevreDisi" InputType="email" />
+            @if (!SadeceIncele)
+            {
+                <RadzenRequiredValidator Component="Eposta" Text="E-posta zorunludur." Style="display:block" />
+                <RadzenEmailValidator Component="Eposta" Text="Geçerli bir e-posta giriniz." Style="display:block" />
+            }
         </div>
 
         <div class="form-field">
@@ -30,11 +39,14 @@
             <RadzenDropDown @bind-Value="model.KullaniciTip_ID" Name="KullaniciTip_ID"
                             Data="@kullaniciTipler" TextProperty="Ad" ValueProperty="ID"
                             Placeholder="Kullanıcı tipi seçiniz" Style="width:100%"
-                            Disabled="@isBusy" AllowClear="true" />
-            <RadzenRequiredValidator Component="KullaniciTip_ID" Text="Kullanıcı tipi zorunludur." Style="display:block" />
+                            Disabled="@AlanDevreDisi" AllowClear="true" />
+            @if (!SadeceIncele)
+            {
+                <RadzenRequiredValidator Component="KullaniciTip_ID" Text="Kullanıcı tipi zorunludur." Style="display:block" />
+            }
         </div>
 
-        @if (model.ID == 0)
+        @if (!SadeceIncele && model.ID == 0)
         {
             <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" AllowClose="false">
                 Yeni kullanıcı <strong>pasif</strong> olarak kaydedilir. Kayıttan sonra listeden
@@ -45,12 +57,15 @@
         else
         {
             <div class="form-check-row">
-                <RadzenCheckBox @bind-Value="model.Aktif" Name="Aktif" Disabled="@isBusy" />
+                <RadzenCheckBox @bind-Value="model.Aktif" Name="Aktif" Disabled="@AlanDevreDisi" />
                 <RadzenLabel Text="Aktif" Component="Aktif" />
             </div>
-            <div class="form-field" style="font-size:0.82rem; color:#666;">
-                Şifre, kullanıcı hesap onayını tamamladığında otomatik oluşturulup e-posta ile gönderilir.
-            </div>
+            @if (!SadeceIncele)
+            {
+                <div class="form-field" style="font-size:0.82rem; color:#666;">
+                    Şifre, kullanıcı hesap onayını tamamladığında otomatik oluşturulup e-posta ile gönderilir.
+                </div>
+            }
         }
 
         @if (!string.IsNullOrEmpty(errorMessage))
@@ -60,10 +75,13 @@
         }
 
         <div class="form-actions">
-            <RadzenButton ButtonStyle="ButtonStyle.Light" Text="İptal" Icon="cancel"
+            <RadzenButton ButtonStyle="ButtonStyle.Light" Text="@(SadeceIncele ? "Kapat" : "İptal")" Icon="cancel"
                           Click="@OnCancel" Disabled="@isBusy" />
-            <RadzenButton ButtonType="ButtonType.Submit" Text="Kaydet" Icon="save"
-                          IsBusy="@isBusy" BusyText="Kaydediliyor..." />
+            @if (!SadeceIncele)
+            {
+                <RadzenButton ButtonType="ButtonType.Submit" Text="Kaydet" Icon="save"
+                              IsBusy="@isBusy" BusyText="Kaydediliyor..." />
+            }
         </div>
 
     </div>
@@ -72,11 +90,14 @@
 
 @code {
     [Parameter] public ItemKullanicilar? Item { get; set; }
+    [Parameter] public bool SadeceIncele { get; set; }
 
     private ItemKullanicilar model = new() { Aktif = false };
     private bool isBusy;
     private bool hatalariGoster;
     private string? errorMessage;
+
+    private bool AlanDevreDisi => isBusy || SadeceIncele;
 
     private void OnInvalidSubmit() => hatalariGoster = true;
 

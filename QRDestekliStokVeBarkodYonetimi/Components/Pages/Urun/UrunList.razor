@@ -203,6 +203,7 @@ else
             {
                 new() { Text = "QR Kodu Göster", Icon = "qr_code", Value = "qr" },
                 new() { Text = "Barkodu Göster", Icon = "barcode_reader", Value = "barkod" },
+                new() { Text = "İncele", Icon = "visibility", Value = "incele" },
                 new() { Text = "Düzenle", Icon = "edit", Value = "duzenle", Disabled = sadecOkuma },
                 new() { Text = "Sil", Icon = "delete", Value = "sil", Disabled = sadecOkuma }
             },
@@ -227,6 +228,9 @@ else
                 case "barkod":
                     await OnBarkodClick(row);
                     break;
+                case "incele":
+                    await OnInceleClick(row);
+                    break;
                 case "duzenle":
                     await OnDuzenleClick(row);
                     break;
@@ -235,6 +239,13 @@ else
                     break;
             }
         });
+    }
+
+    private async Task OnInceleClick(ItemUrun item)
+    {
+        await DialogSvc.OpenAsync<UrunTnm>("Ürün İncele",
+            new Dictionary<string, object?> { { "Item", item }, { "SadeceIncele", true } },
+            new DialogOptions { Width = "620px", Resizable = false, Draggable = true, CloseDialogOnOverlayClick = false });
     }
 
     private async Task OnDuzenleClick(ItemUrun item)
