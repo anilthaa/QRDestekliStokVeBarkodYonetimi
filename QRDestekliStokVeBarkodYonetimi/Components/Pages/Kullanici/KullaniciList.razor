@@ -193,6 +193,7 @@ else
                 Disabled = sadecOkuma || onayMailiGonderiliyorId == row.ID
             });
         }
+        items.Add(new() { Text = "İncele", Icon = "visibility", Value = "incele" });
         items.Add(new() { Text = "Düzenle", Icon = "edit", Value = "duzenle", Disabled = sadecOkuma });
         items.Add(new() { Text = "Yetki Yönetimi", Icon = "shield", Value = "yetki", Disabled = !yetkiSayfasiErisim });
         items.Add(new() { Text = "Sil", Icon = "delete", Value = "sil", Disabled = sadecOkuma });
@@ -213,6 +214,9 @@ else
             {
                 case "onay":
                     await OnOnayMailiGonder(row);
+                    break;
+                case "incele":
+                    await OnInceleClick(row);
                     break;
                 case "duzenle":
                     await OnDuzenleClick(row);
@@ -265,6 +269,13 @@ else
         {
             onayMailiGonderiliyorId = null;
         }
+    }
+
+    private async Task OnInceleClick(ItemKullanicilar item)
+    {
+        await DialogSvc.OpenAsync<KullaniciTnm>("Kullanıcı İncele",
+            new Dictionary<string, object?> { { "Item", item }, { "SadeceIncele", true } },
+            new DialogOptions { Width = "560px", Resizable = false, Draggable = true, CloseDialogOnOverlayClick = false });
     }
 
     private async Task OnDuzenleClick(ItemKullanicilar item)

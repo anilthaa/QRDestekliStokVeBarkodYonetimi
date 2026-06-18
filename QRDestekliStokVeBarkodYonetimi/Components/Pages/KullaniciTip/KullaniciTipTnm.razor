@@ -5,17 +5,20 @@
         <div class="form-field">
             <RadzenLabel Text="Kullanıcı Tipi Adı *" Component="Ad" />
             <RadzenTextBox @bind-Value="model.Ad" Name="Ad" Placeholder="Tip adı giriniz"
-                           Style="width:100%" Disabled="@isBusy" />
-            <RadzenRequiredValidator Component="Ad" Text="Kullanıcı tipi adı zorunludur." Style="display:block" />
+                           Style="width:100%" Disabled="@AlanDevreDisi" />
+            @if (!SadeceIncele)
+            {
+                <RadzenRequiredValidator Component="Ad" Text="Kullanıcı tipi adı zorunludur." Style="display:block" />
+            }
         </div>
 
         <div class="form-check-row">
-            <RadzenCheckBox @bind-Value="model.Aktif" Name="Aktif" Disabled="@isBusy" />
+            <RadzenCheckBox @bind-Value="model.Aktif" Name="Aktif" Disabled="@AlanDevreDisi" />
             <RadzenLabel Text="Aktif" Component="Aktif" />
         </div>
 
         <div class="form-check-row" style="align-items:flex-start;">
-            <RadzenCheckBox @bind-Value="model.Varsayilan" Name="Varsayilan" Disabled="@isBusy" />
+            <RadzenCheckBox @bind-Value="model.Varsayilan" Name="Varsayilan" Disabled="@AlanDevreDisi" />
             <RadzenLabel Text="Yeni kayıt olan kullanıcılar için varsayılan tip"
                          Component="Varsayilan"
                          Style="line-height:1.35;" />
@@ -28,10 +31,13 @@
         }
 
         <div class="form-actions">
-            <RadzenButton ButtonStyle="ButtonStyle.Light" Text="İptal" Icon="cancel"
+            <RadzenButton ButtonStyle="ButtonStyle.Light" Text="@(SadeceIncele ? "Kapat" : "İptal")" Icon="cancel"
                           Click="@OnCancel" Disabled="@isBusy" />
-            <RadzenButton ButtonType="ButtonType.Submit" Text="Kaydet" Icon="save"
-                          IsBusy="@isBusy" BusyText="Kaydediliyor..." />
+            @if (!SadeceIncele)
+            {
+                <RadzenButton ButtonType="ButtonType.Submit" Text="Kaydet" Icon="save"
+                              IsBusy="@isBusy" BusyText="Kaydediliyor..." />
+            }
         </div>
 
     </div>
@@ -40,11 +46,14 @@
 
 @code {
     [Parameter] public ItemKullaniciTip? Item { get; set; }
+    [Parameter] public bool SadeceIncele { get; set; }
 
     private ItemKullaniciTip model = new() { Aktif = true };
     private bool isBusy;
     private bool hatalariGoster;
     private string? errorMessage;
+
+    private bool AlanDevreDisi => isBusy || SadeceIncele;
 
     private void OnInvalidSubmit() => hatalariGoster = true;
 

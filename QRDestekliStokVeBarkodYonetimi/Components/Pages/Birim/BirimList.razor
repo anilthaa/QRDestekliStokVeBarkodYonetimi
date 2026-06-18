@@ -148,6 +148,7 @@ else
         ContextMenuSvc.Open(args,
             new List<ContextMenuItem>
             {
+                new() { Text = "İncele", Icon = "visibility", Value = "incele" },
                 new() { Text = "Düzenle", Icon = "edit", Value = "duzenle", Disabled = sadecOkuma },
                 new() { Text = "Sil", Icon = "delete", Value = "sil", Disabled = sadecOkuma }
             },
@@ -166,6 +167,9 @@ else
 
             switch (args.Value?.ToString())
             {
+                case "incele":
+                    await OnInceleClick(row);
+                    break;
                 case "duzenle":
                     await OnDuzenleClick(row);
                     break;
@@ -174,6 +178,13 @@ else
                     break;
             }
         });
+    }
+
+    private async Task OnInceleClick(ItemBirim item)
+    {
+        await DialogSvc.OpenAsync<BirimTnm>("Birim İncele",
+            new Dictionary<string, object?> { { "Item", item }, { "SadeceIncele", true } },
+            new DialogOptions { Width = "500px", Resizable = false, Draggable = true, CloseDialogOnOverlayClick = false });
     }
 
     private async Task OnDuzenleClick(ItemBirim item)

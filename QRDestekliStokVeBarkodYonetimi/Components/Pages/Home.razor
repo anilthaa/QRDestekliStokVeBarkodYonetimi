@@ -322,6 +322,8 @@
     private bool canStokGiris;
     private bool canStokCikis;
 
+    private const int SonHareketLimit = 5;
+
     private DateTimeOffset? oturumBitisUtc;
     private TimeSpan oturumKalan;
     private CancellationTokenSource? oturumSayacCts;
@@ -365,7 +367,7 @@
         {
             var ozetTask = DataSvc.GetDashboardOzetAsync(canUrun, canKategori, canKullanici, canStokHareketleri, canStokGiris, canStokCikis);
             var kritikTask = canUrun ? DataSvc.GetKritikStokUrunler() : Task.FromResult(Array.Empty<ItemUrun>());
-            var sonTask = canStokHareketleri ? DataSvc.GetSonHareketler(10) : Task.FromResult(Array.Empty<ItemStokHareketleri>());
+            var sonTask = canStokHareketleri ? DataSvc.GetSonHareketler(SonHareketLimit) : Task.FromResult(Array.Empty<ItemStokHareketleri>());
             await Task.WhenAll(ozetTask, kritikTask, sonTask);
             ozet = await ozetTask;
             kritikStokUrunler = await kritikTask;

@@ -284,7 +284,7 @@ else
             switch (args.Value?.ToString())
             {
                 case "incele":
-                    OnInceleClick(row);
+                    await OnInceleClick(row);
                     break;
                 case "duzenle":
                     await OnDuzenleClick(row);
@@ -293,17 +293,25 @@ else
         });
     }
 
-    private void OnInceleClick(ItemStokHareketleri row)
+    private async Task OnInceleClick(ItemStokHareketleri row)
     {
-        var barkod = row.BarkodNo?.Trim();
-        if (string.IsNullOrEmpty(barkod))
+        if (row.Urun_ID <= 0)
         {
-            NotificationSvc.Notify(NotificationSeverity.Warning, "İncele",
-                "Bu ürün için barkod numarası tanımlı değil.", 4000);
+            NotificationSvc.Notify(NotificationSeverity.Warning, "İncele", "Ürün bulunamadı.", 4000);
             return;
         }
 
-        Nav.NavigateTo($"/urun/{Uri.EscapeDataString(barkod)}");
+        var urunler = await DataSvc.GetUrun(row.Urun_ID);
+        var item = urunler.FirstOrDefault();
+        if (item is null)
+        {
+            NotificationSvc.Notify(NotificationSeverity.Warning, "İncele", "Ürün bulunamadı.", 4000);
+            return;
+        }
+
+        await DialogSvc.OpenAsync<UrunTnm>("Ürün İncele",
+            new Dictionary<string, object?> { { "Item", item }, { "SadeceIncele", true } },
+            new DialogOptions { Width = "620px", Resizable = false, Draggable = true, CloseDialogOnOverlayClick = false });
     }
 
     private async Task OnDuzenleClick(ItemStokHareketleri row)

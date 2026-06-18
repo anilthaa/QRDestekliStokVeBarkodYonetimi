@@ -5,12 +5,15 @@
         <div class="form-field">
             <RadzenLabel Text="Birim Adı *" Component="Ad" />
             <RadzenTextBox @bind-Value="model.Ad" Name="Ad" Placeholder="Birim adı giriniz"
-                           Style="width:100%" Disabled="@isBusy" />
-            <RadzenRequiredValidator Component="Ad" Text="Birim adı zorunludur." Style="display:block" />
+                           Style="width:100%" Disabled="@AlanDevreDisi" />
+            @if (!SadeceIncele)
+            {
+                <RadzenRequiredValidator Component="Ad" Text="Birim adı zorunludur." Style="display:block" />
+            }
         </div>
 
         <div class="form-check-row">
-            <RadzenCheckBox @bind-Value="model.Aktif" Name="Aktif" Disabled="@isBusy" />
+            <RadzenCheckBox @bind-Value="model.Aktif" Name="Aktif" Disabled="@AlanDevreDisi" />
             <RadzenLabel Text="Aktif" Component="Aktif" />
         </div>
 
@@ -21,10 +24,13 @@
         }
 
         <div class="form-actions">
-            <RadzenButton ButtonStyle="ButtonStyle.Light" Text="İptal" Icon="cancel"
+            <RadzenButton ButtonStyle="ButtonStyle.Light" Text="@(SadeceIncele ? "Kapat" : "İptal")" Icon="cancel"
                           Click="@OnCancel" Disabled="@isBusy" />
-            <RadzenButton ButtonType="ButtonType.Submit" Text="Kaydet" Icon="save"
-                          IsBusy="@isBusy" BusyText="Kaydediliyor..." />
+            @if (!SadeceIncele)
+            {
+                <RadzenButton ButtonType="ButtonType.Submit" Text="Kaydet" Icon="save"
+                              IsBusy="@isBusy" BusyText="Kaydediliyor..." />
+            }
         </div>
 
     </div>
@@ -33,11 +39,14 @@
 
 @code {
     [Parameter] public ItemBirim? Item { get; set; }
+    [Parameter] public bool SadeceIncele { get; set; }
 
     private ItemBirim model = new() { Aktif = true };
     private bool isBusy;
     private bool hatalariGoster;
     private string? errorMessage;
+
+    private bool AlanDevreDisi => isBusy || SadeceIncele;
 
     private void OnInvalidSubmit() => hatalariGoster = true;
 

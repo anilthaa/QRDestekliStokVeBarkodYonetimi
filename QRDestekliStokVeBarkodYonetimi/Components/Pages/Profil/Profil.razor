@@ -4,6 +4,7 @@
 @using Microsoft.AspNetCore.Authorization
 @using System.Collections.Generic
 @using System.IO
+@using System.Net
 @using System.Text.RegularExpressions
 @attribute [Authorize]
 @inject EmailService EmailSvc
@@ -71,6 +72,15 @@ else
                 <div style="margin-bottom:1rem; padding:0.85rem; border-radius:8px;
                             background:var(--rz-base-background-color); border:1px solid var(--rz-base-300);">
                     <RadzenLabel Text="Profil resmi" style="display:block; margin-bottom:0.35rem;" />
+                    <div class="profil-resim-oto-kayit">
+                        <RadzenIcon Icon="info" Style="font-size:1rem; color:#1976d2; flex-shrink:0; margin-top:0.1rem;" />
+                        <span>
+                            Profil resmi seçildikten ve (gerekirse) kırpıldıktan sonra
+                            <strong>otomatik olarak kaydedilir</strong>.
+                            Ad, soyad ve e-posta değişiklikleri için aşağıdaki
+                            <strong>Bilgileri Güncelle</strong> düğmesini kullanın.
+                        </span>
+                    </div>
                     <div style="display:flex; flex-wrap:wrap; align-items:center; gap:0.75rem;">
                         <InputFile @key="profilResimInputKey" id="profilResimDosya" OnChange="@OnProfilResmiSecildi"
                                    accept="image/jpeg,image/png,image/webp,image/gif"
@@ -972,6 +982,37 @@ else
         }
     }
 
+    private async Task<bool> ProfilResmiDegisimOnaylaAsync(string yeniOnizlemeDataUrl)
+    {
+        if (kullanici is null || string.IsNullOrWhiteSpace(kullanici.ProfilResmi))
+            return true;
+
+        var mevcutUrl = WebUtility.HtmlEncode(
+            $"{kullanici.ProfilResmi}?v={kullanici.UpdDate?.Ticks ?? kullanici.ID}");
+
+        const string imgStyle = "width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid #e0e0e0;";
+
+        var onay = await DialogSvc.Confirm(
+            DialogFragments.Html(
+                "<p>Mevcut profil resminiz aşağıdaki görselle değiştirilecek. Onaylıyor musunuz?</p>" +
+                "<div style=\"display:flex;gap:1.25rem;align-items:center;justify-content:center;" +
+                "flex-wrap:wrap;margin:1rem 0;\">" +
+                "<div style=\"text-align:center;\">" +
+                "<div style=\"font-size:0.82rem;color:#666;margin-bottom:0.35rem;\">Mevcut</div>" +
+                $"<img src=\"{mevcutUrl}\" alt=\"Mevcut profil resmi\" style=\"{imgStyle}\" />" +
+                "</div>" +
+                "<span style=\"font-size:1.25rem;color:#888;\">→</span>" +
+                "<div style=\"text-align:center;\">" +
+                "<div style=\"font-size:0.82rem;color:#666;margin-bottom:0.35rem;\">Yeni</div>" +
+                $"<img src=\"{yeniOnizlemeDataUrl}\" alt=\"Yeni profil resmi\" style=\"{imgStyle}\" />" +
+                "</div>" +
+                "</div>"),
+            "Profil Resmini Değiştir",
+            new ConfirmOptions { OkButtonText = "Evet, Değiştir", CancelButtonText = "İptal" });
+
+        return onay == true;
+    }
+
     private async Task OnProfilResmiSecildi(InputFileChangeEventArgs e)
     {
         profilResmiHata = string.Empty;
@@ -998,18 +1039,28 @@ else
         {
             var mime = string.IsNullOrWhiteSpace(file.ContentType) ? "image/jpeg" : file.ContentType;
 
+            await using var upload = file.OpenReadStream(ProfilResmiMaxBoyut);
+            using var buffer = new MemoryStream();
+            await upload.CopyToAsync(buffer);
+            var fileBytes = buffer.ToArray();
+
+            if (!string.IsNullOrWhiteSpace(kullanici.ProfilResmi))
+            {
+                await using var onizlemeStream = new MemoryStream(fileBytes);
+                var yeniOnizleme = await ProfilResimIslemci.OnizlemeDataUrlOlusturAsync(onizlemeStream, mime);
+                if (!await ProfilResmiDegisimOnaylaAsync(yeniOnizleme))
+                    return;
+            }
+
             if (string.Equals(mime, "image/gif", StringComparison.OrdinalIgnoreCase))
             {
-                await using var gifUpload = file.OpenReadStream(ProfilResmiMaxBoyut);
-                using var gifBuffer = new MemoryStream();
-                await gifUpload.CopyToAsync(gifBuffer);
-                await ProfilResmiGifKaydetAsync(gifBuffer.ToArray());
+                await ProfilResmiGifKaydetAsync(fileBytes);
                 return;
             }
 
             KirpState.Temizle();
-            await using var upload = file.OpenReadStream(ProfilResmiMaxBoyut);
-            var dataUrl = await ProfilResimIslemci.OnizlemeDataUrlOlusturAsync(upload, mime);
+            await using var cropPreviewStream = new MemoryStream(fileBytes);
+            var dataUrl = await ProfilResimIslemci.OnizlemeDataUrlOlusturAsync(cropPreviewStream, mime);
 
             var result = await DialogSvc.OpenAsync<ProfilResimKirpma>(
                 "Profil resmini düzenle",

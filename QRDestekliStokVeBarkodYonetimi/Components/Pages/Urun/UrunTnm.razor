@@ -13,8 +13,8 @@
             <div class="form-field">
                 <KarakterLimitliMetin Label="Ürün Kodu" Name="UrunKodu" @bind-Value="model.UrunKodu"
                                       MaxLength="@UrunAlanSinirlari.UrunKodu" Required="true"
-                                      Placeholder="Ürün kodu giriniz" Disabled="@isBusy"
-                                      HatalariGoster="@hatalariGoster" />
+                                      Placeholder="Ürün kodu giriniz" Disabled="@AlanDevreDisi"
+                                      HatalariGoster="@(hatalariGoster && !SadeceIncele)" />
             </div>
             <div class="form-field">
                 <RadzenLabel Text="Barkod No" Component="BarkodNo" />
@@ -22,13 +22,16 @@
                     <div style="flex:1; min-width:0;">
                         <KarakterLimitliMetin Name="BarkodNo" @bind-Value="model.BarkodNo" ShowLabel="false"
                                               MaxLength="@UrunAlanSinirlari.BarkodNo" DigitsOnly="true"
-                                              Placeholder="Barkod numarası" Disabled="@isBusy" Style="width:100%"
-                                              HatalariGoster="@hatalariGoster" />
+                                              Placeholder="Barkod numarası" Disabled="@AlanDevreDisi" Style="width:100%"
+                                              HatalariGoster="@(hatalariGoster && !SadeceIncele)" />
                     </div>
-                    <RadzenButton Icon="casino" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small"
-                                  Variant="Variant.Flat" title="Rastgele barkod oluştur"
-                                  Click="@OnRandomBarkodClick" Disabled="@isBusy"
-                                  Style="margin-top:0.15rem;" />
+                    @if (!SadeceIncele)
+                    {
+                        <RadzenButton Icon="casino" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small"
+                                      Variant="Variant.Flat" title="Rastgele barkod oluştur"
+                                      Click="@OnRandomBarkodClick" Disabled="@AlanDevreDisi"
+                                      Style="margin-top:0.15rem;" />
+                    }
                 </div>
             </div>
         </div>
@@ -36,15 +39,15 @@
         <div class="form-field">
             <KarakterLimitliMetin Label="Ürün Adı" Name="Ad" @bind-Value="model.Ad"
                                   MaxLength="@UrunAlanSinirlari.Ad" Required="true"
-                                  Placeholder="Ürün adı giriniz" Disabled="@isBusy"
-                                  HatalariGoster="@hatalariGoster" />
+                                  Placeholder="Ürün adı giriniz" Disabled="@AlanDevreDisi"
+                                  HatalariGoster="@(hatalariGoster && !SadeceIncele)" />
         </div>
 
         <div class="form-field">
             <KarakterLimitliMetin Label="Açıklama" Name="Aciklama" @bind-Value="model.Aciklama"
                                   MaxLength="@UrunAlanSinirlari.Aciklama" Multiline="true" Rows="3"
-                                  Placeholder="Açıklama (opsiyonel)" Disabled="@isBusy"
-                                  HatalariGoster="@hatalariGoster" />
+                                  Placeholder="Açıklama (opsiyonel)" Disabled="@AlanDevreDisi"
+                                  HatalariGoster="@(hatalariGoster && !SadeceIncele)" />
         </div>
 
         <div class="form-row">
@@ -53,16 +56,22 @@
                 <RadzenDropDown @bind-Value="model.Kategori_ID" Name="Kategori_ID"
                                 Data="@kategoriler" TextProperty="Ad" ValueProperty="ID"
                                 Placeholder="Kategori seçiniz" Style="width:100%"
-                                Disabled="@isBusy" AllowClear="true" />
-                <RadzenRequiredValidator Component="Kategori_ID" Text="Kategori zorunludur." Style="display:block" />
+                                Disabled="@AlanDevreDisi" AllowClear="true" />
+                @if (!SadeceIncele)
+                {
+                    <RadzenRequiredValidator Component="Kategori_ID" Text="Kategori zorunludur." Style="display:block" />
+                }
             </div>
             <div class="form-field">
                 <RadzenLabel Text="Birim *" Component="Birim_ID" />
                 <RadzenDropDown @bind-Value="model.Birim_ID" Name="Birim_ID"
                                 Data="@birimler" TextProperty="Ad" ValueProperty="ID"
                                 Placeholder="Birim seçiniz" Style="width:100%"
-                                Disabled="@isBusy" AllowClear="true" />
-                <RadzenRequiredValidator Component="Birim_ID" Text="Birim zorunludur." Style="display:block" />
+                                Disabled="@AlanDevreDisi" AllowClear="true" />
+                @if (!SadeceIncele)
+                {
+                    <RadzenRequiredValidator Component="Birim_ID" Text="Birim zorunludur." Style="display:block" />
+                }
             </div>
         </div>
 
@@ -70,12 +79,12 @@
             <div class="form-field">
                 <RadzenLabel Text="Stok Miktarı" Component="Stok" />
                 <RadzenNumeric @bind-Value="model.Stok" Name="Stok"
-                               Style="width:100%" Disabled="@isBusy" Min="0" />
+                               Style="width:100%" Disabled="@AlanDevreDisi" Min="0" />
             </div>
             <div class="form-field">
                 <RadzenLabel Text="Kritik Stok Seviyesi" Component="KritikStokSeviyesi" />
                 <RadzenNumeric @bind-Value="model.KritikStokSeviyesi" Name="KritikStokSeviyesi"
-                               Style="width:100%" Disabled="@isBusy" Min="0" />
+                               Style="width:100%" Disabled="@AlanDevreDisi" Min="0" />
             </div>
         </div>
 
@@ -89,7 +98,6 @@
             </div>
         }
 
-        <!-- Çoklu resim yükleme -->
         <div class="form-field">
             <RadzenLabel Text="Ürün Resimleri" />
 
@@ -103,30 +111,36 @@
                             <img src="@resimKopyasi" alt="Ürün resmi"
                                  style="width:90px; height:90px; object-fit:cover; border-radius:8px; border:1px solid #ddd; cursor:zoom-in;"
                                  @onclick="@(() => onizlemeResim = resimKopyasi)" />
-                            <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
-                                          Variant="Variant.Flat"
-                                          Style="position:absolute; top:2px; right:2px; padding:1px 5px; min-width:unset;"
-                                          Click="@(() => ResimSil(resimKopyasi))" title="Resmi kaldır" />
+                            @if (!SadeceIncele)
+                            {
+                                <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                                              Variant="Variant.Flat"
+                                              Style="position:absolute; top:2px; right:2px; padding:1px 5px; min-width:unset;"
+                                              Click="@(() => ResimSil(resimKopyasi))" title="Resmi kaldır" />
+                            }
                         </div>
                     }
                 </div>
             }
 
-            <InputFile OnChange="@OnResimSecildi" accept="image/*" multiple
-                       style="display:block; margin-top:4px;" disabled="@isBusy" />
-            <div style="font-size:0.78rem; color:#888; margin-top:2px;">
-                Birden fazla resim seçebilirsiniz. Maksimum 5 resim, her biri en fazla 5 MB.
-            </div>
-
-            @if (resimYukleniyor)
+            @if (!SadeceIncele)
             {
-                <div style="font-size:0.8rem; color:#555; margin-top:4px;">
-                    <RadzenProgressBar Value="100" Mode="ProgressBarMode.Indeterminate" Style="height:6px;" />
+                <InputFile OnChange="@OnResimSecildi" accept="image/*" multiple
+                           style="display:block; margin-top:4px;" disabled="@AlanDevreDisi" />
+                <div style="font-size:0.78rem; color:#888; margin-top:2px;">
+                    Birden fazla resim seçebilirsiniz. Maksimum 5 resim, her biri en fazla 5 MB.
                 </div>
-            }
-            @if (!string.IsNullOrWhiteSpace(resimHata))
-            {
-                <div style="font-size:0.8rem; color:#c62828; margin-top:4px;">@resimHata</div>
+
+                @if (resimYukleniyor)
+                {
+                    <div style="font-size:0.8rem; color:#555; margin-top:4px;">
+                        <RadzenProgressBar Value="100" Mode="ProgressBarMode.Indeterminate" Style="height:6px;" />
+                    </div>
+                }
+                @if (!string.IsNullOrWhiteSpace(resimHata))
+                {
+                    <div style="font-size:0.8rem; color:#c62828; margin-top:4px;">@resimHata</div>
+                }
             }
         </div>
 
@@ -137,11 +151,14 @@
         }
 
         <div class="form-actions">
-            <RadzenButton ButtonStyle="ButtonStyle.Light" Text="İptal" Icon="cancel"
+            <RadzenButton ButtonStyle="ButtonStyle.Light" Text="@(SadeceIncele ? "Kapat" : "İptal")" Icon="cancel"
                           Click="@OnCancel" Disabled="@isBusy" />
-            <RadzenButton ButtonType="ButtonType.Submit" Text="Kaydet" Icon="save"
-                          IsBusy="@isBusy" BusyText="Kaydediliyor..."
-                          Disabled="@isBusy" />
+            @if (!SadeceIncele)
+            {
+                <RadzenButton ButtonType="ButtonType.Submit" Text="Kaydet" Icon="save"
+                              IsBusy="@isBusy" BusyText="Kaydediliyor..."
+                              Disabled="@isBusy" />
+            }
         </div>
 
     </div>
@@ -150,6 +167,7 @@
 
 @code {
     [Parameter] public ItemUrun? Item { get; set; }
+    [Parameter] public bool SadeceIncele { get; set; }
 
     private ItemUrun model = new() { Stok = 0, KritikStokSeviyesi = 0 };
     private bool isBusy;
@@ -164,6 +182,8 @@
 
     private ItemKategori[] kategoriler = [];
     private ItemBirim[] birimler = [];
+
+    private bool AlanDevreDisi => isBusy || SadeceIncele;
 
     private bool metinSinirlariAsildi => UrunMetinDogrulama.SinirAsildi(model);
 
@@ -201,7 +221,6 @@
                 DelDate             = Item.DelDate
             };
 
-            // Mevcut resimleri listeye yükle
             if (!string.IsNullOrWhiteSpace(Item.ResimYolu))
             {
                 resimListesi = Item.ResimYolu
