@@ -136,6 +136,35 @@
     {
         errorMessage = null;
         hatalariGoster = true;
+
+        model.Ad = (model.Ad ?? string.Empty).Trim();
+        model.Soyad = (model.Soyad ?? string.Empty).Trim();
+        model.Eposta = (model.Eposta ?? string.Empty).Trim();
+
+        if (string.IsNullOrWhiteSpace(model.Ad))
+        {
+            errorMessage = "Ad zorunludur.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(model.Soyad))
+        {
+            errorMessage = "Soyad zorunludur.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(model.Eposta))
+        {
+            errorMessage = "E-posta zorunludur.";
+            return;
+        }
+
+        if (model.KullaniciTip_ID <= 0)
+        {
+            errorMessage = "Kullanıcı tipi zorunludur.";
+            return;
+        }
+
         isBusy = true;
         try
         {

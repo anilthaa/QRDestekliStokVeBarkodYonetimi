@@ -35,24 +35,26 @@
 
             <div class="auth-field">
                 <RadzenLabel Text="Şifre *" Component="Sifre" />
-                <TogglePasswordField @bind-Value="model.Sifre" Name="Sifre"
+                <TogglePasswordField @bind-Value="model.Sifre" @bind-Value:after="OnFormDegisti"
+                                     Name="Sifre"
                                      HatalariGoster="@hatalariGoster"
                                      Placeholder="En az 6 karakter" Disabled="@kayitIsBusy" />
-                <RadzenRequiredValidator Component="Sifre" Text="Şifre zorunludur." Style="display:block" />
-                <RadzenCustomValidator Component="Sifre"
-                                       Validator="@(() => string.IsNullOrEmpty(model.Sifre) || model.Sifre.Length >= 6)"
-                                       Text="Şifre en az 6 karakter olmalıdır." Style="display:block" />
+                @if (!string.IsNullOrEmpty(sifreAlanHata))
+                {
+                    <span class="form-field-error">@sifreAlanHata</span>
+                }
             </div>
 
             <div class="auth-field">
                 <RadzenLabel Text="Şifre (Tekrar) *" Component="SifreTekrar" />
-                <TogglePasswordField @bind-Value="model.SifreTekrar" Name="SifreTekrar"
+                <TogglePasswordField @bind-Value="model.SifreTekrar" @bind-Value:after="OnFormDegisti"
+                                     Name="SifreTekrar"
                                      HatalariGoster="@hatalariGoster"
                                      Disabled="@kayitIsBusy" />
-                <RadzenRequiredValidator Component="SifreTekrar" Text="Tekrar şifre zorunludur." Style="display:block" />
-                <RadzenCustomValidator Component="SifreTekrar"
-                                       Validator="@(() => string.IsNullOrEmpty(model.SifreTekrar) || model.Sifre == model.SifreTekrar)"
-                                       Text="Şifreler eşleşmiyor." Style="display:block" />
+                @if (!string.IsNullOrEmpty(sifreTekrarAlanHata))
+                {
+                    <span class="form-field-error">@sifreTekrarAlanHata</span>
+                }
             </div>
 
             @if (!string.IsNullOrEmpty(kayitHata))
@@ -63,7 +65,8 @@
 
             <RadzenButton ButtonType="ButtonType.Submit" Text="Kayıt ol" Icon="person_add"
                           ButtonStyle="ButtonStyle.Primary"
-                          IsBusy="@kayitIsBusy" BusyText="Kaydediliyor…" Disabled="@kayitIsBusy" />
+                          IsBusy="@kayitIsBusy" BusyText="Kaydediliyor…"
+                          Disabled="@(!RegisterFormuGecerli || kayitIsBusy)" />
         </div>
     </RadzenTemplateForm>
 
@@ -88,6 +91,20 @@
     private string kayitHata = string.Empty;
     private bool kayitIsBusy;
     private bool hatalariGoster;
+    private bool formEtkilesildi;
+    private string? sifreAlanHata;
+    private string? sifreTekrarAlanHata;
+
+    private bool RegisterFormuGecerli =>
+        !string.IsNullOrWhiteSpace(model.Ad) &&
+        !string.IsNullOrWhiteSpace(model.Soyad) &&
+        !string.IsNullOrWhiteSpace(model.Eposta) &&
+        !string.IsNullOrWhiteSpace(model.Sifre) &&
+        model.Sifre.Length >= 6 &&
+        !string.IsNullOrWhiteSpace(model.SifreTekrar) &&
+        string.Equals(model.Sifre, model.SifreTekrar, StringComparison.Ordinal) &&
+        string.IsNullOrEmpty(sifreAlanHata) &&
+        string.IsNullOrEmpty(sifreTekrarAlanHata);
 
     protected override void OnParametersSet()
     {
@@ -95,12 +112,51 @@
             kayitHata = Error;
     }
 
-    private void OnInvalidSubmit() => hatalariGoster = true;
+    private void OnInvalidSubmit()
+    {
+        hatalariGoster = true;
+        formEtkilesildi = true;
+        GuncelleAlanHatalari();
+    }
+
+    private void OnFormDegisti()
+    {
+        formEtkilesildi = true;
+        GuncelleAlanHatalari();
+    }
+
+    private void GuncelleAlanHatalari()
+    {
+        if (!formEtkilesildi)
+        {
+            sifreAlanHata = null;
+            sifreTekrarAlanHata = null;
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(model.Sifre))
+            sifreAlanHata = "Şifre zorunludur.";
+        else if (model.Sifre.Length < 6)
+            sifreAlanHata = "Şifre en az 6 karakter olmalıdır.";
+        else
+            sifreAlanHata = null;
+
+        if (string.IsNullOrWhiteSpace(model.SifreTekrar))
+            sifreTekrarAlanHata = "Tekrar şifre zorunludur.";
+        else if (!string.Equals(model.Sifre, model.SifreTekrar, StringComparison.Ordinal))
+            sifreTekrarAlanHata = "Şifreler eşleşmiyor.";
+        else
+            sifreTekrarAlanHata = null;
+    }
 
     private async Task OnSubmitAsync()
     {
         kayitHata = string.Empty;
         hatalariGoster = true;
+        formEtkilesildi = true;
+        GuncelleAlanHatalari();
+        if (!RegisterFormuGecerli)
+            return;
 
         kayitIsBusy = true;
         try

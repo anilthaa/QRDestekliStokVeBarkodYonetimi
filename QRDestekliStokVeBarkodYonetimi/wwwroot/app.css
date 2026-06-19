@@ -505,10 +505,16 @@ td.grid-sira-kolon {
 }
 
 .liste-grid-virtual {
-    height: clamp(360px, calc(100vh - 280px), 640px);
     width: 100%;
 }
 
-.stok-hareket-grid.liste-grid-virtual {
-    height: clamp(300px, calc(100vh - 420px), 520px);
+.liste-grid-virtual .rz-data-grid-data {
+    height: auto !important;
+    max-height: clamp(360px, calc(100vh - 280px), 640px);
+    overflow-y: auto;
+    min-height: 120px;
+}
+
+.stok-hareket-grid.liste-grid-virtual .rz-data-grid-data {
+    max-height: clamp(300px, calc(100vh - 420px), 520px);
 }
