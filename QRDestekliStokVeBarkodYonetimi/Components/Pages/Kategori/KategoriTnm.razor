@@ -195,6 +195,14 @@
     {
         errorMessage = null;
         hatalariGoster = true;
+
+        model.Ad = (model.Ad ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(model.Ad))
+        {
+            errorMessage = "Kategori adı zorunludur.";
+            return;
+        }
+
         isBusy = true;
         try
         {

@@ -41,7 +41,10 @@
 
     @if (Required)
     {
-        <RadzenRequiredValidator Component="@Name" Text="@ZorunluMesaj" Style="display:block" />
+        <RadzenCustomValidator Component="@Name"
+                               Validator="@(() => !Required || !string.IsNullOrWhiteSpace(gorunenDeger))"
+                               Text="@ZorunluMesaj"
+                               Style="display:block" />
     }
 
     <RadzenCustomValidator Component="@Name"

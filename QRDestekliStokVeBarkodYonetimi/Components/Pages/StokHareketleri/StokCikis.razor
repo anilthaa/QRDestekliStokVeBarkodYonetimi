@@ -144,6 +144,14 @@ else if (aramaTamamlandi)
     {
         if (sadecOkuma) return;
         if (bulunanUrun == null || cikisAdet <= 0) return;
+
+        if (cikisAdet > bulunanUrun.Stok)
+        {
+            NotificationSvc.Notify(NotificationSeverity.Warning, "Uyarı",
+                $"Yetersiz stok. Mevcut stok: {bulunanUrun.Stok:N2}", 4000);
+            return;
+        }
+
         islemDevam = true;
         try
         {

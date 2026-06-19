@@ -89,11 +89,12 @@ else
                     FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
                     AllowPaging="false" AllowVirtualization="true" PageSize="25"
                     VirtualizationOverscanCount="3"
+                    AllowColumnReorder="true"
                     EmptyText="Kayıt bulunamadı." ColumnWidth="160px"
                     class="stok-hareket-grid liste-grid-virtual">
         <Columns>
             <RadzenDataGridColumn TItem="ItemStokHareketleri" Property="ID" Title="Sıra" Width="@GridSiraYardimci.KolonGenisligi" MinWidth="@GridSiraYardimci.KolonGenisligi"
-                                  Frozen="true" Filterable="false"
+                                  Frozen="true" Filterable="false" Reorderable="false"
                                   SortComparer="@GridSiraYardimci.SiralamaIndeksiComparer(gridHareketler)"
                                   TextAlign="TextAlign.Center" CssClass="grid-sira-kolon">
                 <Template Context="row">
@@ -101,7 +102,7 @@ else
                 </Template>
             </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="ItemStokHareketleri" Title="Resim" Width="72px" TextAlign="TextAlign.Center"
-                                  Sortable="false" Filterable="false">
+                                  Sortable="false" Filterable="false" Reorderable="false">
                 <Template Context="row">
                     @{
                         var thumb = UrunResimYardimci.IlkResimYolu(row.ResimYolu);
@@ -173,7 +174,7 @@ else
                 </FilterTemplate>
             </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="ItemStokHareketleri" Title="" Width="48px" TextAlign="TextAlign.Center"
-                                  Sortable="false" Filterable="false">
+                                  Sortable="false" Filterable="false" Reorderable="false">
                 <Template Context="row">
                     <GridIslemMenuButonu Click="@(e => IslemlerMenuAc(e, row))" />
                 </Template>

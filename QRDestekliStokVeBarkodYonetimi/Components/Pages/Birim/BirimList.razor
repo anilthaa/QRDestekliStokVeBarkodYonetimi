@@ -38,13 +38,14 @@ else
                     FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
                     AllowPaging="false" AllowVirtualization="true" PageSize="25"
                     VirtualizationOverscanCount="3"
+                    AllowColumnReorder="true"
                     EmptyText="Kayıt bulunamadı."
                     ColumnWidth="200px"
                     class="liste-grid-virtual">
         <Columns>
 
             <RadzenDataGridColumn TItem="ItemBirim" Property="ID" Title="Sıra" Width="@GridSiraYardimci.KolonGenisligi" MinWidth="@GridSiraYardimci.KolonGenisligi"
-                                  Frozen="true" Filterable="false"
+                                  Frozen="true" Filterable="false" Reorderable="false"
                                   SortComparer="@GridSiraYardimci.SiralamaIndeksiComparer(filtreliBirimler)"
                                   TextAlign="TextAlign.Center" CssClass="grid-sira-kolon">
                 <Template Context="row">
@@ -67,7 +68,7 @@ else
             </RadzenDataGridColumn>
 
             <RadzenDataGridColumn TItem="ItemBirim" Title="" Width="48px" TextAlign="TextAlign.Center"
-                                  Sortable="false" Filterable="false">
+                                  Sortable="false" Filterable="false" Reorderable="false">
                 <Template Context="row">
                     <GridIslemMenuButonu Click="@(e => IslemlerMenuAc(e, row))" />
                 </Template>

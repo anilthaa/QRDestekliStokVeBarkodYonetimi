@@ -43,6 +43,12 @@
                         <RadzenLabel Text="@($"Giriş Miktarı ({birimAdi})")" />
                         <RadzenNumeric @bind-Value="girisAdet" TValue="decimal" Min="1" Step="1"
                                        Style="width:100%; margin-top:4px;" />
+                        @if (girisAdet < 1)
+                        {
+                            <div style="font-size:0.8rem; color:#c62828; margin-top:4px;">
+                                <i class="fa-solid fa-triangle-exclamation"></i> Giriş miktarı en az 1 olmalıdır.
+                            </div>
+                        }
                     </div>
                     <div>
                         <RadzenLabel Text="Not (isteğe bağlı)" />
@@ -51,7 +57,7 @@
                     </div>
                     <RadzenButton Text="Stok Girişi Yap" Icon="add_circle" ButtonStyle="ButtonStyle.Success"
                                   Click="@GirisYap"
-                                  Disabled="@(islemDevam || sadecOkuma)"
+                                  Disabled="@(islemDevam || girisAdet < 1 || sadecOkuma)"
                                   Style="@("width:100%;" + (sadecOkuma ? "opacity:0.35;pointer-events:none;" : ""))" />
                     @if (sadecOkuma)
                     {

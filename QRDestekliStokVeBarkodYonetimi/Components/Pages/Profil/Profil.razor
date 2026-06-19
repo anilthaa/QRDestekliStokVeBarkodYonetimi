@@ -416,6 +416,8 @@ else
             yeniSifreAlanHata = "Yeni şifre zorunludur.";
         else if (sifreForm.YeniSifre.Length < 6)
             yeniSifreAlanHata = "Şifre en az 6 karakter olmalıdır.";
+        else if (string.Equals(sifreForm.EskiSifre, sifreForm.YeniSifre, StringComparison.Ordinal))
+            yeniSifreAlanHata = "Yeni şifre mevcut şifre ile aynı olamaz.";
         else
             yeniSifreAlanHata = null;
 
@@ -555,6 +557,13 @@ else
 
         var yeniAd = (kullanici.Ad ?? string.Empty).Trim();
         var yeniSoyad = (kullanici.Soyad ?? string.Empty).Trim();
+
+        if (string.IsNullOrWhiteSpace(yeniAd) || string.IsNullOrWhiteSpace(yeniSoyad))
+        {
+            profilHata = "Ad ve soyad zorunludur.";
+            return;
+        }
+
         var onay = await DialogSvc.Confirm(
             DialogFragments.Html(
                 $"Ad ve soyad bilgileriniz {DialogFragments.B($"{yeniAd} {yeniSoyad}")} olarak güncellenecek.<br/><br/>Devam edilsin mi?"),

@@ -18,6 +18,11 @@ public static class UrunMetinDogrulama
 
     public static string? IlkHata(ItemUrun urun)
     {
+        if (string.IsNullOrWhiteSpace(urun.UrunKodu))
+            return "Ürün kodu zorunludur.";
+        if (string.IsNullOrWhiteSpace(urun.Ad))
+            return "Ürün adı zorunludur.";
+
         if (!string.IsNullOrEmpty(urun.BarkodNo) && !urun.BarkodNo.All(char.IsDigit))
             return "Barkod no yalnızca rakam içerebilir.";
 

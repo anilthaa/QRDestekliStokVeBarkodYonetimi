@@ -157,7 +157,7 @@
             {
                 <RadzenButton ButtonType="ButtonType.Submit" Text="Kaydet" Icon="save"
                               IsBusy="@isBusy" BusyText="Kaydediliyor..."
-                              Disabled="@isBusy" />
+                              Disabled="@(isBusy || !UrunKayitFormuGecerli)" />
             }
         </div>
 
@@ -186,6 +186,13 @@
     private bool AlanDevreDisi => isBusy || SadeceIncele;
 
     private bool metinSinirlariAsildi => UrunMetinDogrulama.SinirAsildi(model);
+
+    private bool UrunKayitFormuGecerli =>
+        !string.IsNullOrWhiteSpace(model.UrunKodu) &&
+        !string.IsNullOrWhiteSpace(model.Ad) &&
+        model.Kategori_ID > 0 &&
+        model.Birim_ID > 0 &&
+        !metinSinirlariAsildi;
 
     private static readonly string[] IzinliUzantilar = [".jpg", ".jpeg", ".png", ".gif", ".webp"];
     private const long MaxResimBoyutu = 5 * 1024 * 1024; // 5 MB
@@ -306,9 +313,23 @@
         errorMessage = null;
         hatalariGoster = true;
 
-        if (metinSinirlariAsildi)
+        model.UrunKodu = (model.UrunKodu ?? string.Empty).Trim();
+        model.Ad = (model.Ad ?? string.Empty).Trim();
+        model.BarkodNo = string.IsNullOrWhiteSpace(model.BarkodNo) ? null : model.BarkodNo.Trim();
+        model.Aciklama = string.IsNullOrWhiteSpace(model.Aciklama) ? null : model.Aciklama.Trim();
+
+        if (!UrunKayitFormuGecerli)
         {
-            errorMessage = UrunMetinDogrulama.IlkHata(model);
+            if (string.IsNullOrWhiteSpace(model.UrunKodu))
+                errorMessage = "Ürün kodu zorunludur.";
+            else if (string.IsNullOrWhiteSpace(model.Ad))
+                errorMessage = "Ürün adı zorunludur.";
+            else if (model.Kategori_ID <= 0)
+                errorMessage = "Kategori zorunludur.";
+            else if (model.Birim_ID <= 0)
+                errorMessage = "Birim zorunludur.";
+            else if (metinSinirlariAsildi)
+                errorMessage = UrunMetinDogrulama.IlkHata(model);
             return;
         }
 

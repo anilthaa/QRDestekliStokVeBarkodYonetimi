@@ -38,12 +38,13 @@ else
                     FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive"
                     AllowPaging="false" AllowVirtualization="true" PageSize="25"
                     VirtualizationOverscanCount="3"
+                    AllowColumnReorder="true"
                     EmptyText="Kayıt bulunamadı."
                     ColumnWidth="200px"
                     class="liste-grid-virtual">
         <Columns>
             <RadzenDataGridColumn TItem="ItemKullanicilar" Property="ID" Title="Sıra" Width="@GridSiraYardimci.KolonGenisligi" MinWidth="@GridSiraYardimci.KolonGenisligi"
-                                  Frozen="true" Filterable="false"
+                                  Frozen="true" Filterable="false" Reorderable="false"
                                   SortComparer="@GridSiraYardimci.SiralamaIndeksiComparer(filtreliKullanicilar)"
                                   TextAlign="TextAlign.Center" CssClass="grid-sira-kolon">
                 <Template Context="row">
@@ -51,7 +52,7 @@ else
                 </Template>
             </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="ItemKullanicilar" Title="" Width="64px" Frozen="true"
-                                  Sortable="false" Filterable="false" TextAlign="TextAlign.Center">
+                                  Sortable="false" Filterable="false" Reorderable="false" TextAlign="TextAlign.Center">
                 <Template Context="row">
                     <div class="kullanici-liste-avatar" title="Profil">
                         @if (!string.IsNullOrWhiteSpace(row.ProfilResmi))
@@ -86,7 +87,7 @@ else
                 </FilterTemplate>
             </RadzenDataGridColumn>
             <RadzenDataGridColumn TItem="ItemKullanicilar" Title="" Width="48px" TextAlign="TextAlign.Center"
-                                  Sortable="false" Filterable="false">
+                                  Sortable="false" Filterable="false" Reorderable="false">
                 <Template Context="row">
                     <GridIslemMenuButonu Click="@(e => IslemlerMenuAc(e, row))" />
                 </Template>

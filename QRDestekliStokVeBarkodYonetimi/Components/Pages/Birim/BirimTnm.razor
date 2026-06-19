@@ -73,6 +73,14 @@
     {
         errorMessage = null;
         hatalariGoster = true;
+
+        model.Ad = (model.Ad ?? string.Empty).Trim();
+        if (string.IsNullOrWhiteSpace(model.Ad))
+        {
+            errorMessage = "Birim adı zorunludur.";
+            return;
+        }
+
         isBusy = true;
         try
         {

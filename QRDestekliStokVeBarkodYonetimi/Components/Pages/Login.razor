@@ -118,6 +118,9 @@
         girisHata = string.Empty;
         hatalariGoster = true;
 
+        if (string.IsNullOrWhiteSpace(model.Eposta) || string.IsNullOrWhiteSpace(model.Sifre))
+            return;
+
         var eposta = model.Eposta.Trim();
         girisIsBusy = true;
         var postSubmitted = false;
